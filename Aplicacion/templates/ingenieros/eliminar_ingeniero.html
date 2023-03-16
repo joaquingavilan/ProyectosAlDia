@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Eliminar Ingeniero</h2>
+
+  <p>¿Confirma que desea eliminar al ingeniero "{{ ingeniero.nombre }}"?</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" name="confirmar">Eliminar</button>
+    <button type="submit"><a href="{% url 'ver_ingenieros' %}" class="no-link">Cancelar</a></button>
+  </form>
+{% endblock %}

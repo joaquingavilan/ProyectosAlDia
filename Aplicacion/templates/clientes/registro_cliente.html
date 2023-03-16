@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Registro de cliente</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <input type="submit" value="Guardar">
+  <button type="submit"><a href="{% url 'ver_clientes' %}" class="no-link">Cancelar</a></button>
+</form>
+{% endblock %}

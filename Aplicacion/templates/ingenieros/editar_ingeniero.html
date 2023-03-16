@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Editar ingeniero</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <button id="btn-atras" type="button" class="btn btn-secondary">Atrás</button>
+  </form>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    // Para rellenar los campos con los valores actuales
+    let nombreInput = document.querySelector('input[name="nombre"]');
+    let apellidoInput = document.querySelector('input[name="apellido"]');
+    let fechaNacimientoInput = document.querySelector('input[name="fecha_nacimiento"]');
+    let telefonoInput = document.querySelector('input[name="telefono"]');
+    let emailInput = document.querySelector('input[name="email"]');
+    let estadoSelect = document.querySelector('select[name="estado"]');
+
+
+    fechaNacimientoInput.value = "{{ ingeniero.fecha_nacimiento|date:'Y-m-d' }}";
+    nombreInput.value = "{{ ingeniero.nombre }}";
+    apellidoInput.value = "{{ ingeniero.apellido }}";
+    telefonoInput.value = "{{ ingeniero.telefono }}";
+    emailInput.value = "{{ ingeniero.email }}";
+    estadoSelect.value = "{{ ingeniero.estado }}";
+
+    // añadir la clase form-modificado si se modifica algun input
+    let form = document.querySelector('form');
+    let inputs = form.querySelectorAll('input, select, textarea,p');
+
+    inputs.forEach(input => {
+      input.addEventListener('change', function() {
+        form.classList.add('form-modificado');
+      });
+    });
+
+    //verificar si se modificó antes de ir atras
+
+    let btnAtras = document.getElementById('btn-atras');
+    btnAtras.addEventListener('click', function() {
+      let formModificado = document.querySelector('.form-modificado');
+      if (formModificado) {
+        if (confirm('¿Está seguro que desea salir? Se perderán los cambios no guardados.')) {
+          window.location.href = "{% url 'ver_ingenieros' %}";
+        }
+      } else {
+        window.location.href = "{% url 'ver_ingenieros' %}";
+      }
+    });
+
+    //verificar si se modificó antes de actualizar
+
+    window.addEventListener('beforeunload', function (event) {
+      let form = document.querySelector('form');
+      if (form.classList.contains('form-modificado')) {
+        event.returnValue = 'Hay cambios sin guardar. ¿Seguro que desea salir de la página?';
+      }
+    });
+    </script>
+{% endblock %}

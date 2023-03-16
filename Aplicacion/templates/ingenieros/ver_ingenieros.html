@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+  <h1>Listado de ingenieros</h1>
+  <form method="POST" class="form-inline mb-3">
+    {% csrf_token %}
+    {{ form_buscar.as_p }}
+    <button type="submit" class="btn btn-primary">Buscar</button>
+  </form>
+  <table class="table table-striped table-hover">
+    <thead>
+      <tr>
+        <th scope="col" style="width: 5%">ID</th>
+        <th scope="col" style="width: 15%">Nombre</th>
+        <th scope="col" style="width: 15%">Apellido</th>
+        <th scope="col" style="width: 15%">Fecha de nacimiento</th>
+        <th scope="col" style="width: 10%">Teléfono</th>
+        <th scope="col" style="width: 20%">Email</th>
+        <th scope="col" style="width: 10%">Estado</th>
+        <th scope="col" style="width: 10%">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ingeniero in ingenieros %}
+        <tr>
+          <td>{{ ingeniero.id }}</td>
+          <td>{{ ingeniero.nombre }}</td>
+          <td>{{ ingeniero.apellido }}</td>
+          <td>{{ ingeniero.fecha_nacimiento }}</td>
+          <td>{{ ingeniero.telefono }}</td>
+          <td>{{ ingeniero.email }}</td>
+          <td>{{ ingeniero.get_estado_display }}</td>
+          <td>
+            <button type="submit"><a class="no-link" href="{% url 'editar_ingeniero' ingeniero.id %}">Editar</a></button>
+            <button type="submit"><a class="no-link" href="{% url 'eliminar_ingeniero' ingeniero.id %}">Eliminar</a></button>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button type="submit"><a href="{% url 'registrar_ingeniero' %}" class="no-link">Registrar Ingeniero</a></button>
+  <button type="submit"><a href="{% url 'inicio' %}" class="no-link">Inicio</a></button>
+{% endblock %}

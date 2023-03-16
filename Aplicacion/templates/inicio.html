@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Bienvenido al sistema</h1>
+    <p>Seleccione una opción:</p>
+    <button type="submit"><a href="{% url 'ver_ingenieros' %}" class="no-link">Ver Ingenieros</a></button>
+    <button type="submit"><a href="{% url 'ver_clientes' %}" class="no-link">Ver Clientes</a></button>
+{% endblock %}
