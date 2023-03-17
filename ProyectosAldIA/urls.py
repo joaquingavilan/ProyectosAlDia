@@ -17,7 +17,6 @@ from django.contrib import admin
 from django.urls import path
 from Aplicacion import views
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.inicio, name='inicio'),
@@ -27,6 +26,10 @@ urlpatterns = [
     path('clientes/eliminar/<int:pk>/', views.eliminar_cliente, name='eliminar_cliente'),
     path('ingenieros/registrar/', views.registrar_ingeniero, name='registrar_ingeniero'),
     path('ingenieros/ver', views.ver_ingenieros, name='ver_ingenieros'),
+    path('ingenieros/editar/<int:pk>/', views.editar_ingeniero, name='editar_ingeniero'),
     path('ingenieros/eliminar/<int:pk>/', views.eliminar_ingeniero, name='eliminar_ingeniero'),
-    path('ingenieros/editar/<int:pk>/', views.editar_ingeniero, name='editar_ingeniero')
+    path('proveedores/registro/', views.registrar_proveedor, name='registrar_proveedor'),
+    path('proveedores/ver/', views.ver_proveedores, name='ver_proveedores'),
+    path('proveedores/editar/<int:pk>/', views.editar_proveedor, name='editar_proveedor'),
+    path('proveedores/eliminar/<int:pk>/', views.eliminar_proveedor, name='eliminar_proveedor')
 ]

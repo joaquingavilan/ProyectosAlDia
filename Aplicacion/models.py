@@ -1,4 +1,4 @@
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, EmailValidator
 from django.db import models
 from datetime import date
 from django.core.exceptions import ValidationError
@@ -32,3 +32,15 @@ class Ingeniero(models.Model):
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
+
+
+class Proveedor(models.Model):
+    nombre = models.CharField(max_length=100)
+    ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
+    nombre_contacto = models.CharField(max_length=50, validators=[RegexValidator(r'^[a-zA-Z ]*$', message='Introduzca solo letras o espacios en blanco')])
+    numero_contacto = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d]*$', message='Introduzca solo numeros')])
+    email = models.EmailField(max_length=254, validators=[EmailValidator()])
+
+
+
+

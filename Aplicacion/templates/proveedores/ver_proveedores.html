@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Proveedores</h1>
+  <form method="GET">
+    {{ form_buscar.as_p }}
+    <button type="submit" class="btn btn-primary">Buscar</button>
+  </form>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">Nombre</th>
+        <th scope="col">RUC</th>
+        <th scope="col">Nombre de contacto</th>
+        <th scope="col">Email de contacto</th>
+        <th scope="col">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for proveedor in proveedores %}
+        <tr>
+          <td>{{ proveedor.nombre }}</td>
+          <td>{{ proveedor.ruc }}</td>
+          <td>{{ proveedor.nombre_contacto }}</td>
+          <td>{{ proveedor.email }}</td>
+          <td>
+            <button type="submit"><a href="{% url 'editar_proveedor' proveedor.id %}" class="no-link">Editar</a></button>
+            <button type="submit"><a class="no-link" href="{% url 'eliminar_proveedor' proveedor.id %}">Eliminar</a></button>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <button type="submit"><a href="{% url 'registrar_proveedor' %}" class="no-link">Registrar nuevo proveedor</a></button>
+  <button type="submit"><a href="{% url 'inicio' %}" class="no-link">Inicio</a></button>
+{% endblock %}

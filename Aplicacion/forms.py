@@ -1,5 +1,5 @@
 from django import forms
-from .models import Cliente, Ingeniero
+from .models import Cliente, Ingeniero, Proveedor
 
 class ClienteForm(forms.ModelForm):
     class Meta:
@@ -22,3 +22,15 @@ class BuscadorIngenieroForm(forms.Form):
 
 class BuscadorClienteForm(forms.Form):
     termino_busqueda = forms.CharField(label='Buscar Cliente', max_length=100, required=False)
+
+
+class ProveedorForm(forms.ModelForm):
+    class Meta:
+        model = Proveedor
+        fields = ['nombre', 'ruc', 'nombre_contacto', 'numero_contacto', 'email']
+
+
+class BuscadorProveedorForm(forms.Form):
+    termino_busqueda = forms.CharField(required=False, max_length=100, label='Buscar proveedor')
+
+

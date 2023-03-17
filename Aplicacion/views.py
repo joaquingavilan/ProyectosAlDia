@@ -1,12 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View
-from .models import Cliente, Ingeniero
-from .forms import ClienteForm, IngenieroForm, BuscadorIngenieroForm, BuscadorClienteForm
+from .models import Cliente, Ingeniero, Proveedor
+from .forms import *
 from django.db.models import Q
+from django.conf import settings
 
 
 def inicio(request):
     return render(request, 'inicio.html')
+
+#                   VISTAS PARA CLIENTE
 
 
 def registrar_cliente(request):
@@ -23,15 +26,12 @@ def registrar_cliente(request):
 
 def editar_cliente(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
-
+    form = ClienteForm(instance=cliente)
     if request.method == 'POST':
         form = ClienteForm(request.POST, instance=cliente)
         if form.is_valid():
             form.save()
             return redirect('ver_clientes')
-    else:
-        form = ClienteForm(instance=cliente)
-
     return render(request, 'clientes/editar_cliente.html', {'form': form})
 
 
@@ -55,6 +55,8 @@ def ver_clientes(request):
                 clientes = clientes.filter(Q(ruc__icontains=termino_busqueda) | Q(nombre__icontains=termino_busqueda))
 
     return render(request, 'clientes/ver_clientes.html', {'clientes': clientes, 'form_buscar': form_buscar})
+
+#                   VISTAS PARA INGENIERO
 
 
 def registrar_ingeniero(request):
@@ -103,3 +105,62 @@ def eliminar_ingeniero(request, pk):
         return redirect('ver_ingenieros')
 
     return render(request, 'ingenieros/eliminar_ingeniero.html', {'ingeniero': ingeniero})
+
+#                   VISTAS PARA PROVEEDOR
+
+
+def registrar_proveedor(request):
+    if request.method == 'POST':
+        form = ProveedorForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('ver_proveedores')
+    else:
+        form = ProveedorForm()
+
+    return render(request, 'proveedores/registrar_proveedor.html', {'form': form})
+
+
+def ver_proveedores(request):
+    proveedores = Proveedor.objects.all()
+    form_buscar = BuscadorProveedorForm()
+    if request.method == 'GET':
+        form_buscar = BuscadorProveedorForm(request.GET)
+        if form_buscar.is_valid():
+            termino_busqueda = form_buscar.cleaned_data['termino_busqueda']
+            if termino_busqueda:
+                if termino_busqueda.isdigit():
+                    proveedores = proveedores.filter(ruc__icontains=termino_busqueda)
+                else:
+                    proveedores = proveedores.filter(nombre__icontains=termino_busqueda)
+
+    return render(request, 'proveedores/ver_proveedores.html', {'proveedores': proveedores, 'form_buscar': form_buscar})
+
+
+def eliminar_proveedor(request, pk):
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+
+    if request.method == 'POST' and 'confirmar' in request.POST:
+        proveedor.delete()
+        return redirect('ver_proveedores')
+    return render(request, 'proveedores/eliminar_proveedor.html', {'proveedor': proveedor})
+
+
+def editar_proveedor(request, pk):
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    form = ProveedorForm(instance=proveedor)
+    if request.method == 'POST':
+        form = ProveedorForm(request.POST, instance=proveedor)
+        if form.is_valid():
+            form.save()
+            return redirect('ver_proveedores')
+
+    return render(request, 'proveedores/editar_proveedor.html', {'form': form, 'proveedor': proveedor})
+
+#                   VISTAS PARA MATERIAL
+
+
+
+
+
+

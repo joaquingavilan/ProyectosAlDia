@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>Editar cliente</h1>
+  <h1>Editar proveedor</h1>
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
@@ -9,6 +9,7 @@
     <button id="btn-atras" type="button">Atrás</button>
   </form>
 {% endblock %}
+
 {% block extra_js %}
   <script>
     // añadir la clase form-modificado si se modifica algun input
@@ -21,27 +22,25 @@
       });
     });
 
-    //verificar si se modificó antes de ir atras
-
+    // verificar si se modificó antes de ir atrás
     let btnAtras = document.getElementById('btn-atras');
     btnAtras.addEventListener('click', function() {
       let formModificado = document.querySelector('.form-modificado');
       if (formModificado) {
         if (confirm('¿Está seguro que desea salir? Se perderán los cambios no guardados.')) {
-          window.location.href = "{% url 'ver_clientes' %}";
+          window.location.href = "{% url 'ver_proveedores' %}";
         }
       } else {
-        window.location.href = "{% url 'ver_clientes' %}";
+        window.location.href = "{% url 'ver_proveedores' %}";
       }
     });
 
-    //verificar si se modificó antes de actualizar
-
+    // verificar si se modificó antes de actualizar
     window.addEventListener('beforeunload', function (event) {
       let form = document.querySelector('form');
       if (form.classList.contains('form-modificado')) {
         event.returnValue = 'Hay cambios sin guardar. ¿Seguro que desea salir de la página?';
       }
     });
-    </script>
+  </script>
 {% endblock %}
