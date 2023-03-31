@@ -21,8 +21,8 @@
       </tr>
     </thead>
     <tbody>
-      {% for ingeniero in ingenieros %}
-        <tr>
+      <tr>
+        {% for ingeniero in ingenieros%}
           <td>{{ ingeniero.id }}</td>
           <td>{{ ingeniero.nombre }}</td>
           <td>{{ ingeniero.apellido }}</td>

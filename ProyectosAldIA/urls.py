@@ -16,10 +16,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from Aplicacion import views
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib.auth.views import LoginView
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.inicio, name='inicio'),
+    path('', LoginView.as_view(template_name='usuarios/login.html'), name='login'),
+    path('inicio/', views.inicio, name='inicio'),
     path('clientes/registro/', views.registrar_cliente, name='registro_cliente'),
     path('clientes/ver/', views.ver_clientes, name='ver_clientes'),
     path('clientes/editar/<int:pk>/', views.editar_cliente, name='editar_cliente'),
@@ -31,5 +36,12 @@ urlpatterns = [
     path('proveedores/registro/', views.registrar_proveedor, name='registrar_proveedor'),
     path('proveedores/ver/', views.ver_proveedores, name='ver_proveedores'),
     path('proveedores/editar/<int:pk>/', views.editar_proveedor, name='editar_proveedor'),
-    path('proveedores/eliminar/<int:pk>/', views.eliminar_proveedor, name='eliminar_proveedor')
-]
+    path('proveedores/eliminar/<int:pk>/', views.eliminar_proveedor, name='eliminar_proveedor'),
+    path('materiales/registro/', views.registrar_material, name='registrar_material'),
+    path('materiales/ver/', views.ver_materiales, name='ver_materiales'),
+    path('materiales/editar/<int:pk>/', views.editar_material, name='editar_material'),
+    path('materiales/eliminar/<int:pk>/', views.eliminar_material, name='eliminar_material'),
+    path('usuarios/login/', views.loguear_usuario, name='login'),
+    path('usuarios/registro/', views.registrar_usuario, name='registro'),
+    path('usuarios/salir/', views.salir_usuario, name='salir'),
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

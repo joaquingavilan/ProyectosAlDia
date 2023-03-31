@@ -27,8 +27,15 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Usamos la clase User para la autenticación de Usuarios
+AUTH_USER_MODEL = 'auth.User'
 
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
 # Application definition
+
+LOGIN_REDIRECT_URL = 'inicio'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -121,7 +128,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
+MEDIA_ROOT = '/media/'
 
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, 'Aplicacion/static'),
+)
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 

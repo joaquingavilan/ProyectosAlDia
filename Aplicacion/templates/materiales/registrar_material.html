@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Registrar Material</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Registrar</button>
+    <button type="submit"><a href="{% url 'ver_materiales' %}" class="no-link">Cancelar</a></button>
+  </form>
+
+{% endblock %}
