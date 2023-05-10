@@ -7,6 +7,10 @@
   {% endif %}
   <form method="post">
     {% csrf_token %}
+     <label for="first_name">Nombre:</label>
+    <input type="text" name="first_name" required><br>
+    <label for="last_name">Apellido:</label>
+    <input type="text" name="last_name" required><br>
     <label for="username">Usuario:</label>
     <input type="text" name="username" required><br>
     <label for="email">Correo electrónico:</label>

@@ -10,26 +10,20 @@
   <table class="table table-striped table-hover">
     <thead>
       <tr>
-        <th scope="col" style="width: 5%">ID</th>
+        <th scope="col" style="width: 15%">Nombre de Usuario</th>
         <th scope="col" style="width: 15%">Nombre</th>
         <th scope="col" style="width: 15%">Apellido</th>
-        <th scope="col" style="width: 15%">Fecha de nacimiento</th>
-        <th scope="col" style="width: 10%">Teléfono</th>
-        <th scope="col" style="width: 20%">Email</th>
-        <th scope="col" style="width: 10%">Estado</th>
+        <th scope="col" style="width: 10%">email</th>
         <th scope="col" style="width: 10%">Acciones</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         {% for ingeniero in ingenieros%}
-          <td>{{ ingeniero.id }}</td>
-          <td>{{ ingeniero.nombre }}</td>
-          <td>{{ ingeniero.apellido }}</td>
-          <td>{{ ingeniero.fecha_nacimiento }}</td>
-          <td>{{ ingeniero.telefono }}</td>
-          <td>{{ ingeniero.email }}</td>
-          <td>{{ ingeniero.get_estado_display }}</td>
+          <td>{{ ingeniero.username }}</td>
+          <td>{{ ingeniero.first_name  }}</td>
+          <td>{{ ingeniero.last_name }}</td>
+          <td>{{ ingeniero.email}}</td>
           <td>
             <button type="submit"><a class="no-link" href="{% url 'editar_ingeniero' ingeniero.id %}">Editar</a></button>
             <button type="submit"><a class="no-link" href="{% url 'eliminar_ingeniero' ingeniero.id %}">Eliminar</a></button>

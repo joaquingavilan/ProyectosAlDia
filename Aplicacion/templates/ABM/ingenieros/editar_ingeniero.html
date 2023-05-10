@@ -2,11 +2,11 @@
 
 {% block content %}
   <h1>Editar ingeniero</h1>
-  <form method="post">
+  <form method="post" name="editado">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit" class="btn btn-primary">Guardar</button>
-    <button id="btn-atras" type="button" class="btn btn-secondary">Atrás</button>
+    <button id="btn-atras" type="button"><a href="{% url 'ver_ingenieros' %}" class="no-link">Atras</a></button>
   </form>
 {% endblock %}
 

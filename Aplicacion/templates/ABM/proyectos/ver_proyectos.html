@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Proyectos </h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre del proyecto</th>
+        <th>Cliente</th>
+        <th>Encargado del presupuesto</th>
+        <th>Estado del Presupuesto</th>
+        <th>Encargado de la obra</th>
+        <th>Estado de la Obra</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for proyecto in proyectos %}
+        <tr>
+          <td>{{proyecto.nombre}}</td>
+          <td>{{ proyecto.cliente.nombre }}</td>
+          <td>{% if proyecto.presupuesto.encargado %}{{ proyecto.presupuesto.encargado.first_name }} {{ proyecto.presupuesto.encargado.last_name }}{% else %}-{% endif %}</td>
+          <td>{{ proyecto.presupuesto.get_estado_display }}</td>
+          <td>{% if proyecto.obra.encargado %}{{ proyecto.obra.encargado.first_name }} {{ proyecto.obra.encargado.last_name }}{% else %}No asignado{% endif %}</td>
+          <td>{{ proyecto.obra.get_estado_display }}</td>
+          <td>
+            <button type="submit"><a href="{% url 'modificar_proyecto' proyecto.id%}" class="no-link">Modificar Proyecto</a></button>
+            <button type="submit"><a class="no-link" href="{% url 'eliminar_proyecto' proyecto.id %}">Eliminar Proyecto</a></button>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table><br>
+<button type="submit"><a href="{% url 'registrar_proyecto' %}" class="no-link">Registrar nuevo proyecto</a></button>
+<button type="submit"><a href="{% url 'inicio' %}" class="no-link">Inicio</a></button>
+
+{% endblock %}

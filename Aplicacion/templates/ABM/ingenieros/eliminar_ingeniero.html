@@ -3,7 +3,7 @@
 {% block content %}
   <h2>Eliminar Ingeniero</h2>
 
-  <p>¿Confirma que desea eliminar al ingeniero "{{ ingeniero.nombre }}"?</p>
+  <p>¿Confirma que desea eliminar al ingeniero "{{ ingeniero.first_name }} {{ ingeniero.last_name }}"?</p>
 
   <form method="post">
     {% csrf_token %}

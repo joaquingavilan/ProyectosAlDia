@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from Aplicacion import views
+from Aplicacion import decorators, views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth.views import LoginView
@@ -23,7 +23,7 @@ from django.contrib.auth.views import LoginView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', LoginView.as_view(template_name='usuarios/login.html'), name='login'),
+    path('', LoginView.as_view(template_name='ABM/usuarios/login.html'), name='login'),
     path('inicio/', views.inicio, name='inicio'),
     path('clientes/registro/', views.registrar_cliente, name='registro_cliente'),
     path('clientes/ver/', views.ver_clientes, name='ver_clientes'),
@@ -41,7 +41,11 @@ urlpatterns = [
     path('materiales/ver/', views.ver_materiales, name='ver_materiales'),
     path('materiales/editar/<int:pk>/', views.editar_material, name='editar_material'),
     path('materiales/eliminar/<int:pk>/', views.eliminar_material, name='eliminar_material'),
-    path('usuarios/login/', views.loguear_usuario, name='login'),
+    path('ABM/usuarios/login/', views.loguear_usuario, name='login'),
     path('usuarios/registro/', views.registrar_usuario, name='registro'),
     path('usuarios/salir/', views.salir_usuario, name='salir'),
+    path('proyectos/registro/', views.registrar_proyecto, name='registrar_proyecto'),
+    path('proyectos/ver/', views.ver_proyectos, name='ver_proyectos'),
+    path('proyectos/eliminar/<int:pk>/', views.eliminar_proyecto, name='eliminar_proyecto'),
+    path('proyectos/modificar/<int:pk>/', views.modificar_proyecto, name='modificar_proyecto'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

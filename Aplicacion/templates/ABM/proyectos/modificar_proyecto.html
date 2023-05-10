@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Modificar Proyecto</h1>
+  <form method="post">
+    {% csrf_token %}
+    <label for="nombre">Nombre:</label>
+    <input type="text" name="nombre" value="{{ proyecto.nombre }}" required><br>
+
+    <label for="cliente">Cliente:</label>
+    <select name="cliente" required>
+      {% for cliente in clientes %}
+        <option value="{{ cliente.id }}" {% if cliente.id == proyecto.cliente.id %}selected{% endif %}>{{ cliente.nombre }}</option>
+      {% endfor %}
+    </select><br>
+
+    <div class="form-group">
+        <label for="encargado_presupuesto">Encargado de presupuesto:</label>
+        <select class="form-control" id="encargado_presupuesto" name="encargado_presupuesto">
+            {% for ingeniero in ingenieros %}
+                {% if ingeniero == proyecto.presupuesto.encargado %}
+                    <option value="{{ ingeniero.pk }}" selected>{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
+                {% else %}
+                    <option value="{{ ingeniero.pk }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+
+
+    <div class="form-group">
+        <label for="encargado_obra">Encargado de obra:</label>
+        <select class="form-control" id="encargado_obra" name="encargado_obra">
+            <option value="" {% if proyecto.obra.encargado is None %}selected{% endif %}>No asignado</option>
+            {% for ingeniero in ingenieros %}
+                {% if ingeniero == proyecto.obra.encargado %}
+                    <option value="{{ ingeniero.pk }}" selected>{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
+                {% else %}
+                    <option value="{{ ingeniero.pk }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+
+
+
+    <button type="submit">Guardar</button>
+  </form>
+{% endblock %}

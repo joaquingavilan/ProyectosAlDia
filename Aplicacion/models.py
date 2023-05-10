@@ -3,6 +3,7 @@ from django.db import models
 from datetime import date
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
+from django.utils.translation import gettext_lazy as _
 
 
 class Rol(models.Model):
@@ -28,6 +29,7 @@ class Perfil(models.Model):
     def __str__(self):
         return self.user.username
 
+
 class Cliente(models.Model):
     nombre = models.CharField(max_length=50, validators=[
         RegexValidator(r'^[\w\s]*$', message='Introduzca solo letras, números y espacios en blanco')])
@@ -45,23 +47,6 @@ def validate_fecha_nacimiento(value):
         raise ValidationError('La fecha de nacimiento no puede ser mayor a la fecha actual')
 
 
-class Ingeniero(models.Model):
-    nombre = models.CharField(max_length=50, validators=[RegexValidator(r'^[a-zA-Z]*$', 'Solo se permiten letras en el nombre.')])
-    apellido = models.CharField(max_length=50, validators=[RegexValidator(r'^[a-zA-Z]*$', 'Solo se permiten letras en el apellido.')])
-    fecha_nacimiento = models.DateField(validators=[validate_fecha_nacimiento])
-    telefono = models.CharField(max_length=15, validators=[RegexValidator(r'^\+?1?\d{9,15}$', 'El formato de teléfono no es válido. Ejemplo: +541155555555.')])
-    email = models.EmailField()
-
-    ESTADO_CHOICES = (
-        ('L', 'Libre'),
-        ('O', 'Ocupado'),
-    )
-    estado = models.CharField(max_length=1, choices=ESTADO_CHOICES, default='L')
-
-    def __str__(self):
-        return f"{self.nombre} {self.apellido}"
-
-
 class Proveedor(models.Model):
     nombre = models.CharField(max_length=100)
     ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
@@ -71,6 +56,7 @@ class Proveedor(models.Model):
 
     def __str__(self):
         return f"{self.id} - {self.nombre}"
+
 
 class Material(models.Model):
     nombre = models.CharField(max_length=100)
@@ -84,3 +70,75 @@ class Material(models.Model):
     def __str__(self):
         return self.nombre
 
+
+class Obra(models.Model):
+    encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'}, null=True)
+    fecha_inicio = models.DateField(_('fecha de inicio'), null=True)
+    fecha_fin = models.DateField(_('fecha de fin'), null=True)
+    ESTADOS = (
+        ('NI', _('No iniciada')),
+        ('E', _('En ejecución')),
+        ('F', _('Finalizada')),
+    )
+    estado = models.CharField(_('estado'), max_length=2, choices=ESTADOS, default='NI')
+
+    def get_estado_display(self):
+        return dict(self.ESTADOS)[self.estado]
+
+    class Meta:
+        verbose_name = _('obra')
+        verbose_name_plural = _('obras')
+
+    def __str__(self):
+        return f'{self.id}'
+
+
+class Presupuesto(models.Model):
+    encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'})
+    monto_total = models.DecimalField(_('monto total'), max_digits=10, decimal_places=0, null=True)
+    ESTADOS = (
+        ('E', _('En elaboración')),
+        ('S', _('Enviado')),
+        ('A', _('Aprobado')),
+    )
+    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='E')
+
+    def get_estado_display(self):
+        return dict(Presupuesto.ESTADOS)[self.estado]
+
+    class Meta:
+        verbose_name = _('presupuesto')
+        verbose_name_plural = _('presupuestos')
+
+    def __str__(self):
+        return f'{self.obra} - {self.estado}'
+
+
+class Proyecto(models.Model):
+    nombre = models.CharField(_('nombre'), max_length=100)
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, verbose_name=_('cliente'))
+    presupuesto = models.OneToOneField(Presupuesto, on_delete=models.CASCADE, verbose_name=_('presupuesto'))
+    obra = models.OneToOneField(Obra, on_delete=models.CASCADE, verbose_name=_('obra'))
+
+    class Meta:
+        verbose_name = _('proyecto')
+
+
+class Pedido(models.Model):
+    solicitante = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'})
+    obra = models.ForeignKey(Obra, on_delete=models.CASCADE, verbose_name=_('obra'))
+    material = models.ForeignKey(Material, on_delete=models.CASCADE, verbose_name=_('material'))
+    fecha_solicitud = models.DateField(_('fecha de solicitud'))
+    fecha_entrega = models.DateField(_('fecha de entrega'))
+    ESTADOS = (
+        ('P', _('Pendiente')),
+        ('E', _('Entregado')),
+    )
+    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
+
+    class Meta:
+        verbose_name = _('pedido')
+        verbose_name_plural = _('pedidos')
+
+    def __str__(self):
+        return f'{self.material} - {self.obra} - {self.estado}'
