@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Presupuestos asignados</h1>
+
+  {% if presupuestos %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre del proyecto</th>
+          <th>Monto Total</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for presupuesto in presupuestos %}
+          <tr>
+            <td>{{ presupuesto.proyecto.nombre }}</td>
+            <td>{{ presupuesto.monto_total }}</td>
+            <td>{{ presupuesto.get_estado_display }}</td>
+            <td>
+            <button type="submit"><a href="{% url 'actualizar_presupuesto' presupuesto.id%}" class="no-link">Actualizar presupuesto</a></button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No se encontraron presupuestos asignados.</p>
+  {% endif %}
+<button type="submit"><a href="{% url 'inicio_ingenieros' %}" class="no-link">Inicio</a></button>
+{% endblock %}

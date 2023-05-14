@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Bienvenido {{nombre}}</h1>
+  <p>Selecciona una opción:</p>
+  <div class="btn-group">
+    <a href="{% url 'ver_presupuestos' %}" class="btn btn-primary">Ver Presupuestos</a>
+    <a href="{% url 'inicio' %}" class="btn btn-primary">Ver Obras</a>
+    <a href="{% url 'inicio' %}" class="btn btn-primary">Solicitar Materiales</a>
+    <a href="{% url 'inicio' %}" class="btn btn-primary">Devolver Materiales</a>
+  </div>
+{% endblock %}

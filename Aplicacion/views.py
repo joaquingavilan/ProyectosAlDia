@@ -19,10 +19,14 @@ def inicio(request):
     elif rol_usuario == 'Administrador':
         return render(request, 'inicios/inicio.html')
     elif rol_usuario == 'Ingeniero':
-        return render(request, 'inicios/inicio.html')
+        return render(request, 'inicios/inicio_ingenieros.html')
     else:
         return render(request, 'inicios/inicio.html')
 
+
+def inicio_ingenieros(request):
+    nombre = request.user.first_name
+    return render(request, 'inicios/inicio_ingenieros.html', {'nombre': nombre})
 
 # VISTAS PARA USUARIOS
 
@@ -68,10 +72,10 @@ def registrar_usuario(request):
             login(request, user)
             return redirect('inicio')
 
-        return render(request, 'usuarios/registro.html', {'error': error})
+        return render(request, 'ABM/usuarios/registro.html', {'error': error})
     else:
         error = ''
-    return render(request, 'usuarios/registro.html')
+    return render(request, 'ABM/usuarios/registro.html')
 
 
 def salir_usuario(request):
@@ -362,3 +366,39 @@ def modificar_proyecto(request, pk):
         proyecto.save()
         return redirect('ver_proyectos')
     return render(request, 'ABM/proyectos/modificar_proyecto.html', {'proyecto': proyecto, 'clientes': clientes, 'ingenieros': ingenieros})
+
+
+# vistas para inicio_ingenieros
+
+
+def ver_presupuestos(request):
+    presupuestos = Presupuesto.objects.filter(encargado=request.user)
+    return render(request, 'pantallas_ing/ver_presupuestos.html', {'presupuestos': presupuestos})
+
+
+def actualizar_presupuesto(request, id):
+    presupuesto = get_object_or_404(Presupuesto, id=id)
+    form = PresupuestoForm(instance=presupuesto)
+
+    if request.method == 'POST':
+        form = PresupuestoForm(request.POST, instance=presupuesto)
+        if form.is_valid():
+            form.save()
+            return redirect('ver_presupuestos')
+
+    return render(request, 'proyectos/actualizar_presupuesto.html', {'form': form})
+
+
+def actualizar_presupuesto(request, presupuesto_id): #falta agregar un catch para si el usuario introduce letras, y formatear con . el monto en el html
+    presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id)
+
+    if request.method == 'POST':
+        monto_total = request.POST.get('monto_total')
+        estado = request.POST.get('estado')
+        presupuesto.monto_total = monto_total
+        presupuesto.estado = estado
+        presupuesto.save()
+        return redirect('ver_presupuestos')
+    else:
+        return render(request, 'pantallas_ing/actualizar_presupuesto.html', {'presupuesto': presupuesto})
+
