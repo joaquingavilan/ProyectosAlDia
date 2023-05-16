@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Solicitar Materiales</h1>
+    <form method="GET" action="{% url 'pedido_materiales' %}">
+      <input type="text" name="search" placeholder="Buscar materiales">
+      <button type="submit">Buscar</button>
+    </form>
+
+    <form method="POST" action="{% url 'pedido_materiales' %}"><label for="obra">Seleccione la Obra:</label>
+    <select name="obra" id="obra">
+      {% for obra in obras %}
+        <option value="{{ obra.id }}">{{ obra.proyecto.nombre }}</option>
+      {% endfor %}
+    </select>
+    {% csrf_token %}
+    <table>
+      <tbody>
+        {% for material in materiales %}
+          {% if forloop.counter0|divisibleby:3 %}
+            <tr>
+          {% endif %}
+          <td>
+            <table>
+              <tr>
+                <td>
+                  <a href="/{{ material.fotografia }}" target="_blank"><img src="/{{ material.fotografia }}" width="100" height="100"></a>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  {{ material.nombre }}
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  {{ material.marca }}
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="quantity-input">
+                    <input type="number" id="cantidad_{{ material.id }}" name="cantidad_{{ material.id }}" value="0" readonly>
+                    <input type="hidden" id="minimo_{{ material.id }}" value="{{ material.minimo }}">
+                    <button class="decrement-btn" data-material-id="{{ material.id }}">-</button>
+                    <button class="increment-btn" data-material-id="{{ material.id }}">+</button>
+                  </div>
+
+                </td>
+                <td>
+                  {{material.medida}}
+                </td>
+              </tr>
+            </table>
+          </td>
+          {% if forloop.counter|divisibleby:3 or forloop.last %}
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <button type="submit">Solicitar Materiales</button>
+  </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+console.log("Script ejecutado");
+// Obtenemos todos los botones de incremento y decremento
+var incrementButtons = document.querySelectorAll(".increment-btn");
+var decrementButtons = document.querySelectorAll(".decrement-btn");
+
+// Iteramos sobre los botones de incremento y agregamos el evento click
+incrementButtons.forEach(function(button) {
+  button.addEventListener("click", function(event) {
+    var materialId = button.getAttribute("data-material-id");
+    var input = document.getElementById("cantidad_" + materialId);
+    var minimo = parseInt(document.getElementById("minimo_" + materialId).value);
+    var cantidad = input.valueAsNumber;
+
+    cantidad += minimo;
+    input.value = cantidad;
+    event.preventDefault();
+  });
+});
+
+// Iteramos sobre los botones de decremento y agregamos el evento click
+decrementButtons.forEach(function(button) {
+  button.addEventListener("click", function(event) {
+    var materialId = button.getAttribute("data-material-id");
+    var input = document.getElementById("cantidad_" + materialId);
+    var minimo = parseInt(document.getElementById("minimo_" + materialId).value);
+    var cantidad = input.valueAsNumber;
+
+    cantidad -= minimo;
+
+    if (cantidad < 0) {
+      cantidad = 0;
+    }
+
+    input.value = cantidad;
+    event.preventDefault();
+  });
+});
+
+</script>
+{% endblock %}

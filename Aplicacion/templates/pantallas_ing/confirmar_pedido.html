@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Confirmar Pedido</h1>
+  <h2>Obra: {{obra.proyecto.nombre}}</h2>
+  <form method="POST" action="{% url 'confirmar_pedido' %}">
+    {% csrf_token %}
+    <input type="hidden" name="obra" value="{{ obra.id }}">
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre del producto</th>
+          <th>Fotografia</th>
+          <th>Cantidad</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for material_pedido in materiales_pedido %}
+          <tr>
+            <td>{{ material_pedido.material.nombre }}</td>
+            <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" width="100" height="100"></a></td>
+            <td>
+              <div class="quantity-input">
+                <input type="hidden" name="material_{{ material_pedido.material.id }}" value="{{ material_pedido.material.id }}">
+                <input type="number" name="cantidad_{{ material_pedido.material.id }}" id="cantidad_{{ material_pedido.material.id }}" value="{{ material_pedido.cantidad }}" min="{{ material_pedido.material.minimo }}" readonly>
+                <button type="button" class="decrement-btn" onclick="decrementQuantity({{ material_pedido.material.id }}, {{ material_pedido.material.minimo }}, event)">-</button>
+                <button type="button" class="increment-btn" onclick="incrementQuantity({{ material_pedido.material.id }}, event)">+</button>
+              </div>
+            </td>
+            <td>
+              <button class="eliminar-btn" onclick="eliminarMaterial({{ material_pedido.material.id }})">Eliminar del pedido</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <button type="submit">Realizar Pedido</button>
+  </form>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    // Función para incrementar la cantidad del material
+    function incrementQuantity(materialId, event) {
+      event.preventDefault(); // Evitar la acción predeterminada del botón
+      const input = document.getElementById(`cantidad_${materialId}`);
+      const minimo = parseInt(input.min);
+      let cantidad = parseInt(input.value);
+      cantidad += minimo;
+      input.value = cantidad;
+    }
+
+    // Función para decrementar la cantidad del material
+    function decrementQuantity(materialId, minimo, event) {
+      event.preventDefault(); // Evitar la acción predeterminada del botón
+      const input = document.getElementById(`cantidad_${materialId}`);
+      let cantidad = parseInt(input.value);
+      cantidad -= minimo;
+      cantidad = Math.max(cantidad, minimo); // Aseguramos que la cantidad no sea menor que el mínimo
+      input.value = cantidad;
+    }
+
+    // Función para eliminar el material del pedido
+    function eliminarMaterial(materialId) {
+      const input = document.getElementById(`cantidad_${materialId}`);
+      input.value = 0;
+      const fila = input.closest('tr');
+      fila.remove();
+    }
+  </script>
+{% endblock %}

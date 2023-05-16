@@ -95,7 +95,7 @@ class Obra(models.Model):
 
 class Presupuesto(models.Model):
     encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'})
-    monto_total = models.DecimalField(_('monto total'), max_digits=10, decimal_places=0, null=True)
+    monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
     ESTADOS = (
         ('E', _('En elaboración')),
         ('S', _('Enviado')),
@@ -127,18 +127,31 @@ class Proyecto(models.Model):
 class Pedido(models.Model):
     solicitante = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'})
     obra = models.ForeignKey(Obra, on_delete=models.CASCADE, verbose_name=_('obra'))
-    material = models.ForeignKey(Material, on_delete=models.CASCADE, verbose_name=_('material'))
     fecha_solicitud = models.DateField(_('fecha de solicitud'))
-    fecha_entrega = models.DateField(_('fecha de entrega'))
+    fecha_entrega = models.DateField(_('fecha de entrega'), null=True, blank=True)
     ESTADOS = (
         ('P', _('Pendiente')),
         ('E', _('Entregado')),
     )
     estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
+    materiales = models.ManyToManyField(Material, through='MaterialPedido')
 
     class Meta:
         verbose_name = _('pedido')
         verbose_name_plural = _('pedidos')
 
     def __str__(self):
-        return f'{self.material} - {self.obra} - {self.estado}'
+        return f'{self.obra} - {self.estado}'
+
+
+class MaterialPedido(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
+    material = models.ForeignKey(Material, on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField()
+
+    class Meta:
+        verbose_name = _('material en pedido')
+        verbose_name_plural = _('materiales en pedido')
+
+    def __str__(self):
+        return f'{self.material} - {self.pedido}'

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Actualizar obra</h1>
+  <form method="post">
+    {% csrf_token %}
+    <div>
+      <label for="fecha_inicio">Fecha de inicio:</label>
+      <input type="date" name="fecha_inicio" id="fecha_inicio" value="{{ obra.fecha_inicio|date:'Y-m-d' }}">
+    </div>
+    <div>
+      <label for="fecha_fin">Fecha de fin:</label>
+      <input type="date" name="fecha_fin" id="fecha_fin" value="{{ obra.fecha_fin|date:'Y-m-d' }}">
+    </div>
+    <div>
+      <label for="estado">Estado:</label>
+      <select name="estado" id="estado">
+        {% for estado in obra.ESTADOS %}
+          <option value="{{ estado.0 }}" {% if obra.estado == estado.0 %}selected{% endif %}>{{ estado.1 }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit">Actualizar obra</button>
+  </form>
+{% endblock %}

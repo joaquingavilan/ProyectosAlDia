@@ -4,9 +4,11 @@
   <h1>Bienvenido {{nombre}}</h1>
   <p>Selecciona una opción:</p>
   <div class="btn-group">
-    <a href="{% url 'ver_presupuestos' %}" class="btn btn-primary">Ver Presupuestos</a>
-    <a href="{% url 'inicio' %}" class="btn btn-primary">Ver Obras</a>
-    <a href="{% url 'inicio' %}" class="btn btn-primary">Solicitar Materiales</a>
-    <a href="{% url 'inicio' %}" class="btn btn-primary">Devolver Materiales</a>
+     <button type="submit"><a href="{% url 'ver_presupuestos' %}" class="no-link">Ver Presupuestos</a></button>
+     <button type="submit"><a href="{% url 'ver_obras' %}" class="no-link">Ver Obras</a></button>
+     <button type="submit"><a href="{% url 'pedido_materiales' %}" class="no-link">Pedido de Materiales</a></button>
+     <button type="submit"><a href="{% url 'inicio' %}" class="no-link">Devolver Materiales</a></button>
+     <button type="submit"><a href="{% url 'inicio' %}" class="no-link">Inicio</a></button>
+    <button type="submit"><a href="{% url 'salir' %}" class="no-link">Cerrar Sesion</a></button>
   </div>
 {% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Obras asignadas</h1>
+
+  {% if obras %}
+    <table>
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Cliente</th>
+      <th>Fecha de inicio</th>
+      <th>Fecha de fin</th>
+      <th>Estado</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for obra in obras %}
+      <tr>
+        <td>{{ obra.proyecto.nombre }}</td>
+        <td>{{ obra.proyecto.cliente.nombre }}</td>
+        <td>{{ obra.fecha_inicio }}</td>
+        <td>{{ obra.fecha_fin }}</td>
+        <td>
+          <form method="POST">
+            {% csrf_token %}
+            <select name="estado" id="id_estado">
+            {% if obra.estado == 'NI' %}
+                <option value="E">En ejecución</option>
+            {% elif obra.estado == 'E' %}
+                <option value="F">Finalizada</option>
+            {% endif %}
+            {% for estado in obra.ESTADOS %}
+                {% if obra.estado != 'NI' and estado.0 == obra.estado %}
+                    <option value="{{ estado.0 }}" selected>{{ estado.1 }}</option>
+                {% elif obra.estado != 'E' and estado.0 == obra.estado %}
+                    <option value="{{ estado.0 }}" selected>{{ estado.1 }}</option>
+                {% endif %}
+            {% endfor %}
+            </select>
+        </td>
+          <td>
+            <input type="hidden" name="obra_id" value="{{ obra.id }}">
+            {% if obra.estado == 'F' %}
+              <button type="submit" disabled>Finalizado</button>
+            {% else %}
+              <button type="submit">Guardar</button>
+            {% endif %}
+          </td>
+          </form>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+  {% else %}
+    <p>No se encontraron obras asignadas.</p>
+  {% endif %}
+<button type="submit"><a href="{% url 'inicio_ingenieros' %}" class="no-link">Inicio</a></button>
+{% endblock %}

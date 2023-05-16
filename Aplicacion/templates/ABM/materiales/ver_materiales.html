@@ -9,7 +9,7 @@
     </div>
     <button type="submit" class="btn btn-primary">Buscar</button>
   </form>
-
+<button type="submit"><a href="{% url 'registrar_material' %}" class="no-link">Registrar Material</a></button>
   <hr>
 
   {% if materiales %}
@@ -56,7 +56,7 @@
     <p>No se encontraron materiales.</p>
   {% endif %}
 
-<button type="submit"><a href="{% url 'registrar_material' %}" class="no-link">Registrar Material</a></button>
+
 <button type="submit"><a href="{% url 'inicio' %}" class="no-link">Inicio</a></button>
 
 {% endblock %}

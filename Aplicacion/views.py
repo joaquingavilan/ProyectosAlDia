@@ -1,13 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View
-from .models import Cliente, Proveedor, Perfil, Rol, Presupuesto, Proyecto, Obra
+from .models import Cliente, Proveedor, Perfil, Rol, Presupuesto, Proyecto, Obra, Material, Pedido, MaterialPedido
 from .forms import *
 from django.db.models import Q
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, UserChangeForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-import re
+from django.utils import timezone
+import re, locale
+from datetime import date
 from .decorators import gerente_required, administrador_required, ingeniero_required
 
 
@@ -372,33 +374,113 @@ def modificar_proyecto(request, pk):
 
 
 def ver_presupuestos(request):
+    # falta verificar que el monto total sea valido y mostrar la misma pagina con el error si no lo es
     presupuestos = Presupuesto.objects.filter(encargado=request.user)
-    return render(request, 'pantallas_ing/ver_presupuestos.html', {'presupuestos': presupuestos})
-
-
-def actualizar_presupuesto(request, id):
-    presupuesto = get_object_or_404(Presupuesto, id=id)
-    form = PresupuestoForm(instance=presupuesto)
-
-    if request.method == 'POST':
-        form = PresupuestoForm(request.POST, instance=presupuesto)
-        if form.is_valid():
-            form.save()
-            return redirect('ver_presupuestos')
-
-    return render(request, 'proyectos/actualizar_presupuesto.html', {'form': form})
-
-
-def actualizar_presupuesto(request, presupuesto_id): #falta agregar un catch para si el usuario introduce letras, y formatear con . el monto en el html
-    presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id)
+    # Configurar el locale y el formato de moneda
+    locale.setlocale(locale.LC_ALL, 'gn_PY.UTF-8')
+    for presupuesto in presupuestos:
+        if presupuesto.monto_total is not None:
+            presupuesto.monto_total = locale.format_string('%.f', presupuesto.monto_total, grouping=True)
 
     if request.method == 'POST':
+        presupuesto_id = request.POST.get('presupuesto_id')
         monto_total = request.POST.get('monto_total')
+        monto_total = monto_total.replace('.', '')
         estado = request.POST.get('estado')
+
+        presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id)
         presupuesto.monto_total = monto_total
         presupuesto.estado = estado
         presupuesto.save()
         return redirect('ver_presupuestos')
-    else:
-        return render(request, 'pantallas_ing/actualizar_presupuesto.html', {'presupuesto': presupuesto})
+
+    return render(request, 'pantallas_ing/ver_presupuestos.html', {'presupuestos': presupuestos})
+
+
+def ver_obras(request):
+    obras = Obra.objects.filter(encargado=request.user)
+    if request.method == 'POST':
+        obra_id = request.POST.get('obra_id')
+        estado = request.POST.get('estado')
+        obra = Obra.objects.get(id=obra_id)
+
+        if estado == 'E':
+            # si el estado se cambia a 'En ejecución', actualizamos la fecha de inicio
+            obra.fecha_inicio = timezone.now().date()
+
+        if estado == 'F':
+            # si el estado se cambia a 'Finalizada', actualizamos la fecha de fin
+            obra.fecha_fin = timezone.now().date()
+
+        obra.estado = estado
+        obra.save()
+
+    return render(request, 'pantallas_ing/ver_obras.html', {'obras': obras})
+
+
+def pedido_materiales(request):
+    # Obtener todas las obras del ingeniero logueado
+    obras = Obra.objects.filter(encargado=request.user)
+
+    # Obtener todos los materiales disponibles
+    materiales = Material.objects.all()
+    search_query = ''
+    context = {
+        'obras': obras,
+        'materiales': materiales,
+        'search_query': search_query
+    }
+    # Manejar el formulario de búsqueda
+    if request.method == 'GET':
+        search_query = request.GET.get('search', '')
+        if search_query:
+            # Filtrar los materiales por nombre o marca según la búsqueda
+            materiales = materiales.filter(
+                Q(nombre__icontains=search_query) |
+                Q(marca__icontains=search_query)
+            )
+    # Recibir los materiales seleccionados y mandarlos a la siguiente pantalla
+    if request.method == 'POST':
+        materiales_pedido = []
+        obra = Obra.objects.get(id=request.POST.get('obra'))
+        for key, value in request.POST.items():
+            if key.startswith('cantidad_') and int(value) > 0:
+                material_id = key.split('_')[1]
+                material = Material.objects.get(id=material_id)
+                cantidad = int(value)
+                materiales_pedido.append({'material': material, 'cantidad': cantidad})
+        # Pasa los materiales del pedido a la plantilla para mostrarlos
+        context = {'materiales_pedido': materiales_pedido, 'obra': obra}
+        return render(request, 'pantallas_ing/confirmar_pedido.html', context)
+    return render(request, 'pantallas_ing/pedido_materiales.html', context)
+
+
+def confirmar_pedido(request):
+    if request.method == 'POST':
+        # Obtener los materiales seleccionados del formulario
+        materiales_pedido = []
+        for key, value in request.POST.items():
+            if key.startswith('cantidad_') and int(value) > 0:
+                material_id = key.split('_')[1]
+                material = Material.objects.get(id=material_id)
+                cantidad = int(value)
+                materiales_pedido.append({'material': material, 'cantidad': cantidad})
+
+        # Crear el objeto Pedido y guardar en la base de datos
+        pedido = Pedido.objects.create(
+            solicitante=request.user,
+            obra=Obra.objects.get(id=request.POST.get('obra')),
+            fecha_solicitud=date.today(),
+            fecha_entrega=None,
+            estado='P'
+        )
+
+        # Crear los objetos MaterialPedido y guardar en la base de datos
+        for material_pedido in materiales_pedido:
+            material = material_pedido['material']
+            cantidad = material_pedido['cantidad']
+            MaterialPedido.objects.create(pedido=pedido, material=material, cantidad=cantidad)
+
+        # Redirigir a una página de éxito o realizar alguna acción adicional
+        return redirect('inicio_ingenieros')  # Reemplaza 'pagina_de_exito' con la URL a
 
