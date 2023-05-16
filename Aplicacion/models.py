@@ -90,7 +90,7 @@ class Obra(models.Model):
         verbose_name_plural = _('obras')
 
     def __str__(self):
-        return f'{self.id}'
+        return f'{self.proyecto.nombre}'
 
 
 class Presupuesto(models.Model):
@@ -111,7 +111,7 @@ class Presupuesto(models.Model):
         verbose_name_plural = _('presupuestos')
 
     def __str__(self):
-        return f'{self.obra} - {self.estado}'
+        return f'{self.proyecto.nombre}'
 
 
 class Proyecto(models.Model):
@@ -122,6 +122,9 @@ class Proyecto(models.Model):
 
     class Meta:
         verbose_name = _('proyecto')
+
+    def __str__(self):
+        return f'{self.nombre}'
 
 
 class Pedido(models.Model):

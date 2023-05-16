@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Pedidos realizados</h1>
+{% if pedidos %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID pedido</th>
+                <th>Nombre de la obra</th>
+                <th>Estado del pedido</th>
+                <th>Estado de la obra</th>
+                <th>Cantidad de materiales</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pedido in pedidos %}
+                <tr>
+                    <td>{{ pedido.id }}</td>
+                    <td>{{ pedido.obra.proyecto.nombre }}</td>
+                    <td>{{ pedido.get_estado_display }}</td>
+                    <td>{{ pedido.obra.get_estado_display }}</td>
+                    <td>{{ pedido.materialpedido_set.count }}</td>
+                    <td>
+                        <a href="{% url 'inicio'%}">Repetir Pedido</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No se encontraron pedidos realizados.</p>
+  {% endif %}
+<button type="submit"><a href="{% url 'inicio_ingenieros' %}" class="no-link">Inicio</a></button>
+
+{% endblock %}
+

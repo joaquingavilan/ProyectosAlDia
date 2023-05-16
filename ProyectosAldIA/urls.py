@@ -25,7 +25,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', LoginView.as_view(template_name='ABM/usuarios/login.html'), name='login'),
     path('inicio/', views.inicio, name='inicio'),
-    path('inicio_ingenieros', views.inicio_ingenieros, name='inicio_ingenieros'),
+    path('inicio_ingenieros/', views.inicio_ingenieros, name='inicio_ingenieros'),
     path('clientes/registro/', views.registrar_cliente, name='registro_cliente'),
     path('clientes/ver/', views.ver_clientes, name='ver_clientes'),
     path('clientes/editar/<int:pk>/', views.editar_cliente, name='editar_cliente'),
@@ -53,4 +53,5 @@ urlpatterns = [
     path('pantallas_ing/ver_obras/', views.ver_obras, name='ver_obras'),
     path('pedido_materiales/', views.pedido_materiales, name='pedido_materiales'),
     path('confirmar_pedido/', views.confirmar_pedido, name='confirmar_pedido'),
+    path('ver_pedidos/', views.ver_pedidos, name='ver_pedidos'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

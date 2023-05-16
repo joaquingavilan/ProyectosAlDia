@@ -16,18 +16,17 @@ from .decorators import gerente_required, administrador_required, ingeniero_requ
 def inicio(request):
     perfil = Perfil.objects.get(user=request.user)
     rol_usuario = perfil.rol.nombre
-    if rol_usuario == 'Gerente':
+    if rol_usuario == 'GERENTE':
         return render(request, 'inicios/inicio.html')
-    elif rol_usuario == 'Administrador':
+    elif rol_usuario == 'ADMINISTRADOR':
         return render(request, 'inicios/inicio.html')
-    elif rol_usuario == 'Ingeniero':
-        return render(request, 'inicios/inicio_ingenieros.html')
-    else:
-        return render(request, 'inicios/inicio.html')
+    elif rol_usuario == 'INGENIERO':
+        return redirect(inicio_ingenieros)
 
 
 def inicio_ingenieros(request):
     nombre = request.user.first_name
+    print(nombre)
     return render(request, 'inicios/inicio_ingenieros.html', {'nombre': nombre})
 
 # VISTAS PARA USUARIOS
@@ -425,11 +424,6 @@ def pedido_materiales(request):
     # Obtener todos los materiales disponibles
     materiales = Material.objects.all()
     search_query = ''
-    context = {
-        'obras': obras,
-        'materiales': materiales,
-        'search_query': search_query
-    }
     # Manejar el formulario de búsqueda
     if request.method == 'GET':
         search_query = request.GET.get('search', '')
@@ -439,6 +433,11 @@ def pedido_materiales(request):
                 Q(nombre__icontains=search_query) |
                 Q(marca__icontains=search_query)
             )
+    context = {
+        'obras': obras,
+        'materiales': materiales,
+        'search_query': search_query
+    }
     # Recibir los materiales seleccionados y mandarlos a la siguiente pantalla
     if request.method == 'POST':
         materiales_pedido = []
@@ -484,3 +483,12 @@ def confirmar_pedido(request):
         # Redirigir a una página de éxito o realizar alguna acción adicional
         return redirect('inicio_ingenieros')  # Reemplaza 'pagina_de_exito' con la URL a
 
+
+def ver_pedidos(request):
+    # Obtener todos los pedidos del usuario actualmente logueado
+    pedidos = Pedido.objects.filter(solicitante=request.user)
+
+    context = {
+        'pedidos': pedidos
+    }
+    return render(request, 'pantallas_ing/ver_pedidos.html', context)

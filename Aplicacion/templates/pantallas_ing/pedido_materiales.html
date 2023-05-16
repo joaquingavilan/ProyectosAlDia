@@ -3,16 +3,12 @@
 {% block content %}
   <h1>Solicitar Materiales</h1>
     <form method="GET" action="{% url 'pedido_materiales' %}">
-      <input type="text" name="search" placeholder="Buscar materiales">
-      <button type="submit">Buscar</button>
+      <input type="text" name="search" placeholder="Buscar materiales"><button type="submit">Buscar</button>
     </form>
 
-    <form method="POST" action="{% url 'pedido_materiales' %}"><label for="obra">Seleccione la Obra:</label>
-    <select name="obra" id="obra">
-      {% for obra in obras %}
-        <option value="{{ obra.id }}">{{ obra.proyecto.nombre }}</option>
-      {% endfor %}
-    </select>
+    <form method="POST" action="{% url 'pedido_materiales' %}">
+      <label for="obra">Seleccione la Obra</label>
+      <select name="obra" id="obra">{% for obra in obras %}<option value="{{ obra.id }}">{{ obra.proyecto.nombre }}</option>{% endfor %}</select>
     {% csrf_token %}
     <table>
       <tbody>
@@ -62,6 +58,8 @@
 
     <button type="submit">Solicitar Materiales</button>
   </form>
+  <button type="submit"><a href="{% url 'inicio_ingenieros' %}" class="no-link">Inicio</a></button>
+
 {% endblock %}
 
 {% block extra_js %}

@@ -2,13 +2,11 @@
 
 {% block content %}
   <h1>Bienvenido {{nombre}}</h1>
-  <p>Selecciona una opción:</p>
   <div class="btn-group">
      <button type="submit"><a href="{% url 'ver_presupuestos' %}" class="no-link">Ver Presupuestos</a></button>
      <button type="submit"><a href="{% url 'ver_obras' %}" class="no-link">Ver Obras</a></button>
      <button type="submit"><a href="{% url 'pedido_materiales' %}" class="no-link">Pedido de Materiales</a></button>
-     <button type="submit"><a href="{% url 'inicio' %}" class="no-link">Devolver Materiales</a></button>
-     <button type="submit"><a href="{% url 'inicio' %}" class="no-link">Inicio</a></button>
-    <button type="submit"><a href="{% url 'salir' %}" class="no-link">Cerrar Sesion</a></button>
+     <button type="submit"><a href="{% url 'ver_pedidos' %}" class="no-link">Ver Pedidos anteriores</a></button>
+     <button type="submit"><a href="{% url 'salir' %}" class="no-link">Cerrar Sesion</a></button>
   </div>
 {% endblock %}
