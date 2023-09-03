@@ -1,9 +1,31 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
   <h1>Eliminar Proveedor</h1>
-  <p>¿Confirma que desea eliminar al proveedor '{{ proveedor.nombre }}'?</p>
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+          {{ message }}
+      </div>
+  {% endfor %}
+  {% if not messages %}
+    <p>¿Confirma que desea eliminar al proveedor '{{ proveedor.nombre }}'?</p>
+  {%endif%}
   <form method="post">
+    {% if materiales_asociados %}
+    <h5>Materiales asociados:</h5>
+    <ul>
+        {% for material in materiales_asociados %}
+            <li>Material: {{ material.nombre }} - Reasignar a:
+                <select name="reassign_material_{{ material.id }}">
+                    {% for otro_proveedor in otros_proveedores %}
+                        <option value="{{ otro_proveedor.id }}">{{ otro_proveedor.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
     {% csrf_token %}
     <button type="submit" name="confirmar">Confirmar</button>
     <button type="submit"><a href="{% url 'ver_proveedores' %}" class="no-link">Cancelar</a></button>

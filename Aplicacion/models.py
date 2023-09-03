@@ -48,7 +48,8 @@ def validate_fecha_nacimiento(value):
 
 
 class Proveedor(models.Model):
-    nombre = models.CharField(max_length=100)
+    nombre = models.CharField(max_length=50, validators=[
+        RegexValidator(r'^[\w\s]*$', message='Introduzca solo letras, números y espacios en blanco')])
     ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
     nombre_contacto = models.CharField(max_length=50, validators=[RegexValidator(r'^[a-zA-Z ]*$', message='Introduzca solo letras o espacios en blanco')])
     numero_contacto = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d]*$', message='Introduzca solo numeros')])
@@ -109,9 +110,6 @@ class Presupuesto(models.Model):
     class Meta:
         verbose_name = _('presupuesto')
         verbose_name_plural = _('presupuestos')
-
-    def __str__(self):
-        return f'{self.proyecto.nombre}'
 
 
 class Proyecto(models.Model):

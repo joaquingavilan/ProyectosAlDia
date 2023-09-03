@@ -2,12 +2,45 @@
 
 {% block content %}
   <h2>Eliminar Ingeniero</h2>
-
+  {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+          {{ message }}
+      </div>
+  {% endfor %}
   <p>¿Confirma que desea eliminar al ingeniero "{{ ingeniero.first_name }} {{ ingeniero.last_name }}"?</p>
 
+  {% if obras_asociadas or presupuestos_asociados %}
   <form method="post">
     {% csrf_token %}
+    <p>El ingeniero tiene los siguientes recursos asociados:</p>
+      {% if obras_asociadas %}
+        {% for obra in obras_asociadas %}
+          <li>Obra: {{ obra.proyecto.nombre }}   -   Reasignar a:
+            <select name="reassign_obra_{{ obra.id }}">
+              {% for ingeniero in otros_ingenieros %}
+                <option value="{{ ingeniero.user.id }}">{{ ingeniero.user.first_name }} {{ ingeniero.user.last_name }}</option>
+              {% endfor %}
+            </select>
+          </li>
+        {% endfor %}
+      {% endif %}
+
+      {% if presupuestos_asociados %}
+        {% for presupuesto in presupuestos_asociados %}
+          <li>Presupuesto: {{ presupuesto.proyecto.nombre }}  -   Reasignar a:
+            <select name="reassign_presupuesto_{{ presupuesto.id }}">
+              {% for ingeniero in otros_ingenieros %}
+                <option value="{{ ingeniero.user.id }}">{{ ingeniero.user.first_name }} {{ ingeniero.user.last_name }}</option>
+              {% endfor %}
+            </select>
+          </li>
+        {% endfor %}
+      {% endif %}
+  {% endif %}
+
+
     <button type="submit" name="confirmar">Eliminar</button>
     <button type="submit"><a href="{% url 'ver_ingenieros' %}" class="no-link">Cancelar</a></button>
   </form>
+
 {% endblock %}

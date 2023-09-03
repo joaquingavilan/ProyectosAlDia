@@ -10,6 +10,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 import re, locale
 from datetime import date
+from django.contrib import messages
 from .decorators import gerente_required, administrador_required, ingeniero_required
 
 
@@ -112,11 +113,21 @@ def editar_cliente(request, pk):
 def eliminar_cliente(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
 
-    if request.method == 'POST' and 'confirmar' in request.POST:
-        cliente.delete()
-        return redirect('ver_clientes')
-    return render(request, 'ABM/clientes/eliminar_cliente.html', {'cliente': cliente})
+    # Verificamos si el cliente tiene proyectos asociados
+    proyectos_asociados = Proyecto.objects.filter(cliente=cliente)
 
+    if request.method == 'POST' and 'confirmar' in request.POST:
+        if proyectos_asociados.exists():
+            # Añadimos un mensaje indicando que no se pudo eliminar al cliente
+            messages.error(request, 'El cliente tiene proyectos activos y no puede ser eliminado')
+        else:
+            cliente.delete()
+            return redirect('ver_clientes')
+
+    context = {
+        'cliente': cliente,
+    }
+    return render(request, 'ABM/clientes/eliminar_cliente.html', context)
 
 def ver_clientes(request):
     clientes = Cliente.objects.all()
@@ -140,9 +151,16 @@ def registrar_ingeniero(request):
             email = form.cleaned_data['email']
             username = request.POST['username']
             password = request.POST['password1']
-            # Verificar si el nombre de usuario ya está en uso
+            nombre = request.POST['first_name']
+            apellido = request.POST['last_name']
             if User.objects.filter(username=username).exists():
                 error = 'El nombre de usuario ya está en uso.'
+                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
+            elif not re.match(r'^[A-Za-z]+$', nombre):
+                error = "Nombre inválido. Solo se permiten letras."
+                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
+            elif not re.match(r'^[A-Za-z]+$', apellido):
+                error = "Apellido inválido. Solo se permiten letras."
                 return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
             elif User.objects.filter(email=email).exists():
                 error = 'El email ya está registrado.'
@@ -179,29 +197,85 @@ def editar_ingeniero(request, pk):
     if request.method == 'POST':
         form = CustomUserChangeForm(request.POST, instance=ingeniero)
         if form.is_valid():
-            form.save()
-            return redirect('ver_ingenieros')
+            nombre = request.POST['first_name']
+            apellido = request.POST['last_name']
+            email = form.cleaned_data['email']
+            if not re.match(r'^[A-Za-z]+$', nombre):
+                error = "Nombre inválido. Solo se permiten letras."
+                return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
+            elif not re.match(r'^[A-Za-z]+$', apellido):
+                error = "Apellido inválido. Solo se permiten letras."
+                return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
+            elif User.objects.filter(email=email).exists():
+                error = 'El email ya está registrado.'
+                return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                error = "Email inválido."
+                return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
+            else:
+                form.save()
+                return redirect('ver_ingenieros')
     else:
         return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero})
     return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero})
 
 
+# Aquí está el código actualizado para la vista `eliminar_ingeniero`:
+
 def eliminar_ingeniero(request, pk):
     ingeniero = get_object_or_404(User, pk=pk)
-    if User.objects.filter(email=ingeniero.email):
-        user = User.objects.get(email=ingeniero.email)
-        perfil = user.perfil
-    else:
-        user = None
-        perfil = None
-    if request.method == 'POST' and 'confirmar' in request.POST:
-        ingeniero.delete()
-        if user and perfil:
-            user.delete()
-            perfil.delete()
-        return redirect('ver_ingenieros')
 
-    return render(request, 'ABM/ingenieros/eliminar_ingeniero.html', {'ingeniero': ingeniero})
+    # Verificamos si el ingeniero tiene obras o presupuestos asociados
+    obras_asociadas = Obra.objects.filter(encargado=ingeniero)
+    presupuestos_asociados = Presupuesto.objects.filter(encargado=ingeniero)
+    for obra in obras_asociadas:
+        print(obra)
+    for presu in presupuestos_asociados:
+        print(presu)
+    # Si tiene recursos asociados, obtenemos una lista de todos los ingenieros disponibles para la reasignación
+    if obras_asociadas.exists() or presupuestos_asociados.exists():
+        otros_ingenieros = Perfil.objects.filter(rol__nombre='INGENIERO').exclude(user=ingeniero).all()
+    else:
+        otros_ingenieros = []
+
+    if request.method == 'POST' and 'confirmar' in request.POST:
+        reasignaciones_completas = True
+        # Reasignamos cada recurso al ingeniero seleccionado en la lista desplegable
+        if obras_asociadas:
+            for obra in obras_asociadas:
+                nuevo_ingeniero_id = request.POST.get(f"reassign_obra_{obra.id}")
+                if nuevo_ingeniero_id:
+                    obra_original = get_object_or_404(Obra, pk=obra.pk)
+                    obra_original.encargado = User.objects.get(pk=nuevo_ingeniero_id)
+                    obra_original.save()
+                else:
+                    reasignaciones_completas = False
+        if presupuestos_asociados:
+            for presupuesto in presupuestos_asociados:
+                nuevo_ingeniero_id = request.POST.get(f"reassign_presupuesto_{presupuesto.id}")
+                if nuevo_ingeniero_id:
+                    presupuesto_original = get_object_or_404(Presupuesto, pk=presupuesto.pk)
+                    presupuesto_original.encargado = User.objects.get(pk=nuevo_ingeniero_id)
+                    presupuesto_original.save()
+                else:
+                    reasignaciones_completas = False
+        # Ahora podemos eliminar al ingeniero original
+        if reasignaciones_completas:
+            ingeniero.delete()
+            return redirect('ver_ingenieros')
+        else:
+            messages.error(request, 'No se pudo eliminar el ingeniero porque no se asignaron otros ingenieros a los recursos asociados.')
+    context = {
+        'ingeniero': ingeniero,
+        'obras_asociadas': obras_asociadas,
+        'presupuestos_asociados': presupuestos_asociados,
+        'otros_ingenieros': otros_ingenieros
+    }
+    return render(request, 'ABM/ingenieros/eliminar_ingeniero.html', context)
+
+
+# El código para el archivo HTML necesita ser actualizado para reflejar estos cambios.
+
 
 #                   VISTAS PARA PROVEEDOR
 
@@ -237,11 +311,42 @@ def ver_proveedores(request):
 def eliminar_proveedor(request, pk):
     proveedor = get_object_or_404(Proveedor, pk=pk)
 
-    if request.method == 'POST' and 'confirmar' in request.POST:
-        proveedor.delete()
-        return redirect('ver_proveedores')
-    return render(request, 'ABM/proveedores/eliminar_proveedor.html', {'proveedor': proveedor})
+    # Verificamos si el proveedor tiene materiales asociados
+    materiales_asociados = Material.objects.filter(id_proveedor=proveedor.pk)
 
+    # Si tiene materiales asociados, obtenemos una lista de todos los proveedores disponibles para la reasignación
+    if materiales_asociados.exists():
+        otros_proveedores = Proveedor.objects.exclude(pk=proveedor.pk).all()
+    else:
+        otros_proveedores = []
+
+    if request.method == 'POST' and 'confirmar' in request.POST:
+        reasignaciones_completas = True
+
+        # Reasignamos cada material al proveedor seleccionado en la lista desplegable
+        for material in materiales_asociados:
+            nuevo_proveedor_id = request.POST.get(f"reassign_material_{material.id}")
+            if nuevo_proveedor_id:
+                material_original = get_object_or_404(Material, pk=material.pk)
+                material_original.id_proveedor = Proveedor.objects.get(pk=nuevo_proveedor_id)
+                material_original.save()
+            else:
+                reasignaciones_completas = False
+
+        # Si todas las reasignaciones están completas, eliminamos al proveedor
+        if reasignaciones_completas:
+            proveedor.delete()
+            return redirect('ver_proveedores')
+        else:
+            # Añadimos un mensaje indicando que no se pudo eliminar al proveedor
+            messages.error(request, 'El proveedor tiene materiales asociados, reasignelos a otro proveedor o elimine el material desde la pantalla de Materiales.')
+
+    context = {
+        'proveedor': proveedor,
+        'materiales_asociados': materiales_asociados,
+        'otros_proveedores': otros_proveedores
+    }
+    return render(request, 'ABM/proveedores/eliminar_proveedor.html', context)
 
 def editar_proveedor(request, pk):
     proveedor = get_object_or_404(Proveedor, pk=pk)

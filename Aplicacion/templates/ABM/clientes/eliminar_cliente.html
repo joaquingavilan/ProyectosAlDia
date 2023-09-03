@@ -2,10 +2,21 @@
 
 {% block content %}
   <h1>Eliminar Cliente</h1>
+
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+      {{ message }}
+    </div>
+  {% endfor %}
+  {%if messages %}
+  <button type="submit"><a href="{% url 'ver_clientes' %}" class="no-link">Atras</a></button>
+  {% else %}
   <p>¿Confirma que desea eliminar al cliente '{{ cliente.nombre }}'?</p>
   <form method="post">
     {% csrf_token %}
     <button type="submit" name="confirmar">Confirmar</button>
     <button type="submit"><a href="{% url 'ver_clientes' %}" class="no-link">Cancelar</a></button>
   </form>
+  {% endif %}
+
 {% endblock %}
