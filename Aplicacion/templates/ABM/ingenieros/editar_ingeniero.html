@@ -9,7 +9,7 @@
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit" class="btn btn-primary">Guardar</button>
-    <button id="btn-atras" type="button"><a href="{% url 'ver_ingenieros' %}" class="no-link">Atras</a></button>
+    <a id="btn-atras" href="{% url 'ver_ingenieros' %}" class="btn btn-primary">Atras</a>
   </form>
 {% endblock %}
 

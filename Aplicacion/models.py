@@ -30,12 +30,27 @@ class Perfil(models.Model):
         return self.user.username
 
 
+class Contacto(models.Model):
+    nombre = models.CharField(
+        max_length=50,
+        validators=[RegexValidator(r'^[a-zA-Z ]*$', message='Introduzca solo letras o espacios en blanco')]
+    )
+    numero = models.CharField(
+        max_length=20,
+        validators=[RegexValidator(r'^[\d]*$', message='Introduzca solo numeros')]
+    )
+    email = models.EmailField(validators=[EmailValidator()], null=True)
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, null=True, blank=True)
+    proveedor = models.ForeignKey('Proveedor', on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.nombre} - {self.numero}"
+
+
 class Cliente(models.Model):
     nombre = models.CharField(max_length=50, validators=[
         RegexValidator(r'^[\w\s]*$', message='Introduzca solo letras, números y espacios en blanco')])
     ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
-    nombre_contacto = models.CharField(max_length=50, validators=[RegexValidator(r'^[a-zA-Z ]*$', message='Introduzca solo letras o espacios en blanco')])
-    numero_contacto = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d]*$', message='Introduzca solo numeros')])
     email = models.EmailField()
 
     def __str__(self):
@@ -51,8 +66,6 @@ class Proveedor(models.Model):
     nombre = models.CharField(max_length=50, validators=[
         RegexValidator(r'^[\w\s]*$', message='Introduzca solo letras, números y espacios en blanco')])
     ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
-    nombre_contacto = models.CharField(max_length=50, validators=[RegexValidator(r'^[a-zA-Z ]*$', message='Introduzca solo letras o espacios en blanco')])
-    numero_contacto = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d]*$', message='Introduzca solo numeros')])
     email = models.EmailField(max_length=254, validators=[EmailValidator()])
 
     def __str__(self):
@@ -73,6 +86,7 @@ class Material(models.Model):
 
 
 class Obra(models.Model):
+    proyecto = models.OneToOneField('Proyecto', on_delete=models.CASCADE)
     encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'}, null=True)
     fecha_inicio = models.DateField(_('fecha de inicio'), null=True)
     fecha_fin = models.DateField(_('fecha de fin'), null=True)
@@ -90,11 +104,9 @@ class Obra(models.Model):
         verbose_name = _('obra')
         verbose_name_plural = _('obras')
 
-    def __str__(self):
-        return f'{self.proyecto.nombre}'
-
 
 class Presupuesto(models.Model):
+    proyecto = models.OneToOneField('Proyecto', on_delete=models.CASCADE)
     encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'})
     monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
     ESTADOS = (
@@ -115,8 +127,7 @@ class Presupuesto(models.Model):
 class Proyecto(models.Model):
     nombre = models.CharField(_('nombre'), max_length=100)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, verbose_name=_('cliente'))
-    presupuesto = models.OneToOneField(Presupuesto, on_delete=models.CASCADE, verbose_name=_('presupuesto'))
-    obra = models.OneToOneField(Obra, on_delete=models.CASCADE, verbose_name=_('obra'))
+    ciudad = models.CharField(max_length=100)
 
     class Meta:
         verbose_name = _('proyecto')

@@ -6,6 +6,8 @@
     {% csrf_token %}
     <label for="nombre">Nombre del proyecto:</label>
     <input type="text" id="nombre" name="nombre"><br>
+    <label for="nombre">Ciudad:</label>
+    <input type="text" id="ciudad" name="ciudad"><br>
     <label for="cliente">Cliente:</label>
     <select name="cliente" id="cliente">
       {% for cliente in clientes %}
@@ -18,6 +20,7 @@
         <option value="{{ ingeniero.id }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
       {% endfor %}
     </select><br>
-    <button type="submit">Guardar</button>
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{% url 'ver_proyectos' %}" class="btn btn-primary">Cancelar</a>
   </form>
 {% endblock %}

@@ -3,16 +3,6 @@
 {% block content %}
 <h1 class="display-4 text-center">Proveedores</h1>
 <br>
-<div class="input-group w-25 mb-3">
-  <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
-  <input type="hidden" id="proveedorUrl" value="{% url 'ver_proveedor' 999999 %}">
-</div>
-<div id="resultadosBusqueda"></div>
-{% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">
-        {{ message }}
-    </div>
-{% endfor %}
 <table class="table table-bordered">
     <thead>
         <tr>
@@ -23,7 +13,6 @@
         </tr>
     </thead>
     <tbody>
-        {% for proveedor in page_obj %}
         <tr>
             <td>{{ proveedor.nombre }}</td>
             <td>{{ proveedor.ruc }}</td>
@@ -46,39 +35,11 @@
                 </form>
             </td>
         </tr>
-        {% endfor %}
     </tbody>
 </table>
 
-<nav>
-  <ul class="pagination">
-    {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Primera</a></li>
-      <li class="page-item disabled"><a class="page-link">Anterior</a></li>
-    {% endif %}
-
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}
-        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
-      {% else %}
-        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-      {% endif %}
-    {% endfor %}
-
-    {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
-      <li class="page-item disabled"><a class="page-link">Última</a></li>
-    {% endif %}
-  </ul>
-</nav>
-
-
+<a href="{% url 'ver_proveedores' %}" class="btn btn-primary">Volver a Proveedores</a>
+<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
 <!-- Modal para editar proveedor -->
 <div class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -147,10 +108,6 @@
         </div>
     </div>
 </div>
-
-
-<a href="{% url 'registrar_proveedor' %}" class="btn btn-primary">Registrar nuevo proveedor</a>
-<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
 
 
 {% endblock %}
@@ -325,31 +282,5 @@
             }
         });
     });
-
-        //buscador
-    document.getElementById('buscador').addEventListener('input', function() {
-        let query = this.value;
-        let resultadosDiv = document.getElementById('resultadosBusqueda');
-        let baseUrl = document.getElementById('proveedorUrl').value;
-
-        if (query.length >= 3) {
-            fetch(`/buscar_proveedores/?q=${query}`)
-            .then(response => response.json())
-            .then(data => {
-                resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
-                data.forEach(proveedor => {
-                    let div = document.createElement('div');
-                    let proveedorUrl = baseUrl.replace('999999', proveedor.id);
-                    div.innerHTML = `<a class="container" href="${proveedorUrl}">${proveedor.nombre}</a>`;
-                    resultadosDiv.appendChild(div);
-                });
-            });
-        } else {
-            resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
-        }
-    });
 </script>
 {% endblock %}
-
-
-

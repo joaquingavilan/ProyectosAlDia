@@ -1,11 +1,14 @@
 {% extends 'base.html' %}
 {% block content %}
-    <h1>Bienvenido al sistema</h1>
-    <p>Seleccione una opción:</p>
-    <button type="submit"><a href="{% url 'ver_ingenieros' %}" class="no-link">Ver Ingenieros</a></button>
-    <button type="submit"><a href="{% url 'ver_clientes' %}" class="no-link">Ver Clientes</a></button>
-    <button type="submit"><a href="{% url 'ver_proveedores' %}" class="no-link">Ver Proveedores</a></button>
-    <button type="submit"><a href="{% url 'ver_materiales' %}" class="no-link">Ver Materiales</a></button>
-    <button type="submit"><a href="{% url 'ver_proyectos' %}" class="no-link">Ver Proyectos</a></button>
-    <button type="submit"><a href="{% url 'salir' %}" class="no-link">Cerrar Sesion</a></button>
+    <h1 class="display-4 text-center">Proyectos al dia</h1>
+    <h2 class="display-4 text-center">Panel de administración</h2>
+<br>
+<div class="container d-flex align-items-center justify-content-center">
+    <a href="{% url 'ver_ingenieros' %}" class="btn btn-primary">Ingenieros</a>
+    <a href="{% url 'ver_clientes' %}" class="btn btn-primary">Clientes</a>
+    <a href="{% url 'ver_proveedores' %}" class="btn btn-primary">Proveedores</a>
+    <a href="{% url 'ver_materiales' %}" class="btn btn-primary">Materiales</a>
+    <a href="{% url 'ver_proyectos' %}" class="btn btn-primary">Proyectos</a>
+    <a href="{% url 'salir' %}" class="btn btn-primary">Cerrar Sesion</a>
+</div>
 {% endblock %}

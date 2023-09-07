@@ -7,11 +7,12 @@
           {{ message }}
       </div>
   {% endfor %}
+  <form method="post">
+    {% csrf_token %}
   <p>¿Confirma que desea eliminar al ingeniero "{{ ingeniero.first_name }} {{ ingeniero.last_name }}"?</p>
 
   {% if obras_asociadas or presupuestos_asociados %}
-  <form method="post">
-    {% csrf_token %}
+
     <p>El ingeniero tiene los siguientes recursos asociados:</p>
       {% if obras_asociadas %}
         {% for obra in obras_asociadas %}
@@ -39,8 +40,9 @@
   {% endif %}
 
 
-    <button type="submit" name="confirmar">Eliminar</button>
-    <button type="submit"><a href="{% url 'ver_ingenieros' %}" class="no-link">Cancelar</a></button>
+    <button type="submit" class="btn btn-primary" name="confirmar">Eliminar</button>
+    <a class="btn btn-primary" href="{% url 'ver_ingenieros' %}">Cancelar</a>
   </form>
+
 
 {% endblock %}

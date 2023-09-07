@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Materiales</h1>
+<br>
+<table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Marca</th>
+          <th>Proveedor</th>
+          <th>Medida</th>
+          <th>Mínimo</th>
+          <th>Unidades en Stock</th>
+          <th>Imagen</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr>
+            <td>{{ material.id }}</td>
+            <td>{{ material.nombre }}</td>
+            <td>{{ material.marca }}</td>
+            <td>{{ material.id_proveedor }}</td>
+            <td>{{ material.medida }}</td>
+            <td>{{ material.minimo }}</td>
+            <td>{{ material.unidades_stock }}</td>
+            {% if material.fotografia %}
+              <td><a href="/{{ material.fotografia }}" target="_blank"><img src="/{{ material.fotografia }}"></a></td>
+            {% else %}
+              <td>--</td>
+            {% endif %}
+            <td>
+              <a href="{% url 'editar_material' material.id %}" class="btn btn-primary">Editar</a>
+              <!-- Actualización del enlace de eliminación -->
+              <a href="{% url 'ver_materiales' %}?eliminar_material_id={{ material.id }}" class="btn btn-primary">Eliminar</a>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+<a href="{% url 'ver_materiales' %}" class="btn btn-primary">Volver a Materiales</a>
+<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+  <h1>Ingeniero {{ingeniero.first_name}} {{ingeniero.last_name}}</h1>
+  <br>
+
+
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th scope="col" style="width: 15%">Nombre de Usuario</th>
+        <th scope="col" style="width: 15%">Nombre</th>
+        <th scope="col" style="width: 15%">Apellido</th>
+        <th scope="col" style="width: 10%">email</th>
+        <th scope="col" style="width: 10%">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+          <td>{{ ingeniero.username }}</td>
+          <td>{{ ingeniero.first_name  }}</td>
+          <td>{{ ingeniero.last_name }}</td>
+          <td>{{ ingeniero.email}}</td>
+          <td>
+            <a class="btn btn-primary" href="{% url 'editar_ingeniero' ingeniero.id %}">Editar</a>
+            <a class="btn btn-primary" href="{% url 'eliminar_ingeniero' ingeniero.id %}">Eliminar</a>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+<a href="{% url 'ver_ingenieros' %}" class="btn btn-primary">Volver a Ingenieros</a>
+<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+{% endblock %}

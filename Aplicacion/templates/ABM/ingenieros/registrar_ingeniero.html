@@ -41,7 +41,7 @@
         {% endfor %}
       {% endif %}
     </div>
-    <button type="submit">Registrar</button>
-    <button><a href="{% url 'ver_ingenieros' %}" class="no-link">Cancelar</a></button>
+    <button type="submit" class="btn btn-primary">Registrar</button>
+    <a href="{% url 'ver_ingenieros' %}" class="btn btn-primary">Cancelar</a>
   </form>
 {% endblock %}

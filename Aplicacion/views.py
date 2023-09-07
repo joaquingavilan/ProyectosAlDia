@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View
-from .models import Cliente, Proveedor, Perfil, Rol, Presupuesto, Proyecto, Obra, Material, Pedido, MaterialPedido
+from .models import Cliente, Proveedor, Perfil, Rol, Presupuesto, Proyecto, Obra, Material, Pedido, MaterialPedido, Contacto
 from .forms import *
 from django.db.models import Q
 from django.conf import settings
@@ -8,10 +8,13 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.utils import timezone
-import re, locale
+import re, locale, json
 from datetime import date
 from django.contrib import messages
 from .decorators import gerente_required, administrador_required, ingeniero_required
+from django.forms import formset_factory
+from django.http import JsonResponse
+from django.core.paginator import Paginator
 
 
 def inicio(request):
@@ -27,7 +30,6 @@ def inicio(request):
 
 def inicio_ingenieros(request):
     nombre = request.user.first_name
-    print(nombre)
     return render(request, 'inicios/inicio_ingenieros.html', {'nombre': nombre})
 
 # VISTAS PARA USUARIOS
@@ -89,14 +91,49 @@ def salir_usuario(request):
 
 def registrar_cliente(request):
     if request.method == 'POST':
-        form = ClienteForm(request.POST)
-        if form.is_valid():
-            form.save()
+        cliente_form = ClienteForm(request.POST)
+
+        # Extraemos la data de los contactos desde el request.
+        # La estructura de contactos_data será una lista de diccionarios, donde cada diccionario tiene la información de un contacto.
+        contactos_data = request.POST.getlist('contactos[]')
+        contactos_list = [(contactos_data[i], contactos_data[i + 1]) for i in range(0, len(contactos_data), 2)]
+
+        if cliente_form.is_valid():
+            cliente = cliente_form.save()
+
+            # Ahora, para cada contacto en contactos_data, lo creamos y asociamos con el cliente.
+            for nombre_contacto, numero_contacto in contactos_list:
+                Contacto.objects.create(nombre=nombre_contacto, numero=numero_contacto, cliente=cliente)
+
             return redirect('ver_clientes')
+        else:
+            # Si hay un error en el formulario, lo retornamos como una respuesta JSON.
+            # Esto es útil para manejar errores de validación en el frontend si decides implementar una respuesta AJAX en el futuro.
+            return JsonResponse({'error': 'Datos inválidos'}, status=400)
+
     else:
         form = ClienteForm()
 
     return render(request, 'ABM/clientes/registro_cliente.html', {'form': form})
+
+
+def get_cliente_data(request, cliente_id):
+    cliente = Cliente.objects.get(pk=cliente_id)
+    data = {
+        "nombre": cliente.nombre,
+        "ruc": cliente.ruc,
+        "email": cliente.email
+        # ... otros campos ...
+    }
+    return JsonResponse(data)
+
+
+def get_contactos_cliente(request, cliente_id):
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+    contactos = cliente.contacto_set.all()
+
+    data_contactos = [{"id":contacto.id, "nombre": contacto.nombre, "numero": contacto.numero} for contacto in contactos]
+    return JsonResponse({"contactos": data_contactos})
 
 
 def editar_cliente(request, pk):
@@ -106,40 +143,85 @@ def editar_cliente(request, pk):
         form = ClienteForm(request.POST, instance=cliente)
         if form.is_valid():
             form.save()
-            return redirect('ver_clientes')
+            return JsonResponse({"status": "success"})
+        else:
+            # En caso de que el formulario no sea válido, devolvemos los errores en formato JSON
+            return JsonResponse({"status": "error", "errors": form.errors}, status=400)
     return render(request, 'ABM/clientes/editar_cliente.html', {'form': form})
 
-
-def eliminar_cliente(request, pk):
-    cliente = get_object_or_404(Cliente, pk=pk)
-
-    # Verificamos si el cliente tiene proyectos asociados
-    proyectos_asociados = Proyecto.objects.filter(cliente=cliente)
-
-    if request.method == 'POST' and 'confirmar' in request.POST:
-        if proyectos_asociados.exists():
-            # Añadimos un mensaje indicando que no se pudo eliminar al cliente
-            messages.error(request, 'El cliente tiene proyectos activos y no puede ser eliminado')
-        else:
-            cliente.delete()
-            return redirect('ver_clientes')
-
-    context = {
-        'cliente': cliente,
-    }
-    return render(request, 'ABM/clientes/eliminar_cliente.html', context)
 
 def ver_clientes(request):
     clientes = Cliente.objects.all()
     form_buscar = BuscadorClienteForm()
-    if request.method == 'GET':
+
+    # Configuración de la paginación
+    paginator = Paginator(clientes, 10)  # Muestra 10 clientes por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    if request.method == 'POST':
+        cliente_id = request.POST.get('cliente_id')
+        cliente = get_object_or_404(Cliente, pk=cliente_id)
+
+        proyectos_asociados = Proyecto.objects.filter(cliente=cliente)
+
+        if proyectos_asociados.exists():
+            messages.error(request, 'El cliente tiene proyectos activos y no puede ser eliminado')
+        else:
+            cliente.delete()
+            messages.success(request, 'Cliente eliminado exitosamente')
+            return redirect('ver_clientes')
+
+    elif request.method == 'GET':
         form_buscar = BuscadorClienteForm(request.GET)
         if form_buscar.is_valid():
             termino_busqueda = form_buscar.cleaned_data['termino_busqueda']
             if termino_busqueda:
                 clientes = clientes.filter(Q(ruc__icontains=termino_busqueda) | Q(nombre__icontains=termino_busqueda))
 
-    return render(request, 'ABM/clientes/ver_clientes.html', {'clientes': clientes, 'form_buscar': form_buscar})
+    return render(request, 'ABM/clientes/ver_clientes.html', {'clientes': clientes, 'form_buscar': form_buscar, 'page_obj': page_obj})
+
+
+def buscar_clientes(request):
+    query = request.GET.get('q', '')
+    clientes = Cliente.objects.filter(
+        Q(nombre__icontains=query) |
+        Q(ruc__icontains=query)
+    )
+    data = [{'id': cliente.id, 'nombre': cliente.nombre, 'ruc': cliente.ruc} for cliente in clientes]
+    return JsonResponse(data, safe=False)
+
+
+def ver_cliente(request, id_cliente):
+    cliente = Cliente.objects.get(pk=id_cliente)
+    return render(request, 'ABM/clientes/ver_cliente.html', {'cliente': cliente})
+
+
+def agregar_contacto(request, tipo, id):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        nombre = data.get('nombre')
+        numero = data.get('numero')
+        print(nombre)
+        print(numero)
+        contacto = Contacto(nombre=nombre, numero=numero)
+        if tipo == 'cliente':
+            contacto.cliente = Cliente.objects.get(pk=id)
+        elif tipo == 'proveedor':
+            contacto.proveedor = Proveedor.objects.get(pk=id)
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Tipo no válido'})
+        contacto.save()
+
+        return JsonResponse({'status': 'success', 'message': 'Contacto agregado correctamente'})
+
+
+def eliminar_contacto(request, contacto_id):
+    if request.method == 'POST':
+        contacto = Contacto.objects.get(pk=contacto_id)
+        contacto.delete()
+
+        return JsonResponse({'status': 'success', 'message': 'Contacto eliminado correctamente'})
 
 #                   VISTAS PARA INGENIERO
 
@@ -189,7 +271,13 @@ def registrar_ingeniero(request):
 
 def ver_ingenieros(request):
     usuarios_ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
-    return render(request, 'ABM/ingenieros/ver_ingenieros.html', {'ingenieros': usuarios_ingenieros})
+
+    # Configuración de la paginación
+    paginator = Paginator(usuarios_ingenieros, 10)  # Muestra 10 ingenieros por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'ABM/ingenieros/ver_ingenieros.html', {'page_obj': page_obj})
 
 
 def editar_ingeniero(request, pk):
@@ -206,7 +294,7 @@ def editar_ingeniero(request, pk):
             elif not re.match(r'^[A-Za-z]+$', apellido):
                 error = "Apellido inválido. Solo se permiten letras."
                 return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
-            elif User.objects.filter(email=email).exists():
+            elif User.objects.filter(email=email).exists() and email != ingeniero.email:
                 error = 'El email ya está registrado.'
                 return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
             elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
@@ -220,18 +308,12 @@ def editar_ingeniero(request, pk):
     return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero})
 
 
-# Aquí está el código actualizado para la vista `eliminar_ingeniero`:
-
 def eliminar_ingeniero(request, pk):
     ingeniero = get_object_or_404(User, pk=pk)
 
-    # Verificamos si el ingeniero tiene obras o presupuestos asociados
-    obras_asociadas = Obra.objects.filter(encargado=ingeniero)
-    presupuestos_asociados = Presupuesto.objects.filter(encargado=ingeniero)
-    for obra in obras_asociadas:
-        print(obra)
-    for presu in presupuestos_asociados:
-        print(presu)
+    # Verificamos si el ingeniero tiene obras o presupuestos asociados que no estén en los estados mencionados.
+    obras_asociadas = Obra.objects.filter(encargado=ingeniero).exclude(estado='F')
+    presupuestos_asociados = Presupuesto.objects.filter(encargado=ingeniero).exclude(estado='A')
     # Si tiene recursos asociados, obtenemos una lista de todos los ingenieros disponibles para la reasignación
     if obras_asociadas.exists() or presupuestos_asociados.exists():
         otros_ingenieros = Perfil.objects.filter(rol__nombre='INGENIERO').exclude(user=ingeniero).all()
@@ -274,7 +356,21 @@ def eliminar_ingeniero(request, pk):
     return render(request, 'ABM/ingenieros/eliminar_ingeniero.html', context)
 
 
-# El código para el archivo HTML necesita ser actualizado para reflejar estos cambios.
+def buscar_ingenieros(request):
+    query = request.GET.get('q', '')
+    ingenieros = User.objects.filter(
+        Q(username__icontains=query) |
+        Q(first_name__icontains=query) |
+        Q(last_name__icontains=query),
+        perfil__rol=Rol.objects.get(nombre='INGENIERO')
+    )
+    data = [{'id': ingeniero.id, 'username': ingeniero.username, 'nombre': ingeniero.first_name, 'apellido': ingeniero.last_name} for ingeniero in ingenieros]
+    return JsonResponse(data, safe=False)
+
+
+def ver_ingeniero(request, id_ingeniero):
+    ingeniero = User.objects.get(pk=id_ingeniero)
+    return render(request, 'ABM/ingenieros/ver_ingeniero.html', {'ingeniero': ingeniero})
 
 
 #                   VISTAS PARA PROVEEDOR
@@ -295,6 +391,11 @@ def registrar_proveedor(request):
 def ver_proveedores(request):
     proveedores = Proveedor.objects.all()
     form_buscar = BuscadorProveedorForm()
+    # Configuración de la paginación
+    paginator = Paginator(proveedores, 10)  # Muestra 10 ingenieros por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     if request.method == 'GET':
         form_buscar = BuscadorProveedorForm(request.GET)
         if form_buscar.is_valid():
@@ -305,7 +406,7 @@ def ver_proveedores(request):
                 else:
                     proveedores = proveedores.filter(nombre__icontains=termino_busqueda)
 
-    return render(request, 'ABM/proveedores/ver_proveedores.html', {'proveedores': proveedores, 'form_buscar': form_buscar})
+    return render(request, 'ABM/proveedores/ver_proveedores.html', {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj})
 
 
 def eliminar_proveedor(request, pk):
@@ -348,6 +449,26 @@ def eliminar_proveedor(request, pk):
     }
     return render(request, 'ABM/proveedores/eliminar_proveedor.html', context)
 
+
+def get_proveedor_data(request, proveedor_id):
+    proveedor = Proveedor.objects.get(pk=proveedor_id)
+    data = {
+        "nombre": proveedor.nombre,
+        "ruc": proveedor.ruc,
+        "email": proveedor.email
+        # ... otros campos ...
+    }
+    return JsonResponse(data)
+
+
+def get_contactos_proveedor(request, proveedor_id):
+    proveedor = get_object_or_404(Proveedor, pk=proveedor_id)
+    contactos = proveedor.contacto_set.all()
+
+    data_contactos = [{"id":contacto.id, "nombre": contacto.nombre, "numero": contacto.numero} for contacto in contactos]
+    return JsonResponse({"contactos": data_contactos})
+
+
 def editar_proveedor(request, pk):
     proveedor = get_object_or_404(Proveedor, pk=pk)
     form = ProveedorForm(instance=proveedor)
@@ -355,9 +476,27 @@ def editar_proveedor(request, pk):
         form = ProveedorForm(request.POST, instance=proveedor)
         if form.is_valid():
             form.save()
-            return redirect('ver_proveedores')
+            return JsonResponse({"status": "success", "message": "Proveedor actualizado con éxito"})
+        else:
+            # En caso de que el formulario no sea válido, devolvemos los errores en formato JSON
+            return JsonResponse({"status": "error", "errors": form.errors}, status=400)
+    return render(request, 'ABM/proveedores/editar_proveedor.html', {'form': form})
 
-    return render(request, 'ABM/proveedores/editar_proveedor.html', {'form': form, 'proveedor': proveedor})
+
+def buscar_proveedores(request):
+    query = request.GET.get('q', '')
+    proveedores = Proveedor.objects.filter(
+        Q(nombre__icontains=query) |
+        Q(ruc__icontains=query)
+    )
+    data = [{'id': proveedor.id, 'nombre': proveedor.nombre, 'ruc': proveedor.ruc} for proveedor in proveedores]
+    return JsonResponse(data, safe=False)
+
+
+def ver_proveedor(request, id_proveedor):
+    proveedor = Proveedor.objects.get(pk=id_proveedor)
+    return render(request, 'ABM/proveedores/ver_proveedor.html', {'proveedor': proveedor})
+
 
 #                   VISTAS PARA MATERIAL
 
@@ -376,6 +515,30 @@ def registrar_material(request):
 def ver_materiales(request):
     materiales = Material.objects.all()
     form_buscar = BuscadorMaterialForm()
+
+    # Configuración de la paginación
+    paginator = Paginator(materiales, 10)  # Muestra 10 materiales por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Lógica para eliminar el material
+    material_id = request.GET.get('eliminar_material_id')
+    if material_id:
+        material = get_object_or_404(Material, id=material_id)
+
+        # Verificamos si el material está siendo utilizado en pedidos
+        pedidos_asociados = Pedido.objects.filter(materiales=material)
+
+        # Verificamos si las obras asociadas a esos pedidos están activas
+        obras_activas_asociadas = Obra.objects.filter(pedido__in=pedidos_asociados, estado='E')
+
+        if obras_activas_asociadas.exists():
+            # Si hay obras activas que hacen referencia al material, mostramos un mensaje de error
+            messages.error(request, 'No se puede eliminar el material porque está siendo utilizado en obras activas.')
+        else:
+            material.delete()
+            messages.success(request, 'Material eliminado exitosamente.')
+
     if request.method == 'GET':
         form_buscar = BuscadorMaterialForm(request.GET)
         if form_buscar.is_valid():
@@ -383,7 +546,7 @@ def ver_materiales(request):
             if termino_busqueda:
                 materiales = materiales.filter(nombre__icontains=termino_busqueda)
 
-    return render(request, 'ABM/materiales/ver_materiales.html', {'materiales': materiales, 'form_buscar': form_buscar})
+    return render(request, 'ABM/materiales/ver_materiales.html', {'materiales': materiales, 'form_buscar': form_buscar, 'page_obj': page_obj})
 
 
 def editar_material(request, pk):
@@ -400,14 +563,18 @@ def editar_material(request, pk):
     return render(request, 'ABM/materiales/editar_material.html', {'form': form})
 
 
-def eliminar_material(request, pk):
-    material = get_object_or_404(Material, id=pk)
+def buscar_materiales(request):
+    query = request.GET.get('q', '')
+    materiales = Material.objects.filter(
+        Q(nombre__icontains=query)
+    )
+    data = [{'id': material.id, 'nombre': material.nombre} for material in materiales]
+    return JsonResponse(data, safe=False)
 
-    if request.method == 'POST':
-        material.delete()
-        return redirect('ver_materiales')
 
-    return render(request, 'ABM/materiales/eliminar_material.html', {'material': material})
+def ver_material(request, id_material):
+    material = Material.objects.get(pk=id_material)
+    return render(request, 'ABM/materiales/ver_material.html', {'material': material})
 
 
 #                   VISTAS PARA PROYECTOS
@@ -421,26 +588,40 @@ def registrar_proyecto(request):
         form = ProyectoForm(request.POST)
         if form.is_valid():
             proyecto = form.save(commit=False)
-            presupuesto = Presupuesto.objects.create(encargado=form.cleaned_data['encargado'])
-            proyecto.presupuesto = presupuesto
+            presupuesto = Presupuesto(encargado=form.cleaned_data['encargado'])
             proyecto.cliente = form.cleaned_data['cliente']
             proyecto.nombre = request.POST.get('nombre')
-            proyecto.obra = Obra.objects.create()
+            proyecto.ciudad = request.POST.get('ciudad')
+            obra = Obra()
+
+            # Primero guardamos el proyecto para obtener su ID
             proyecto.save()
+
+            # Luego asignamos el proyecto a las instancias de Presupuesto y Obra
+            presupuesto.proyecto = proyecto
+            presupuesto.save()
+            obra.proyecto = proyecto
+            obra.save()
+
+            # Ahora asignamos las instancias de Presupuesto y Obra al Proyecto
+            proyecto.presupuesto = presupuesto
+            proyecto.obra = obra
+            proyecto.save()
+
             return redirect('ver_proyectos')
     else:
         form = ProyectoForm()
-    return render(request, 'ABM/proyectos/registrar_proyecto.html', {'form': form, 'ingenieros': ingenieros, 'clientes': clientes})
+    return render(request, 'ABM/proyectos/registrar_proyecto.html',
+                  {'form': form, 'ingenieros': ingenieros, 'clientes': clientes})
 
 
 def ver_proyectos(request):
     proyectos = Proyecto.objects.all()
-    for proyecto in proyectos:
-        print("Proyecto:", proyecto.nombre)
-        print("Cliente:", proyecto.cliente.nombre)
-        print("Encargado de presupuesto:", proyecto.presupuesto.encargado.first_name, proyecto.presupuesto.encargado.last_name if proyecto.presupuesto.encargado else "-")
-        print("Estado de presupuesto:", proyecto.presupuesto.get_estado_display())
-    return render(request, 'ABM/proyectos/ver_proyectos.html', {'proyectos': proyectos})
+    # Configuración de la paginación
+    paginator = Paginator(proyectos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'ABM/proyectos/ver_proyectos.html', {'proyectos': proyectos,'page_obj':page_obj})
 
 
 def eliminar_proyecto(request, pk):
@@ -474,7 +655,18 @@ def modificar_proyecto(request, pk):
     return render(request, 'ABM/proyectos/modificar_proyecto.html', {'proyecto': proyecto, 'clientes': clientes, 'ingenieros': ingenieros})
 
 
-# vistas para inicio_ingenieros
+def buscar_proyectos(request):
+    query = request.GET.get('q', '')
+    proyectos = Proyecto.objects.filter(
+        Q(nombre__icontains=query)
+    )
+    data = [{'id': proyecto.id, 'nombre': proyecto.nombre} for proyecto in proyectos]
+    return JsonResponse(data, safe=False)
+
+
+def ver_proyecto(request, id_proyecto):
+    proyecto = Proyecto.objects.get(pk=id_proyecto)
+    return render(request, 'ABM/proyectos/ver_proyecto.html', {'proyecto': proyecto})
 
 
 def ver_presupuestos(request):

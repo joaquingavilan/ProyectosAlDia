@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Proveedor, Material, Perfil, Rol, Proyecto, MaterialPedido, Pedido, Presupuesto, Obra
+from .models import Cliente, Proveedor, Material, Perfil, Rol, Proyecto, MaterialPedido, Pedido, Presupuesto, Obra, Contacto
 
 # Register your models here.
 admin.site.register(Cliente)
@@ -12,4 +12,5 @@ admin.site.register(Obra)
 admin.site.register(Presupuesto)
 admin.site.register(Pedido)
 admin.site.register(MaterialPedido)
+admin.site.register(Contacto)
 

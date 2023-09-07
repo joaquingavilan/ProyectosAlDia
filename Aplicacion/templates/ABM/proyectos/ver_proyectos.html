@@ -1,8 +1,15 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>Proyectos </h1>
-  <table>
+  <h1 class="display-4 text-center">Proyectos </h1>
+<br>
+<div class="input-group w-25 mb-3">
+  <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre">
+  <input type="hidden" id="proyectoUrl" value="{% url 'ver_proyecto' 999999 %}">
+</div>
+<div id="resultadosBusqueda"></div>
+
+  <table class="table table-bordered">
     <thead>
       <tr>
         <th>Nombre del proyecto</th>
@@ -11,11 +18,12 @@
         <th>Estado del Presupuesto</th>
         <th>Encargado de la obra</th>
         <th>Estado de la Obra</th>
+        <th>Ciudad</th>
         <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
-      {% for proyecto in proyectos %}
+      {% for proyecto in page_obj %}
         <tr>
           <td>{{proyecto.nombre}}</td>
           <td>{{ proyecto.cliente.nombre }}</td>
@@ -23,15 +31,73 @@
           <td>{{ proyecto.presupuesto.get_estado_display }}</td>
           <td>{% if proyecto.obra.encargado %}{{ proyecto.obra.encargado.first_name }} {{ proyecto.obra.encargado.last_name }}{% else %}No asignado{% endif %}</td>
           <td>{{ proyecto.obra.get_estado_display }}</td>
+          <td>{{ proyecto.ciudad }}</td>
           <td>
-            <button type="submit"><a href="{% url 'modificar_proyecto' proyecto.id%}" class="no-link">Modificar Proyecto</a></button>
-            <button type="submit"><a class="no-link" href="{% url 'eliminar_proyecto' proyecto.id %}">Eliminar Proyecto</a></button>
+            <a href="{% url 'modificar_proyecto' proyecto.id%}" class="btn btn-primary">Modificar Proyecto</a>
+            <a class="btn btn-primary" href="{% url 'eliminar_proyecto' proyecto.id %}">Eliminar Proyecto</a>
           </td>
         </tr>
       {% endfor %}
     </tbody>
-  </table><br>
-<button type="submit"><a href="{% url 'registrar_proyecto' %}" class="no-link">Registrar nuevo proyecto</a></button>
-<button type="submit"><a href="{% url 'inicio' %}" class="no-link">Inicio</a></button>
+  </table>
 
+<nav>
+  <ul class="pagination">
+    {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+    {% else %}
+      <li class="page-item disabled"><a class="page-link">Primera</a></li>
+      <li class="page-item disabled"><a class="page-link">Anterior</a></li>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+      {% else %}
+        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+    {% else %}
+      <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+      <li class="page-item disabled"><a class="page-link">Última</a></li>
+    {% endif %}
+  </ul>
+</nav>
+
+
+<a href="{% url 'registrar_proyecto' %}" class="btn btn-primary">Registrar nuevo proyecto</a>
+<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+
+        //buscador
+    document.getElementById('buscador').addEventListener('input', function() {
+        let query = this.value;
+        let resultadosDiv = document.getElementById('resultadosBusqueda');
+        let baseUrl = document.getElementById('proyectoUrl').value;
+
+        if (query.length >= 3) {
+            fetch(`/buscar_proyectos/?q=${query}`)
+            .then(response => response.json())
+            .then(data => {
+                resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+                data.forEach(proyecto => {
+                    let div = document.createElement('div');
+                    let proyectoUrl = baseUrl.replace('999999', proyecto.id);
+                    div.innerHTML = `<a class="container" href="${proyectoUrl}">${proyecto.nombre}</a>`;
+                    resultadosDiv.appendChild(div);
+                });
+            });
+        } else {
+            resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+        }
+    });
+</script>
 {% endblock %}

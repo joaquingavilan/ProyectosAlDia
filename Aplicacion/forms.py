@@ -1,5 +1,5 @@
 from django import forms
-from .models import Cliente, Proveedor, Material, Proyecto, User
+from .models import Cliente, Proveedor, Material, Proyecto, User, Contacto
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
@@ -78,7 +78,7 @@ class BuscadorClienteForm(forms.Form):
 class ProveedorForm(forms.ModelForm):
     class Meta:
         model = Proveedor
-        fields = ['nombre', 'ruc', 'nombre_contacto', 'numero_contacto', 'email']
+        fields = ['nombre', 'ruc', 'email']
 
 
 class BuscadorProveedorForm(forms.Form):
@@ -108,3 +108,12 @@ class ProyectoForm(forms.ModelForm):
         fields = ['nombre']
 
 
+class ContactoForm(forms.ModelForm):
+    class Meta:
+        model = Contacto
+        fields = ['nombre', 'numero']
+
+        widgets = {
+            'nombre': forms.TextInput(attrs={'placeholder': 'Nombre del contacto'}),
+            'numero': forms.TextInput(attrs={'placeholder': 'Número de teléfono'}),
+        }

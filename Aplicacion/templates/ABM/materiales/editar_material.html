@@ -5,8 +5,8 @@
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">Guardar cambios</button>
-    <button id="btn-atras" type="button">Atrás</button>
+    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+    <button id="btn-atras" type="button" class="btn btn-primary">Atrás</button>
   </form>
 {% endblock %}
 {% block extra_js %}
