@@ -62,8 +62,19 @@
   </ul>
 </nav>
 
+<div class="d-flex justify-content-between align-items-center">
+
+  <a href="{% url 'inicio' %}" class="btn btn-primary">Volver a Inicio</a>
+  <form id="exportarForm" method="post" action="{% url 'exportar_excel' %}">
+    {% csrf_token %}
+    <input type="hidden" name="tipo_dato" value="Ingenieros">
+    <input type="hidden" name="criterio" id="criterioInput">
+    <button type="submit" class="btn btn-primary">Exportar xlsx</button>
+  </form>
   <a href="{% url 'registrar_ingeniero' %}" class="btn btn-primary">Registrar Ingeniero</a>
-  <a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+
+</div>
+
 {% endblock %}
 
 {% block extra_js %}

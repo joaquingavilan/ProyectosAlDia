@@ -9,6 +9,25 @@
 </div>
 <div id="resultadosBusqueda"></div>
 
+
+<!-- Dropdown para seleccionar el campo de filtro -->
+<select id="filtroCampo">
+    <option value="cliente">Cliente</option>
+    <option value="encargadoPresupuesto">Encargado del Presupuesto</option>
+    <option value="estadoPresupuesto">Estado del Presupuesto</option>
+    <option value="encargadoObra">Encargado de la Obra</option>
+    <option value="estadoObra">Estado de la Obra</option>
+    <option value="ciudad">Ciudad</option>
+</select>
+
+<!-- Dropdown para seleccionar el valor específico del filtro -->
+<select id="filtroValor">
+    <!-- Este se llenará dinámicamente usando JS -->
+</select>
+
+<button id="aplicarFiltro" class="btn btn-primary">Filtrar</button>
+
+<br><br>
   <table class="table table-bordered">
     <thead>
       <tr>
@@ -99,5 +118,91 @@
             resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
         }
     });
+
+document.getElementById('filtroCampo').addEventListener('change', function() {
+    let campoSeleccionado = this.value;
+    let dropdownValor = document.getElementById('filtroValor');
+
+    // Limpiar opciones previas
+    dropdownValor.innerHTML = '';
+
+    let url = '';  // URL de donde obtener los datos
+
+    switch (campoSeleccionado) {
+        case 'cliente':
+            url = '/obtener_clientes_con_proyectos/';
+            break;
+        case 'encargadoPresupuesto':
+            url = '/obtener_ingenieros_presupuesto/';
+            break;
+        case 'estadoPresupuesto':
+            url = '/obtener_estados_presupuesto/';
+            break;
+        case 'encargadoObra':
+            url = '/obtener_ingenieros_obra/';
+            break;
+        case 'estadoObra':
+            url = '/obtener_estados_obra/';
+            break;
+        case 'ciudad':
+            url = '/obtener_ciudades_con_proyectos/';
+            break;
+    }
+
+    // Si hay una URL válida, hacer la solicitud AJAX
+    if (url) {
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(item => {
+                let option = document.createElement('option');
+                option.value = item;
+                option.text = item;
+                dropdownValor.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error al obtener datos:', error);
+        });
+    }
+});
+
+// codigo para mandar a la vista el valor del segundo dropdown
+
+function filtrarProyectos() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let valorSeleccionado = document.getElementById('filtroValor').value;
+    let url = '';
+
+    switch (campoSeleccionado) {
+        case 'cliente':
+            url = `/ver_proyectos_cliente/${valorSeleccionado}/`;
+            break;
+        case 'encargadoPresupuesto':
+            url = `/ver_proyectos_encargado_presupuesto/${valorSeleccionado}/`;
+            break;
+        case 'encargadoObra':
+            url = `/ver_proyectos_encargado_obra/${valorSeleccionado}/`;
+            break;
+        case 'estadoPresupuesto':
+            url = `/ver_proyectos_estado_presupuesto/${valorSeleccionado}/`;
+            break;
+        case 'estadoObra':
+            url = `/ver_proyectos_estado_obra/${valorSeleccionado}/`;
+            break;
+        case 'ciudad':
+            url = `/ver_proyectos_ciudad/${valorSeleccionado}/`;
+            break;
+    }
+
+    if (url) {
+        window.location.href = url;
+    }
+    }
+
+    document.getElementById('filtroValor').addEventListener('change', filtrarProyectos);
+    document.getElementById('aplicarFiltro').addEventListener('click', filtrarProyectos);
+
+
 </script>
 {% endblock %}

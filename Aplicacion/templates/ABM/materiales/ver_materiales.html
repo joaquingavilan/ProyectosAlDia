@@ -17,7 +17,19 @@
     </div>
   {% endfor %}
 
+<!-- Dropdown para seleccionar el campo de filtro -->
+<select id="filtroCampo">
+    <option value="marca">Marca</option>
+    <option value="proveedor">Proveedor</option>
+    <option value="unidadesStock">Unidades en stock</option>
+</select>
 
+<!-- Dropdown para seleccionar el valor específico del filtro -->
+<select id="filtroValor">
+    <!-- Este se llenará dinámicamente usando JS -->
+</select>
+
+<button id="aplicarFiltro" class="btn btn-primary">Filtrar</button>
   <hr>
 
   {% if materiales %}
@@ -118,5 +130,72 @@
             resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
         }
     });
+    // primer dropdown de filtro
+    document.getElementById('filtroCampo').addEventListener('change', function() {
+      let campoSeleccionado = this.value;
+      let dropdownValor = document.getElementById('filtroValor');
+
+      // Limpiar opciones previas
+      dropdownValor.innerHTML = '';
+
+      let url = '';  // URL de donde obtener los datos
+
+      switch (campoSeleccionado) {
+          case 'marca':
+              url = '/obtener_materiales_marca/';
+              break;
+          case 'proveedor':
+              url = '/obtener_materiales_proveedor/';
+              break;
+          case 'unidadesStock':
+              url = '/obtener_materiales_stock/';
+              break;
+      }
+
+      // Si hay una URL válida, hacer la solicitud AJAX
+      if (url) {
+          fetch(url)
+          .then(response => response.json())
+          .then(data => {
+              data.forEach(item => {
+                  let option = document.createElement('option');
+                  option.value = item;
+                  option.text = item;
+                  dropdownValor.appendChild(option);
+              });
+          })
+          .catch(error => {
+              console.error('Error al obtener datos:', error);
+          });
+      }
+    });
+
+// codigo para mandar a la vista el valor del segundo dropdown
+
+function filtrarMateriales() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let valorSeleccionado = document.getElementById('filtroValor').value;
+    let url = '';
+
+    switch (campoSeleccionado) {
+        case 'marca':
+            url = `/ver_materiales_marca/${valorSeleccionado}/`;
+            break;
+        case 'proveedor':
+            url = `/ver_materiales_proveedor/${valorSeleccionado}/`;
+            break;
+        case 'unidadesStock':
+            url = `/ver_materiales_stock/${valorSeleccionado}/`;
+            break;
+    }
+
+    if (url) {
+        window.location.href = url;
+    }
+    }
+
+    document.getElementById('filtroValor').addEventListener('change', filtrarMateriales);
+    document.getElementById('aplicarFiltro').addEventListener('click', filtrarMateriales);
+
 </script>
 {% endblock %}

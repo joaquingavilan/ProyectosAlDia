@@ -12,7 +12,7 @@
     <input type="text" name="username" required><br>
     <label for="id_password">Contraseña:</label>
     <input type="password" name="password" required><br>
-    <button type="submit">Iniciar sesión</button>
+    <button type="submit" class="btn btn-primary">Iniciar sesión</button>
   </form>
-  <p>¿No tienes una cuenta? <button type="submit"><a href="{% url 'registro' %}" class="no-link">Regístrate aquí</a></button></p>
+  <p>¿No tienes una cuenta? <a href="{% url 'registro' %}" class="btn btn-primary">Regístrate aquí</a></p>
 {% endblock %}

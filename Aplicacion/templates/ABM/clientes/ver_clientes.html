@@ -146,8 +146,19 @@
         </div>
     </div>
 </div>
+
+<div class="d-flex justify-content-between align-items-center">
+
+<a href="{% url 'inicio' %}" class="btn btn-primary">Volver a Inicio</a>
+
+<form id="exportarForm" method="post" action="{% url 'exportar_excel' %}">
+    {% csrf_token %}
+    <input type="hidden" name="tipo_dato" value="Clientes">
+    <button type="submit" class="btn btn-primary">Exportar a Excel</button>
+</form>
+
 <a href="{% url 'registro_cliente' %}" class="btn btn-primary">Registrar nuevo cliente</a>
-<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+</div>
 {% endblock %}
 
 {% block extra_js %}

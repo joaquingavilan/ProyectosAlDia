@@ -13,8 +13,11 @@ from datetime import date
 from django.contrib import messages
 from .decorators import gerente_required, administrador_required, ingeniero_required
 from django.forms import formset_factory
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+
 
 
 def inicio(request):
@@ -789,3 +792,210 @@ def ver_pedidos(request):
         'pedidos': pedidos
     }
     return render(request, 'pantallas_ing/ver_pedidos.html', context)
+
+
+# vistas para filtros
+
+
+def obtener_clientes_con_proyectos(request):
+    clientes = Proyecto.objects.values_list('cliente__nombre', flat=True).distinct()
+    return JsonResponse(list(clientes), safe=False)
+
+
+def obtener_ingenieros_presupuesto(request):
+    ingenieros = Presupuesto.objects.values_list('encargado__username', flat=True).distinct()
+    return JsonResponse(list(ingenieros), safe=False)
+
+
+def obtener_estados_presupuesto(request):
+    # Obtener los estados que realmente están en la base de datos
+    estados_presentes = Presupuesto.objects.values_list('estado', flat=True).distinct()
+    # Convertir esos estados a sus representaciones legibles
+    estados = [dict(Presupuesto.ESTADOS)[estado] for estado in estados_presentes]
+    return JsonResponse(list(estados), safe=False)
+
+
+def obtener_ingenieros_obra(request):
+    ingenieros = Obra.objects.values_list('encargado__username', flat=True).distinct()
+    return JsonResponse(list(ingenieros), safe=False)
+
+
+def obtener_estados_obra(request):
+    # Obtener los estados que realmente están en la base de datos
+    estados_presentes = Obra.objects.values_list('estado', flat=True).distinct()
+    # Convertir esos estados a sus representaciones legibles
+    estados = [dict(Obra.ESTADOS)[estado] for estado in estados_presentes]
+    return JsonResponse(list(estados), safe=False)
+
+
+def obtener_ciudades_con_proyectos(request):
+    ciudades = Proyecto.objects.values_list('ciudad', flat=True).distinct()
+    return JsonResponse(list(ciudades), safe=False)
+
+
+def ver_proyectos_cliente(request, cliente_nombre):
+    proyectos = Proyecto.objects.filter(cliente__nombre=cliente_nombre)
+    # Configuración de la paginación
+    paginator = Paginator(proyectos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+
+
+def ver_proyectos_encargado_presupuesto(request, ingeniero_user):
+    ingeniero = User.objects.filter(username=ingeniero_user)
+    proyectos = Proyecto.objects.filter(presupuesto__encargado__in=ingeniero)
+    # Configuración de la paginación
+    paginator = Paginator(proyectos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+
+
+def ver_proyectos_encargado_obra(request, ingeniero_user):
+    ingeniero = User.objects.filter(username=ingeniero_user)
+    proyectos = Proyecto.objects.filter(presupuesto__encargado__in=ingeniero)
+    # Configuración de la paginación
+    paginator = Paginator(proyectos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+
+
+def ver_proyectos_estado_presupuesto(request, estado):
+    # Convertir el nombre legible del estado a su código correspondiente
+    estado_codigo = {value: key for key, value in dict(Presupuesto.ESTADOS).items()}[estado]
+
+    # Filtrar los proyectos basándose en el código del estado
+    proyectos = Proyecto.objects.filter(presupuesto__estado=estado_codigo)
+    # Configuración de la paginación
+    paginator = Paginator(proyectos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+
+
+def ver_proyectos_estado_obra(request, estado):
+    # Convertir el nombre legible del estado a su código correspondiente
+    estado_codigo = {value: key for key, value in dict(Obra.ESTADOS).items()}[estado]
+
+    # Filtrar los proyectos basándose en el código del estado
+    proyectos = Proyecto.objects.filter(presupuesto__estado=estado_codigo)
+    # Configuración de la paginación
+    paginator = Paginator(proyectos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+
+
+def ver_proyectos_ciudad(request, ciudad):
+    proyectos = Proyecto.objects.filter(ciudad=ciudad)
+    # Configuración de la paginación
+    paginator = Paginator(proyectos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+
+
+def obtener_materiales_marca(request):
+    marcas = Material.objects.values_list('marca', flat=True).distinct()
+    return JsonResponse(list(marcas), safe=False)
+
+
+def obtener_materiales_proveedor(request):
+    id_proveedores = Material.objects.values_list('id_proveedor', flat=True).distinct()
+    lista_proveedores = Proveedor.objects.filter(id__in=id_proveedores)
+    proveedores = lista_proveedores.values_list('nombre', flat=True).distinct()
+    return JsonResponse(list(proveedores), safe=False)
+
+
+def obtener_materiales_stock(request):
+    cantidades = ['Menos de 10', 'Menos de 50', 'Menos de 100']
+    return JsonResponse(list(cantidades), safe=False)
+
+
+def ver_materiales_marca(request, marca):
+    materiales = Material.objects.filter(marca=marca)
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales})
+
+
+def ver_materiales_proveedores(request, proveedor):
+    id_proveedor = Proveedor.objects.get(nombre=proveedor)
+    materiales = Material.objects.filter(id_proveedor=id_proveedor)
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales})
+
+
+def ver_materiales_stock(request, cantidad):
+    if cantidad == 'Menos de 10':
+        materiales = Material.objects.filter(unidades_stock__lt=10)
+    elif cantidad == 'Menos de 50':
+        materiales = Material.objects.filter(unidades_stock__lt=50)
+    elif cantidad == 'Menos de 100':
+        materiales = Material.objects.filter(unidades_stock__lt=100)
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales})
+
+
+def exportar_excel(request):
+    # Crear un nuevo libro de Excel y una nueva hoja
+    wb = Workbook()
+    ws = wb.active
+    tipo_dato = request.POST.get('tipo_dato')  # Por ejemplo, 'Ingenieros', 'Proyectos', etc.
+    criterio = request.POST.get('criterio')  # Por ejemplo, el nombre del cliente
+
+    if tipo_dato == 'Ingenieros':
+        ws.title = "Ingenieros"
+        # Añadir encabezados a la hoja
+        encabezados = ['ID', 'Username', 'First Name', 'Last Name', 'Email']
+        for col_num, encabezado in enumerate(encabezados, 1):
+            col_letter = get_column_letter(col_num)
+            ws['{}1'.format(col_letter)] = encabezado
+            ws.column_dimensions[col_letter].width = 15
+
+        # Obtener datos de los ingenieros
+        ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
+
+        # Añadir datos a la hoja
+        for ingeniero in ingenieros:
+            ws.append([ingeniero.id, ingeniero.username, ingeniero.first_name, ingeniero.last_name, ingeniero.email])
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=Ingenieros.xlsx'
+        wb.save(response)
+
+    elif tipo_dato == 'Clientes':
+        ws.title = "Clientes"
+        # Añadir encabezados a la hoja
+        encabezados = ['ID', 'Nombre', 'RUC', 'Email']
+        for col_num, encabezado in enumerate(encabezados, 1):
+            col_letter = get_column_letter(col_num)
+            ws['{}1'.format(col_letter)] = encabezado
+            ws.column_dimensions[col_letter].width = 15
+
+        # Obtener datos de los clientes
+        clientes = Cliente.objects.all()
+
+        # Añadir datos a la hoja
+        for cliente in clientes:
+            ws.append([cliente.id, cliente.nombre, cliente.ruc, cliente.email])
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=Clientes.xlsx'
+        wb.save(response)
+
+    elif tipo_dato == 'Proveedores':
+
+        ws.title = "Proveedores"
+        encabezados = ['ID', 'Nombre', 'RUC', 'Email']
+        for col_num, encabezado in enumerate(encabezados, 1):
+            col_letter = get_column_letter(col_num)
+            ws['{}1'.format(col_letter)] = encabezado
+            ws.column_dimensions[col_letter].width = 15
+        proveedores = Proveedor.objects.all()
+        for proveedor in proveedores:
+            ws.append([proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.email])
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=Proveedores.xlsx'
+        wb.save(response)
+
+    return response
