@@ -118,9 +118,10 @@
             resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
         }
     });
-
-document.getElementById('filtroCampo').addEventListener('change', function() {
-    let campoSeleccionado = this.value;
+//inicializar primer dropdown
+// Función de inicialización para el dropdown filtroValor
+function inicializarFiltroValorProyectos() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
     let dropdownValor = document.getElementById('filtroValor');
 
     // Limpiar opciones previas
@@ -165,10 +166,18 @@ document.getElementById('filtroCampo').addEventListener('change', function() {
             console.error('Error al obtener datos:', error);
         });
     }
+}
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    inicializarFiltroValorProyectos();  // Llamar a la función al cargar la página
 });
 
-// codigo para mandar a la vista el valor del segundo dropdown
+// Inicializar el dropdown al cambiar el valor del primer dropdown
+document.getElementById('filtroCampo').addEventListener('change', function() {
+    inicializarFiltroValorProyectos();
+});
 
+// Función para filtrar proyectos basado en la selección del usuario
 function filtrarProyectos() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
     let valorSeleccionado = document.getElementById('filtroValor').value;
@@ -198,10 +207,10 @@ function filtrarProyectos() {
     if (url) {
         window.location.href = url;
     }
-    }
+}
 
-    document.getElementById('filtroValor').addEventListener('change', filtrarProyectos);
-    document.getElementById('aplicarFiltro').addEventListener('click', filtrarProyectos);
+document.getElementById('filtroValor').addEventListener('change', filtrarProyectos);
+document.getElementById('aplicarFiltro').addEventListener('click', filtrarProyectos);
 
 
 </script>

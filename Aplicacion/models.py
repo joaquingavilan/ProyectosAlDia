@@ -167,3 +167,40 @@ class MaterialPedido(models.Model):
 
     def __str__(self):
         return f'{self.material} - {self.pedido}'
+
+
+class ArchivoPresupuesto(models.Model):
+    presupuesto = models.OneToOneField('Presupuesto', on_delete=models.CASCADE)
+    nombre = models.CharField(max_length=255)
+    fecha_carga = models.DateTimeField(auto_now_add=True)
+    archivo = models.FileField(upload_to='presupuestos/')  # campo para almacenar el archivo
+    # Otros campos que quieras agregar...
+
+
+class Categoria(models.Model):
+    archivo = models.ForeignKey(ArchivoPresupuesto, on_delete=models.CASCADE)
+    nombre = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f'{self.nombre}'
+
+
+class Item(models.Model):
+    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, null=True, blank=True)
+    archivo = models.ForeignKey(ArchivoPresupuesto, on_delete=models.CASCADE, null=True, blank=True)
+    nombre = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f'{self.nombre}'
+
+
+class SubItem(models.Model):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    rubro = models.CharField(max_length=255)
+    unidad_medida = models.CharField(max_length=50)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=0)
+    precio_total = models.DecimalField(max_digits=10, decimal_places=0)
+
+    def __str__(self):
+        return f'{self.rubro}'

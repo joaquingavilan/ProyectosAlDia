@@ -1,12 +1,25 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>Bienvenido {{nombre}}</h1>
-  <div class="btn-group">
-     <button type="submit"><a href="{% url 'ver_presupuestos' %}" class="no-link">Ver Presupuestos</a></button>
-     <button type="submit"><a href="{% url 'ver_obras' %}" class="no-link">Ver Obras</a></button>
-     <button type="submit"><a href="{% url 'pedido_materiales' %}" class="no-link">Pedido de Materiales</a></button>
-     <button type="submit"><a href="{% url 'ver_pedidos' %}" class="no-link">Ver Pedidos anteriores</a></button>
-     <button type="submit"><a href="{% url 'salir' %}" class="no-link">Cerrar Sesion</a></button>
-  </div>
+  <h1 class="display-4 text-center">Bienvenido {{nombre}}</h1>
+<br>
+<div class="container d-flex align-items-center justify-content-center">
+    <div class="mx-2">
+        <a href="{% url 'ver_presupuestos' %}" class="btn btn-primary btn-lg">Ver Presupuestos</a>
+    </div>
+    <div class="mx-2">
+        <a href="{% url 'ver_obras' %}" class="btn btn-primary btn-lg">Ver Obras</a>
+    </div>
+    <div class="mx-2">
+        <a href="{% url 'pedido_materiales' %}" class="btn btn-primary btn-lg">Pedido de Materiales</a>
+    </div>
+    <div class="mx-2">
+        <a href="{% url 'ver_pedidos' %}" class="btn btn-primary btn-lg">Ver Pedidos anteriores</a>
+    </div>
+    <div class="mx-2">
+        <a href="{% url 'salir' %}" class="btn btn-primary btn-lg">Cerrar Sesion</a>
+    </div>
+</div>
+
+
 {% endblock %}

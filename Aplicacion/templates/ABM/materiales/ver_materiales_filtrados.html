@@ -21,7 +21,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for material in materiales %}
+        {% for material in page_obj %}
           <tr>
             <td>{{ material.id }}</td>
             <td>{{ material.nombre }}</td>
@@ -46,4 +46,6 @@
     </table>
   {% endif %}
 
+  <a href="{% url 'ver_materiales' %}" class="btn btn-primary">Volver a Materiales</a>
+  <a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
 {% endblock %}

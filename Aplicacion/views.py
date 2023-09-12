@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View
-from .models import Cliente, Proveedor, Perfil, Rol, Presupuesto, Proyecto, Obra, Material, Pedido, MaterialPedido, Contacto
+from .models import *
 from .forms import *
 from django.db.models import Q
 from django.conf import settings
@@ -8,16 +8,19 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.utils import timezone
-import re, locale, json
+import re, locale, json, os
 from datetime import date
+from io import BytesIO
 from django.contrib import messages
 from .decorators import gerente_required, administrador_required, ingeniero_required
 from django.forms import formset_factory
 from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
-
+import pandas as pd
+from django.core.files import File
+from django.views.decorators.csrf import csrf_exempt
 
 
 def inicio(request):
@@ -816,8 +819,13 @@ def obtener_estados_presupuesto(request):
 
 
 def obtener_ingenieros_obra(request):
-    ingenieros = Obra.objects.values_list('encargado__username', flat=True).distinct()
-    return JsonResponse(list(ingenieros), safe=False)
+    # Excluyendo encargados que son None
+    ingenieros = Obra.objects.exclude(encargado__isnull=True).values_list('encargado__username', flat=True).distinct()
+
+    # Convertir a lista y agregar "No asignado"
+    ingenieros_list = list(ingenieros)
+    ingenieros_list.append("No asignado")
+    return JsonResponse(ingenieros_list, safe=False)
 
 
 def obtener_estados_obra(request):
@@ -853,8 +861,12 @@ def ver_proyectos_encargado_presupuesto(request, ingeniero_user):
 
 
 def ver_proyectos_encargado_obra(request, ingeniero_user):
-    ingeniero = User.objects.filter(username=ingeniero_user)
-    proyectos = Proyecto.objects.filter(presupuesto__encargado__in=ingeniero)
+    if ingeniero_user == "No asignado":
+        proyectos = Proyecto.objects.filter(obra__encargado__isnull=True)
+    else:
+        ingeniero = User.objects.get(username=ingeniero_user)
+        proyectos = Proyecto.objects.filter(obra__encargado=ingeniero)
+
     # Configuración de la paginación
     paginator = Paginator(proyectos, 10)
     page_number = request.GET.get('page')
@@ -918,23 +930,36 @@ def obtener_materiales_stock(request):
 
 def ver_materiales_marca(request, marca):
     materiales = Material.objects.filter(marca=marca)
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales})
+    # Configuración de la paginación
+    paginator = Paginator(materiales, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales, 'page_obj': page_obj})
 
 
 def ver_materiales_proveedores(request, proveedor):
     id_proveedor = Proveedor.objects.get(nombre=proveedor)
     materiales = Material.objects.filter(id_proveedor=id_proveedor)
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales})
+    # Configuración de la paginación
+    paginator = Paginator(materiales, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales, 'page_obj': page_obj})
 
 
 def ver_materiales_stock(request, cantidad):
+
     if cantidad == 'Menos de 10':
         materiales = Material.objects.filter(unidades_stock__lt=10)
     elif cantidad == 'Menos de 50':
         materiales = Material.objects.filter(unidades_stock__lt=50)
     elif cantidad == 'Menos de 100':
         materiales = Material.objects.filter(unidades_stock__lt=100)
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales})
+    # Configuración de la paginación
+    paginator = Paginator(materiales, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales, 'page_obj': page_obj})
 
 
 def exportar_excel(request):
@@ -999,3 +1024,178 @@ def exportar_excel(request):
         wb.save(response)
 
     return response
+
+
+def cargar_presupuesto(request, pk):
+    presupuesto = get_object_or_404(Presupuesto, pk=pk)
+    if request.method == "POST" and request.FILES['archivo_presupuesto']:
+        archivo_excel = request.FILES['archivo_presupuesto']
+        # No necesitas la ruta completa aquí, simplemente el nombre del archivo.
+        # Django se encargará de guardar el archivo en la ubicación correcta según tu configuración de MEDIA_ROOT.
+        nombre_archivo = os.path.basename(archivo_excel.name)
+
+        # Crear una instancia de ArchivoPresupuesto
+        archivo_presupuesto = ArchivoPresupuesto(presupuesto=presupuesto, nombre=nombre_archivo)
+
+        # Guardar el archivo en el modelo
+        archivo_presupuesto.archivo.save(nombre_archivo, archivo_excel)
+
+        # Guardar el modelo en la base de datos
+
+        workbook = load_workbook(archivo_presupuesto.archivo)
+        sheet = workbook.active
+
+        # Variables para identificar el inicio de la tabla
+        inicio_tabla_fila = None
+        inicio_tabla_columna = None
+
+        for row in sheet.iter_rows(values_only=True):
+            print(row)
+
+        # Navegar por cada fila
+        for idx, row in enumerate(sheet.iter_rows(values_only=True)):
+            print('for idx entro')
+            found_rubros = False
+            for cell in row:
+                if cell and "Rubros" == cell.strip():
+                    found_rubros = True
+                    print('found Rubros')
+                    break
+            if found_rubros:
+                # Obtener el índice de la celda que contiene "Rubros"
+                rubros_index = row.index(cell)
+                # Si la siguiente celda es "Un", entonces hemos encontrado el inicio de la tabla
+                if row[rubros_index + 1].strip() == "Un":
+                    inicio_tabla_fila = idx
+                    inicio_tabla_columna = rubros_index
+                    print(
+                        f'Inicio de tabla identificado en la fila {inicio_tabla_fila} y columna {inicio_tabla_columna}')
+                    break
+
+        # Si encontramos el inicio de la tabla, procesamos los datos
+        if inicio_tabla_fila is not None and inicio_tabla_columna is not None:
+            categoria_actual = None
+            item_actual = None
+
+            idx = inicio_tabla_fila + 2  # Comenzamos en la fila siguiente a inicio_tabla
+
+            while idx < sheet.max_row and sheet[idx][
+                inicio_tabla_columna].value:  # Mientras no lleguemos al final del archivo
+                fila_actual = [cell.value for cell in sheet[idx]]
+                valor_rubros = fila_actual[inicio_tabla_columna].strip() if fila_actual[inicio_tabla_columna] else None
+                valor_un = fila_actual[inicio_tabla_columna + 1].strip() if fila_actual[
+                    inicio_tabla_columna + 1] else None
+
+                # Comprobar si la fila siguiente tiene valor en "Un"
+                fila_siguiente = [cell.value for cell in sheet[idx + 1]] if idx + 1 <= sheet.max_row else None
+                valor_un_siguiente = fila_siguiente[inicio_tabla_columna + 1].strip() if fila_siguiente and \
+                                                                                         fila_siguiente[
+                                                                                             inicio_tabla_columna + 1] else None
+
+                if valor_rubros and not valor_un:
+                    if valor_un_siguiente:
+                        # Es un Item
+                        item_actual = Item(nombre=valor_rubros, categoria=categoria_actual, archivo=archivo_presupuesto)
+                        item_actual.save()
+                        # NO limpiamos la categoría actual aquí
+                    else:
+                        # Es una Categoría
+                        categoria_actual = Categoria(nombre=valor_rubros, archivo=archivo_presupuesto)
+                        categoria_actual.save()
+                        item_actual = None  # Limpiamos el ítem actual
+                elif valor_rubros and valor_un:
+                    # Es un SubItem
+                    subitem = SubItem(
+                        item=item_actual,
+                        rubro=valor_rubros,
+                        unidad_medida=valor_un,
+                        cantidad=fila_actual[inicio_tabla_columna + 2],
+                        precio_unitario=fila_actual[inicio_tabla_columna + 3],
+                        precio_total=(fila_actual[inicio_tabla_columna + 2] * fila_actual[inicio_tabla_columna + 3])
+                    )
+                    subitem.save()
+                else:
+                    # Aquí puedes manejar casos no previstos o simplemente ignorarlos
+                    pass
+
+                idx += 1  # Avanzar a la siguiente fila
+
+        else:
+            print("No se encontró la tabla en el archivo proporcionado.")
+
+        workbook.close()
+
+        # Redirige al usuario a donde desees luego de procesar el archivo
+        return redirect('ver_presupuestos')
+    # Redirige al usuario a donde desees luego de procesar el archivo
+    return redirect('ver_presupuestos')
+
+
+def ver_archivo_presupuesto(request, pk):
+    archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=pk)
+    categorias = Categoria.objects.filter(archivo=archivo_presupuesto).order_by('pk')
+
+    # Pasamos el archivo_presupuesto y las categorías al template
+    context = {
+        'archivo_presupuesto': archivo_presupuesto,
+        'categorias': categorias
+    }
+    return render(request, 'pantallas_ing/ver_presupuesto.html', context)
+
+
+def editar_categoria(request, categoria_id):
+    # Lógica para editar la categoría
+    return JsonResponse({'status': 'success'})
+
+
+def editar_item(request, item_id):
+    # Lógica para editar el item
+    return JsonResponse({'status': 'success'})
+
+
+@csrf_exempt
+def editar_subitem(request, subitem_id):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        try:
+            subitem = SubItem.objects.get(pk=subitem_id)
+            subitem.rubro = data.get('rubro')
+            subitem.unidad_medida = data.get('unidad_medida')
+            subitem.cantidad = data.get('cantidad')
+            subitem.precio_unitario = data.get('precio_unitario')
+            subitem.save()
+
+            return JsonResponse({'status': 'success'})
+
+        except SubItem.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Subitem no encontrado'}, status=404)
+
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+@csrf_exempt
+def eliminar_subitem(request, subitem_id):
+    if request.method == "DELETE":
+        try:
+            subitem = SubItem.objects.get(pk=subitem_id)
+
+            # Capturamos el Item asociado al SubItem antes de eliminarlo
+            item_asociado = subitem.item
+            subitem.delete()
+
+            # Verificar si el Item no tiene otros SubItems asociados
+            if not item_asociado.subitem_set.exists():
+                # Capturamos la Categoría asociada al Item antes de eliminarlo
+                categoria_asociada = item_asociado.categoria
+                item_asociado.delete()
+
+                # Verificar si la Categoría no tiene otros Items asociados
+                if not categoria_asociada.item_set.exists():
+                    categoria_asociada.delete()
+
+            return JsonResponse({'status': 'success'})
+
+        except SubItem.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Subitem no encontrado'}, status=404)
+
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)

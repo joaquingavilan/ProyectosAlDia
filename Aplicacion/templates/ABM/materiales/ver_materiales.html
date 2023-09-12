@@ -130,48 +130,56 @@
             resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
         }
     });
+    //funcion de inicializacion
+    function inicializarFiltroValor() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let dropdownValor = document.getElementById('filtroValor');
+
+    // Limpiar opciones previas
+    dropdownValor.innerHTML = '';
+
+    let url = '';  // URL de donde obtener los datos
+
+    switch (campoSeleccionado) {
+        case 'marca':
+            url = '/obtener_materiales_marca/';
+            break;
+        case 'proveedor':
+            url = '/obtener_materiales_proveedor/';
+            break;
+        case 'unidadesStock':
+            url = '/obtener_materiales_stock/';
+            break;
+    }
+
+    // Si hay una URL válida, hacer la solicitud AJAX
+    if (url) {
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(item => {
+                let option = document.createElement('option');
+                option.value = item;
+                option.text = item;
+                dropdownValor.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error al obtener datos:', error);
+        });
+    }
+}
+document.addEventListener('DOMContentLoaded', (event) => {
+    inicializarFiltroValor();
+});
+
     // primer dropdown de filtro
     document.getElementById('filtroCampo').addEventListener('change', function() {
-      let campoSeleccionado = this.value;
-      let dropdownValor = document.getElementById('filtroValor');
+    inicializarFiltroValor();
+  });
 
-      // Limpiar opciones previas
-      dropdownValor.innerHTML = '';
 
-      let url = '';  // URL de donde obtener los datos
-
-      switch (campoSeleccionado) {
-          case 'marca':
-              url = '/obtener_materiales_marca/';
-              break;
-          case 'proveedor':
-              url = '/obtener_materiales_proveedor/';
-              break;
-          case 'unidadesStock':
-              url = '/obtener_materiales_stock/';
-              break;
-      }
-
-      // Si hay una URL válida, hacer la solicitud AJAX
-      if (url) {
-          fetch(url)
-          .then(response => response.json())
-          .then(data => {
-              data.forEach(item => {
-                  let option = document.createElement('option');
-                  option.value = item;
-                  option.text = item;
-                  dropdownValor.appendChild(option);
-              });
-          })
-          .catch(error => {
-              console.error('Error al obtener datos:', error);
-          });
-      }
-    });
-
-// codigo para mandar a la vista el valor del segundo dropdown
-
+   // código para mandar a la vista el valor del segundo dropdown
 function filtrarMateriales() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
     let valorSeleccionado = document.getElementById('filtroValor').value;

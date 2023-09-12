@@ -4,11 +4,11 @@
   <h1>Presupuestos asignados</h1>
 
   {% if presupuestos %}
-    <table>
+    <table class="table table-bordered">
       <thead>
         <tr>
           <th>Nombre del proyecto</th>
-          <th>Monto Total</th>
+          <th>Cliente</th>
           <th>Estado</th>
           <th>Acciones</th>
         </tr>
@@ -18,20 +18,7 @@
           <tr>
             <td>{{ presupuesto.proyecto.nombre }}</td>
             <td>
-              <form method="POST">
-                {% csrf_token %}
-                <input type="hidden" name="presupuesto_id" value="{{ presupuesto.id }}">
-                {% if presupuesto.monto_total %}
-                  {% if presupuesto.estado == "E" or presupuesto.estado == "S" %}
-                    <!-- El campo es editable si el estado es "En elaboración" o "Enviado" -->
-                    <input type="text" name="monto_total" value="{{ presupuesto.monto_total }}">
-                  {% else %}
-                    <!-- El campo no es editable si el estado es "Aprobado" -->
-                    <input type="text" name="monto_total" value="{{ presupuesto.monto_total }}" readonly>
-                  {% endif %}
-                {%else%}
-                  <input type="text" name="monto_total" value=0>
-                {%endif%}
+              {{ presupuesto.proyecto.cliente.nombre }}
             </td>
             <td>
                 <select name="estado">
@@ -41,9 +28,19 @@
                 </select>
             </td>
             <td>
-                <button type="submit" name="guardar">Guardar</button>
-              </form>
+              <div class="d-flex align-items-center">
+                  <!-- Formulario para cargar el archivo de presupuesto -->
+                  <form method="post" action="{% url 'cargar_presupuesto' presupuesto.id %}" enctype="multipart/form-data" class="d-flex align-items-center">
+                      {% csrf_token %}
+                      <input type="file" name="archivo_presupuesto" required class="me-2">
+                      <button type="submit" class="btn btn-primary me-2">Cargar Presupuesto</button>
+                  </form>
+
+                  <!-- Enlace para visualizar el presupuesto -->
+                  <a href="{% url 'ver_archivo_presupuesto' presupuesto.id %}" class="btn btn-info">Ver Presupuesto</a>
+              </div>
             </td>
+
           </tr>
         {% endfor %}
       </tbody>
@@ -51,6 +48,6 @@
   {% else %}
     <p>No se encontraron presupuestos asignados.</p>
   {% endif %}
-  <button type="submit"><a href="{% url 'inicio_ingenieros' %}" class="no-link">Inicio</a></button>
+  <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
 {% endblock %}
 
