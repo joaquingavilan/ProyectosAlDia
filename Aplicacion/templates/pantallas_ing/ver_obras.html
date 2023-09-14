@@ -1,15 +1,18 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>Obras asignadas</h1>
+  <h1 class="display-4 text-center">Obras asignadas</h1>
+
 
   {% if obras %}
-    <table>
+<table class="table table-bordered">
   <thead>
     <tr>
-      <th>Nombre</th>
+      <th>Obra</th>
       <th>Cliente</th>
+      <th>Fecha de pago anticipo</th>
       <th>Fecha de inicio</th>
+      <th>Plazo</th>
       <th>Fecha de fin</th>
       <th>Estado</th>
       <th>Acciones</th>
@@ -20,32 +23,19 @@
       <tr>
         <td>{{ obra.proyecto.nombre }}</td>
         <td>{{ obra.proyecto.cliente.nombre }}</td>
-        <td>{{ obra.fecha_inicio }}</td>
-        <td>{{ obra.fecha_fin }}</td>
-        <td>
-          <form method="POST">
-            {% csrf_token %}
-            <select name="estado" id="id_estado">
-            {% if obra.estado == 'NI' %}
-                <option value="E">En ejecución</option>
-            {% elif obra.estado == 'E' %}
-                <option value="F">Finalizada</option>
-            {% endif %}
-            {% for estado in obra.ESTADOS %}
-                {% if obra.estado != 'NI' and estado.0 == obra.estado %}
-                    <option value="{{ estado.0 }}" selected>{{ estado.1 }}</option>
-                {% elif obra.estado != 'E' and estado.0 == obra.estado %}
-                    <option value="{{ estado.0 }}" selected>{{ estado.1 }}</option>
-                {% endif %}
-            {% endfor %}
-            </select>
-        </td>
+        <td>{{ obra.proyecto.presupuesto.fecha_pago_anticipo }}</td>
+        <td id="fechaInicio-{{ obra.id }}">{{ obra.fecha_inicio }}</td>
+        <td>{{ obra.plazo }} días</td>
+        <td id="fechaFin-{{ obra.id }}">{{ obra.fecha_fin }}</td>
+        <td id="estado-{{ obra.id }}">{{ obra.get_estado_display}}</td>
           <td>
-            <input type="hidden" name="obra_id" value="{{ obra.id }}">
-            {% if obra.estado == 'F' %}
-              <button type="submit" disabled>Finalizado</button>
-            {% else %}
-              <button type="submit">Guardar</button>
+            {% if obra.estado == 'NI' and not obra.fecha_inicio%}
+            <button class="btn btn-primary agendar-inicio-obra" data-id="{{ obra.id }}">Agendar Inicio</button>
+            <button class="btn btn-primary iniciar-obra" data-id="{{ obra.id }}">Iniciar Obra</button>
+            {%elif obra.estado == 'NI' %}
+            <button class="btn btn-secondary iniciar-obra" data-id="{{ obra.id }}">Iniciar Obra hoy</button>
+            {% elif obra.estado == 'E' %}
+            <button class="btn btn-primary finalizar-obra" data-id="{{ obra.id }}">Finalizar Obra</button>
             {% endif %}
           </td>
           </form>
@@ -57,5 +47,149 @@
   {% else %}
     <p>No se encontraron obras asignadas.</p>
   {% endif %}
-<button type="submit"><a href="{% url 'inicio_ingenieros' %}" class="no-link">Inicio</a></button>
+<a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
+
+
+<div class="modal fade" id="agendaInicioModal" tabindex="-1" aria-labelledby="agendaInicioModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="agendaInicioModalLabel">Agendar Fecha de Inicio</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="date" id="fechaInicioInput">
+        <span id="errorFecha" class="text-danger" style="display:none;">La fecha seleccionada no puede ser anterior a la fecha actual.</span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-primary" id="confirmarFechaInicio">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.iniciar-obra').forEach(button => {
+        button.addEventListener('click', function() {
+            const obraId = this.getAttribute('data-id');
+
+            fetch(`/iniciar_obra/${obraId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    location.reload();  // Recarga la página para mostrar los cambios
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    });
+
+    // Función para obtener el CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+document.querySelectorAll('.finalizar-obra').forEach(button => {
+    button.addEventListener('click', function() {
+        const obraId = this.getAttribute('data-id');
+
+        fetch(`/finalizar_obra/${obraId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                // Aquí actualizas la fecha de fin y el estado en el frontend
+                // Puedes agregar IDs a los campos relevantes en tu HTML para hacer esto más fácil
+                document.getElementById(`fechaFin-${obraId}`).textContent = formatDate(data.fecha_fin);
+                document.getElementById(`estado-${obraId}`).textContent = "Finalizada";
+            } else {
+                alert(data.message);
+            }
+        });
+    });
+});
+
+function formatDate(dateString) {
+    const months = [
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    const [year, month, day] = dateString.split('-');
+    return `${parseInt(day)} de ${months[parseInt(month) - 1]} de ${year}`;
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = new bootstrap.Modal(document.getElementById('agendaInicioModal'));
+    let obraIdSeleccionada = null;
+
+    // Mostrar modal al hacer clic en el botón Agendar Inicio
+    document.querySelectorAll('.agendar-inicio-obra').forEach(button => {
+        button.addEventListener('click', function() {
+            obraIdSeleccionada = this.getAttribute('data-id');
+            modal.show();
+        });
+    });
+
+    // Confirmar fecha seleccionada
+    document.getElementById('confirmarFechaInicio').addEventListener('click', function() {
+        const fechaSeleccionada = document.getElementById('fechaInicioInput').value;
+        const fechaActual = new Date();
+        const fechaInput = new Date(fechaSeleccionada);
+         // Esconder el mensaje de error
+        document.getElementById('errorFecha').style.display = 'none';
+
+        // Verificar que la fecha seleccionada no sea anterior a la actual
+        if (fechaInput < fechaActual) {
+            document.getElementById('errorFecha').style.display = 'block';
+            return;
+        }
+        if (fechaSeleccionada) {
+            fetch(`/agendar_inicio_obra/${obraIdSeleccionada}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ fecha_inicio: fechaSeleccionada })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Actualizar la fecha en el frontend
+                    document.getElementById(`fechaInicio-${obraIdSeleccionada}`).textContent = formatDate(fechaSeleccionada);
+                    modal.hide();
+                } else {
+                    alert('Hubo un error al actualizar la fecha de inicio.');
+                }
+            });
+        }
+    });
+});
+
+</script>
 {% endblock %}

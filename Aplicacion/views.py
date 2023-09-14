@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.utils import timezone
 import re, locale, json, os
-from datetime import date
+from datetime import date, datetime
 from io import BytesIO
 from django.contrib import messages
 from .decorators import gerente_required, administrador_required, ingeniero_required
@@ -687,22 +687,6 @@ def ver_presupuestos(request):
 
 def ver_obras(request):
     obras = Obra.objects.filter(encargado=request.user)
-    if request.method == 'POST':
-        obra_id = request.POST.get('obra_id')
-        estado = request.POST.get('estado')
-        obra = Obra.objects.get(id=obra_id)
-
-        if estado == 'E':
-            # si el estado se cambia a 'En ejecución', actualizamos la fecha de inicio
-            obra.fecha_inicio = timezone.now().date()
-
-        if estado == 'F':
-            # si el estado se cambia a 'Finalizada', actualizamos la fecha de fin
-            obra.fecha_fin = timezone.now().date()
-
-        obra.estado = estado
-        obra.save()
-
     return render(request, 'pantallas_ing/ver_obras.html', {'obras': obras})
 
 
@@ -722,24 +706,24 @@ def pedido_materiales(request):
                 Q(nombre__icontains=search_query) |
                 Q(marca__icontains=search_query)
             )
-    context = {
-        'obras': obras,
-        'materiales': materiales,
-        'search_query': search_query
-    }
-    # Recibir los materiales seleccionados y mandarlos a la siguiente pantalla
+        context = {
+            'obras': obras,
+            'materiales': materiales,
+            'search_query': search_query
+        }
     if request.method == 'POST':
         materiales_pedido = []
-        obra = Obra.objects.get(id=request.POST.get('obra'))
+        obra = get_object_or_404(Obra, id=request.POST.get('obra'))
         for key, value in request.POST.items():
-            if key.startswith('cantidad_') and int(value) > 0:
-                material_id = key.split('_')[1]
-                material = Material.objects.get(id=material_id)
+            if key.startswith('material_'):
+                material_id = int(key.split('_')[1])
+                material = get_object_or_404(Material, id=material_id)
                 cantidad = int(value)
                 materiales_pedido.append({'material': material, 'cantidad': cantidad})
-        # Pasa los materiales del pedido a la plantilla para mostrarlos
-        context = {'materiales_pedido': materiales_pedido, 'obra': obra}
-        return render(request, 'pantallas_ing/confirmar_pedido.html', context)
+
+        # Por ejemplo, puedes crear las instancias MaterialPedido aquí.
+        return render(request, 'pantallas_ing/confirmar_pedido.html', {'materiales_pedido': materiales_pedido, 'obra': obra})
+
     return render(request, 'pantallas_ing/pedido_materiales.html', context)
 
 
@@ -1364,3 +1348,42 @@ def ver_presupuestos_estado_presupuesto(request, estado):
     presupuestos = Presupuesto.objects.filter(estado=estado_codigo)
 
     return render(request, 'pantallas_adm/ver_presupuestos_filtrados.html', {'presupuestos': presupuestos})
+
+
+def iniciar_obra(request, obra_id):
+    obra = get_object_or_404(Obra, id=obra_id)
+
+    if obra.estado == 'NI':
+        obra.fecha_inicio = date.today()
+        obra.estado = 'E'  # 'E' es el estado para "En ejecución"
+        obra.save()
+
+        return JsonResponse({'status': 'success', 'message': 'Obra iniciada con éxito'})
+
+    return JsonResponse({'status': 'error', 'message': 'No se pudo iniciar la obra'})
+
+
+def agendar_inicio_obra(request, obra_id):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        fecha_inicio = data.get('fecha_inicio')
+        try:
+            obra = Obra.objects.get(id=obra_id)
+            obra.fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            obra.save()
+            print('ya')
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+def finalizar_obra(request, obra_id):
+    if request.method == 'POST':
+        try:
+            obra = Obra.objects.get(id=obra_id)
+            obra.fecha_fin = date.today()
+            obra.estado = 'F'  # F para Finalizada
+            obra.save()
+            return JsonResponse({'status': 'success', 'message': 'Obra finalizada con éxito', 'fecha_fin': obra.fecha_fin.strftime('%Y-%m-%d')})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})

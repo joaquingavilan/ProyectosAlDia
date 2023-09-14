@@ -106,4 +106,7 @@ urlpatterns = [
     path('ver_presupuestos_cliente/<str:cliente_nombre>/', views.ver_presupuestos_cliente,name='ver_presupuestos_cliente'),
     path('ver_presupuestos_encargado_presupuesto/<str:ingeniero_user>/', views.ver_presupuestos_encargado_presupuesto, name='ver_presupuestos_encargado_presupuesto'),
     path('ver_presupuestos_estado_presupuesto/<str:estado>/', views.ver_presupuestos_estado_presupuesto, name='ver_presupuestos_estado_presupuesto'),
+    path('iniciar_obra/<int:obra_id>/', views.iniciar_obra, name='iniciar_obra'),
+    path('agendar_inicio_obra/<int:obra_id>/', views.agendar_inicio_obra, name='agendar_inicio_obra'),
+    path('finalizar_obra/<int:obra_id>/', views.finalizar_obra, name='finalizar_obra'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
