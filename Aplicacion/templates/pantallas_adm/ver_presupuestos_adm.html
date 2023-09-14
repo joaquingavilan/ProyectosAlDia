@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block content %}
+  <h1 class="display-4 text-center">Presupuestos</h1>
+<br>
+
+<div class="input-group w-25 mb-3">
+  <input class="form-control" type="text" id="buscadorPresupuestos" placeholder="Buscar por nombre de proyecto">
+  <input type="hidden" id="presupuestoUrl" value="{% url 'ver_presupuesto_adm' 999999 %}">
+</div>
+<div id="resultadosBusquedaPresupuestos"></div>
+<br>
+
+<!-- Dropdown para seleccionar el campo de filtro -->
+<select id="filtroCampo">
+    <option value="cliente">Cliente</option>
+    <option value="encargadoPresupuesto">Encargado del Presupuesto</option>
+    <option value="estadoPresupuesto">Estado del Presupuesto</option>
+    <option value="estadoAnticipo">Anticipo</option>
+</select>
+
+<!-- Dropdown para seleccionar el valor específico del filtro -->
+<select id="filtroValor">
+    <!-- Este se llenará dinámicamente usando JS -->
+</select>
+
+<button id="aplicarFiltro" class="btn btn-primary">Filtrar</button>
+  {% if presupuestos %}
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Nombre del proyecto</th>
+          <th>Cliente</th>
+          <th>Ingeniero asignado</th>
+          <th>Estado</th>
+          <th>Anticipo recibido</th>
+          <th>Monto Presupuesto</th>
+          <th>Monto Anticipo</th>
+          <th>Fecha de pago de Anticipo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for presupuesto in presupuestos %}
+          <tr>
+            <td>{{ presupuesto.proyecto.nombre }}</td>
+            <td>
+              {{ presupuesto.proyecto.cliente.nombre }}
+            </td>
+            <td>
+                {{ presupuesto.encargado.first_name }} {{ presupuesto.encargado.last_name }}
+            </td>
+            <td data-id="{{ presupuesto.id }}" class="estado-celda">
+                {% if presupuesto.estado == 'S' %}
+                    <select class="form-select estado-select" data-id="{{ presupuesto.id }}" onchange="actualizarEstado(this)">
+                        <option value="S" selected>Enviado</option>
+                        <option value="A">Aprobado</option>
+                    </select>
+                {% else %}
+                    {{ presupuesto.get_estado_display }}
+                {% endif %}
+            </td>
+            <td>
+                {% if presupuesto.anticipo %}
+                    Sí
+                {% elif presupuesto.estado == 'E' %}
+                    No
+                {% else %}
+                    <select class="form-select anticipo-select" data-id="{{ presupuesto.id }}" onchange="actualizarAnticipo(this)">
+                        <option value="False" selected>No</option>
+                        <option value="True">Sí</option>
+                    </select>
+                {% endif %}
+            </td>
+            <td>
+                {% if presupuesto.estado != 'E' %}
+                {{presupuesto.monto_total|intcomma}}
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td>
+                {% if presupuesto.estado != 'E' %}
+                {{presupuesto.monto_anticipo|intcomma}}
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
+                {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
+            </td>
+
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No se encontraron presupuestos asignados.</p>
+  {% endif %}
+  <a href="{% url 'inicio_adm' %}" class="btn btn-primary">Inicio</a>
+{% endblock %}
+{% block extra_js %}
+<script>
+function actualizarAnticipo(selectElem) {
+    const idPresupuesto = selectElem.getAttribute('data-id');
+    const nuevoValor = selectElem.value === 'True';
+
+    fetch(`/actualizar_anticipo/${idPresupuesto}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({anticipo: nuevoValor})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            selectElem.outerHTML = 'Sí';
+            // Localizar y actualizar la celda de estado
+            const celdaEstado = document.querySelector(`.estado-celda[data-id="${idPresupuesto}"]`);
+            celdaEstado.innerText = data.nuevo_estado;
+            const celdaFechaPagoAnticipo = document.querySelector(`.fecha-pago-anticipo-celda[data-id="${idPresupuesto}"]`);
+            celdaFechaPagoAnticipo.innerText = data.fecha_pago_anticipo;  // Asumiendo que envías la fecha en la respuesta
+        } else {
+            alert('Hubo un error al actualizar el anticipo');
+        }
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+function actualizarEstado(selectElem) {
+    const idPresupuesto = selectElem.getAttribute('data-id');
+    const nuevoEstado = selectElem.value;
+
+    fetch(`/actualizar_estado/${idPresupuesto}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({estado: nuevoEstado})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            selectElem.outerHTML = nuevoEstado == 'S' ? 'Enviado' : 'Aprobado';
+        } else {
+            alert('Hubo un error al actualizar el estado');
+        }
+    });
+}
+document.getElementById('buscadorPresupuestos').addEventListener('input', function() {
+    let query = this.value;
+    let resultadosDiv = document.getElementById('resultadosBusquedaPresupuestos');
+    let baseUrl = document.getElementById('presupuestoUrl').value;
+
+    if (query.length >= 3) {
+        fetch(`/buscar_presupuestos/?q=${query}`)
+        .then(response => response.json())
+        .then(data => {
+            resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+            data.forEach(presupuesto => {
+                let div = document.createElement('div');
+                let presupuestoUrl = baseUrl.replace('999999', presupuesto.id);
+                div.innerHTML = `<a href="${presupuestoUrl}"><strong>Proyecto:</strong> ${presupuesto.proyecto_nombre}</a>`;
+                resultadosDiv.appendChild(div);
+            });
+        });
+    } else {
+        resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+    }
+});
+
+//inicializar primer dropdown
+// Función de inicialización para el dropdown filtroValor
+function inicializarFiltroValorPresupuestos() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let dropdownValor = document.getElementById('filtroValor');
+
+    // Limpiar opciones previas
+    dropdownValor.innerHTML = '';
+
+    let url = '';  // URL de donde obtener los datos
+
+    switch (campoSeleccionado) {
+        case 'cliente':
+            url = '/obtener_clientes_con_proyectos/';
+            break;
+        case 'encargadoPresupuesto':
+            url = '/obtener_ingenieros_presupuesto/';
+            break;
+        case 'estadoPresupuesto':
+            url = '/obtener_estados_presupuesto/';
+            break;
+        case 'estadoAnticipo':
+            url = '/obtener_estados_anticipo/';
+            break;
+    }
+
+    // Si hay una URL válida, hacer la solicitud AJAX
+    if (url) {
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(item => {
+                let option = document.createElement('option');
+                option.value = item;
+                option.text = item;
+                dropdownValor.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error al obtener datos:', error);
+        });
+    }
+}
+document.addEventListener('DOMContentLoaded', (event) => {
+    inicializarFiltroValorPresupuestos();  // Llamar a la función al cargar la página
+});
+
+// Inicializar el dropdown al cambiar el valor del primer dropdown
+document.getElementById('filtroCampo').addEventListener('change', function() {
+    inicializarFiltroValorPresupuestos();
+});
+
+// Función para filtrar proyectos basado en la selección del usuario
+function filtrarPresupuestos() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let valorSeleccionado = document.getElementById('filtroValor').value;
+    let url = '';
+
+    switch (campoSeleccionado) {
+        case 'cliente':
+            url = `/ver_presupuestos_cliente/${valorSeleccionado}/`;
+            break;
+        case 'encargadoPresupuesto':
+            url = `/ver_presupuestos_encargado_presupuesto/${valorSeleccionado}/`;
+            break;
+        case 'estadoPresupuesto':
+            url = `/ver_presupuestos_estado_presupuesto/${valorSeleccionado}/`;
+            break;
+        case 'estadoAnticipo':
+            url = `/ver_proyectos_estado_anticipo/${valorSeleccionado}/`;
+            break;
+    }
+
+    if (url) {
+        window.location.href = url;
+    }
+}
+
+document.getElementById('filtroValor').addEventListener('change', filtrarPresupuestos);
+document.getElementById('aplicarFiltro').addEventListener('click', filtrarPresupuestos);
+
+
+</script>
+{% endblock %}

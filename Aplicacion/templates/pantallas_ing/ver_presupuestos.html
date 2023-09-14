@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
-
+{% load custom_filters %}
 {% block content %}
-  <h1>Presupuestos asignados</h1>
-
+  <h1 class="display-4 text-center">Mis Presupuestos</h1>
+<br>
   {% if presupuestos %}
     <table class="table table-bordered">
       <thead>
@@ -10,6 +10,7 @@
           <th>Nombre del proyecto</th>
           <th>Cliente</th>
           <th>Estado</th>
+          <th>Monto del presupuesto</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -21,23 +22,40 @@
               {{ presupuesto.proyecto.cliente.nombre }}
             </td>
             <td>
-                <select name="estado">
+                <select onchange="cambiarEstado(this)" data-id="{{ presupuesto.id }}">
                   {% for estado, display_name in presupuesto.ESTADOS %}
                     <option value="{{ estado }}" {% if presupuesto.estado == estado %}selected{% endif %}>{{ display_name }}</option>
                   {% endfor %}
                 </select>
             </td>
             <td>
+                {% if presupuesto.monto_total %}
+                    {{ presupuesto.monto_total|multiply:0.1|add:presupuesto.monto_total|intcomma }}
+                {% else %}
+                 0
+                {% endif %}
+
+            </td>
+            <td>
               <div class="d-flex align-items-center">
+                  <!-- Enlace para visualizar el presupuesto -->
+
+                  {% if presupuesto.archivopresupuesto %}
+                  <div>
+                  {% if presupuesto.estado != 'A' %}
+                    <a href="{% url 'modificar_presupuesto' presupuesto.id %}" class="btn btn-info">Modificar Presupuesto</a>
+                  {%endif%}
+                  <a href="{% url 'ver_archivo_presupuesto' presupuesto.id %}" class="btn btn-info">Ver Presupuesto</a>
+                    </div>
+                  {% else %}
                   <!-- Formulario para cargar el archivo de presupuesto -->
                   <form method="post" action="{% url 'cargar_presupuesto' presupuesto.id %}" enctype="multipart/form-data" class="d-flex align-items-center">
                       {% csrf_token %}
                       <input type="file" name="archivo_presupuesto" required class="me-2">
                       <button type="submit" class="btn btn-primary me-2">Cargar Presupuesto</button>
                   </form>
+                  {% endif %}
 
-                  <!-- Enlace para visualizar el presupuesto -->
-                  <a href="{% url 'ver_archivo_presupuesto' presupuesto.id %}" class="btn btn-info">Ver Presupuesto</a>
               </div>
             </td>
 
@@ -50,4 +68,45 @@
   {% endif %}
   <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
 {% endblock %}
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 
+function cambiarEstado(selectElement) {
+    const nuevoEstado = selectElement.value;
+    const presupuestoId = selectElement.getAttribute('data-id');
+
+    // Llamada AJAX para actualizar el estado
+    fetch(`/actualizar_estado/${presupuestoId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            estado: nuevoEstado
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status !== 'success') {
+            alert('Error al actualizar el estado');
+            // Opcionalmente, puedes revertir el cambio en el select aquí
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block content %}
+<h1 class="display-4 text-center">Presupuesto: {{ archivo_presupuesto.presupuesto.proyecto.nombre }} - Cliente: {{ archivo_presupuesto.presupuesto.proyecto.cliente.nombre }}</h1>
+
+<dialog id="editarModal" class="modal-dialog">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Editar</h5>
+            <button type="button" onclick="cerrarModal('editarModal')" class="btn-close"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editType" value="">
+            <input type="hidden" id="editId" value="">
+            <div class="mb-3">
+                <label>Rubro:</label>
+                <input type="text" class="form-control" id="editRubro">
+            </div>
+            <div class="mb-3">
+                <label>Unidad de Medida:</label>
+                <input type="text" class="form-control" id="editUM">
+            </div>
+            <div class="mb-3">
+                <label>Cantidad:</label>
+                <input type="number" class="form-control" id="editCantidad">
+            </div>
+            <div class="mb-3">
+                <label>Precio Unitario:</label>
+                <input type="number" class="form-control" id="editPU">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="confirmarEdicion()">Guardar</button>
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal('editarModal')">Cancelar</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="eliminarModal" class="modal-dialog">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Confirmar Eliminación</h5>
+            <button type="button" onclick="cerrarModal('eliminarModal')" class="btn-close"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="deleteType" value="">
+            <input type="hidden" id="deleteId" value="">
+            <p>¿Estás seguro de que quieres eliminar este elemento?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-danger" onclick="confirmarEliminacion()">Sí</button>
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal('eliminarModal')">Cancelar</button>
+        </div>
+    </div>
+</dialog>
+
+<br>
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10"> <!-- Ajusta el tamaño de la columna a md-8 para la tabla principal -->
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Rubro</th>
+                        <th>Unidad de Medida</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unitario</th>
+                        <th>Precio Total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for categoria in categorias %}
+                        <tr class="table-secondary"> <!-- Se añade color de fondo -->
+                            <td colspan="6" style="background-color: #EEE;"><strong>{{ categoria.nombre }}</strong></td>
+                        </tr>
+                        {% for item in categoria.item_set.all %}
+                            <tr class="table-light"> <!-- Se añade color de fondo -->
+                                <td colspan="6" style="background-color: #DDD;"><strong>{{ item.nombre }}</strong></td>
+                            </tr>
+                            {% for subitem in item.subitem_set.all %}
+                                <tr data-type="subitem" data-id="{{ subitem.id }}">
+                                    <td>{{ subitem.rubro }}</td>
+                                    <td>{{ subitem.unidad_medida }}</td>
+                                    <td>{{ subitem.cantidad }}</td>
+                                    <td>{{ subitem.precio_unitario }}</td>
+                                    <td>{{ subitem.precio_total }}</td>
+                                    <td>
+                                        <button onclick="editar(this);" class="btn btn-secondary btn-sm">Editar</button>
+                                        <button onclick="eliminar(this);" class="btn btn-danger btn-sm">Eliminar</button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-4 offset-md-6">
+            <!-- Aquí va tu nueva tablita -->
+            <table class="table table-bordered">
+                <tbody>
+                    <tr>
+                        <td>Total</td>
+                        <td id="totalValue">{{ presupuesto.monto_total }}</td>
+                    </tr>
+                    <tr>
+                        <td>IVA</td>
+                        <td id="ivaValue">{{ presupuesto.monto_total|multiply:0.1 }}</td>
+                    </tr>
+                    <tr>
+                        <td>Monto Total con IVA</td>
+                        <td id="montoTotalIVAValue">{{ presupuesto.monto_total|multiply:0.1|add:presupuesto.monto_total }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<br>
+
+<a href="{% url 'ver_presupuestos' %}" class="btn btn-primary">Volver a Presupuestos</a>
+<a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Volver a Inicio</a>
+{% block extra_js %}
+<script>
+
+function editar(btn) {
+    filaSeleccionada = btn.closest('tr');
+    const tipo = filaSeleccionada.getAttribute('data-type');
+    const id = filaSeleccionada.getAttribute('data-id');
+
+    // Rellenar el modal con los datos actuales de la fila
+    document.getElementById('editType').value = tipo;
+    document.getElementById('editId').value = id;
+    document.getElementById('editRubro').value = filaSeleccionada.children[0].innerText;
+    document.getElementById('editUM').value = filaSeleccionada.children[1].innerText;
+    document.getElementById('editCantidad').value = parseFloat(filaSeleccionada.children[2].innerText);
+    document.getElementById('editPU').value = parseFloat(filaSeleccionada.children[3].innerText);
+
+    // Mostrar el modal de edición
+    document.getElementById('editarModal').showModal();
+}
+
+function eliminar(btn) {
+    filaSeleccionada = btn.closest('tr');
+    const tipo = filaSeleccionada.getAttribute('data-type');
+    const id = filaSeleccionada.getAttribute('data-id');
+
+    // Almacenar el precio total del subitem que se va a eliminar
+    window.precioTotalAEliminar = parseFloat(filaSeleccionada.children[4].innerText);
+
+    document.getElementById('deleteType').value = tipo;
+    document.getElementById('deleteId').value = id;
+
+    // Mostrar el modal de confirmación
+    document.getElementById('eliminarModal').showModal();
+}
+
+// Función para obtener una cookie por su nombre (útil para CSRF token en Django)
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function confirmarEdicion() {
+    const tipo = document.getElementById('editType').value;
+    const id = document.getElementById('editId').value;
+    const rubro = document.getElementById('editRubro').value;
+    const um = document.getElementById('editUM').value;
+    const cantidad = document.getElementById('editCantidad').value;
+    const pu = document.getElementById('editPU').value;
+
+    // Verificamos que sea un SubItem (por ahora)
+    if (tipo === 'subitem') {
+        fetch(`/editar_subitem/${id}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')  // Asegurarse de tener la función getCookie
+            },
+            body: JSON.stringify({
+                rubro: rubro,
+                unidad_medida: um,
+                cantidad: cantidad,
+                precio_unitario: pu
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                filaSeleccionada.children[0].innerText = rubro;
+                filaSeleccionada.children[1].innerText = um;
+                filaSeleccionada.children[2].innerText = cantidad;
+                filaSeleccionada.children[3].innerText = pu;
+
+                const precioTotalAnterior = parseFloat(filaSeleccionada.children[4].innerText);
+                const nuevoPrecioTotal = parseFloat(cantidad) * parseFloat(pu);
+                filaSeleccionada.children[4].innerText = nuevoPrecioTotal;
+
+                const diferencia = nuevoPrecioTotal - precioTotalAnterior;
+                const montoTotalActual = parseFloat(document.getElementById('totalValue').innerText);
+                const nuevoMontoTotal = montoTotalActual + diferencia;
+                const iva = nuevoMontoTotal * 0.1;
+                const montoTotalConIVA = nuevoMontoTotal + iva;
+
+                // Actualizar la tablita
+                document.getElementById('totalValue').innerText = nuevoMontoTotal;
+                document.getElementById('ivaValue').innerText = iva;
+                document.getElementById('montoTotalIVAValue').innerText = montoTotalConIVA;
+            }
+            cerrarModal('editarModal');
+        });
+    }
+}
+
+function confirmarEliminacion() {
+    const tipo = document.getElementById('deleteType').value;
+    const id = document.getElementById('deleteId').value;
+
+    // Verificamos que sea un SubItem (por ahora)
+    if (tipo === 'subitem') {
+        fetch(`/eliminar_subitem/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                filaSeleccionada.remove();
+                // Restar el precio total del subitem eliminado al monto total actual
+                const montoTotalActual = parseFloat(document.getElementById('totalValue').innerText);
+                const nuevoMontoTotal = montoTotalActual - window.precioTotalAEliminar;
+                const iva = nuevoMontoTotal * 0.1;
+                const montoTotalConIVA = nuevoMontoTotal + iva;
+
+                // Actualizar la tablita
+                document.getElementById('totalValue').innerText = nuevoMontoTotal;
+                document.getElementById('ivaValue').innerText = iva;
+                document.getElementById('montoTotalIVAValue').innerText = montoTotalConIVA;
+            }
+            cerrarModal('eliminarModal');
+        });
+    }
+}
+
+function cerrarModal(modalId) {
+    document.getElementById(modalId).close();
+}
+
+
+</script>
+{% endblock %}
+
+{% endblock %}

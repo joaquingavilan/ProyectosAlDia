@@ -90,6 +90,7 @@ class Obra(models.Model):
     encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'}, null=True)
     fecha_inicio = models.DateField(_('fecha de inicio'), null=True)
     fecha_fin = models.DateField(_('fecha de fin'), null=True)
+    plazo = models.PositiveIntegerField(null=True)
     ESTADOS = (
         ('NI', _('No iniciada')),
         ('E', _('En ejecución')),
@@ -109,6 +110,9 @@ class Presupuesto(models.Model):
     proyecto = models.OneToOneField('Proyecto', on_delete=models.CASCADE)
     encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'})
     monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
+    anticipo = models.BooleanField(_('anticipo'), default=False)
+    monto_anticipo = models.DecimalField(_('monto anticipo'), max_digits=15, decimal_places=0, null=True)
+    fecha_pago_anticipo = models.DateField(_('fecha de pago del anticipo'), null=True, blank=True)
     ESTADOS = (
         ('E', _('En elaboración')),
         ('S', _('Enviado')),

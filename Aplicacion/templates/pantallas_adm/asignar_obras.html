@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h1 class="display-4 text-center">Asignar Obra</h1>
+  <br>
+  {% if presupuestos %}
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Nombre del proyecto</th>
+          <th>Fecha Pago Anticipo</th>
+          <th>Plazo de ejecución</th>
+          <th>Ingeniero Encargado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for presupuesto in presupuestos %}
+          <tr>
+            <td>{{ presupuesto.proyecto.nombre }}</td>
+            <td>{{ presupuesto.fecha_pago_anticipo }}</td>
+            <td>{{ presupuesto.proyecto.obra.plazo }}</td>
+            <td>
+                <select class="form-select ingeniero-select" data-presupuesto-id="{{ presupuesto.id }}" onchange="asignarIngeniero(this)">
+                    <option value="" selected>Seleccione Ingeniero</option>
+                    {% for ingeniero in ingenieros %}
+                        <option value="{{ ingeniero.id }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No hay presupuestos pendientes de asignación.</p>
+  {% endif %}
+<a href="{% url 'inicio_adm' %}" class="btn btn-primary">Inicio</a>
+{% endblock %}
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function asignarIngeniero(selectElem) {
+    const idPresupuesto = selectElem.getAttribute('data-presupuesto-id');
+    const idIngeniero = selectElem.value;
+
+    fetch(`/asignar_ingeniero_a_obra/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({presupuesto_id: idPresupuesto, ingeniero_id: idIngeniero})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status !== 'success') {
+            alert('Hubo un error al asignar el ingeniero');
+        }
+    });
+}
+</script>
+{% endblock %}

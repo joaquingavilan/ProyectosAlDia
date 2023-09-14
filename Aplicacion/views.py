@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View
 from .models import *
 from .forms import *
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, UserChangeForm
 from django.contrib.auth import authenticate, login, logout
@@ -21,6 +21,7 @@ from openpyxl.utils import get_column_letter
 import pandas as pd
 from django.core.files import File
 from django.views.decorators.csrf import csrf_exempt
+from decimal import Decimal
 
 
 def inicio(request):
@@ -29,7 +30,7 @@ def inicio(request):
     if rol_usuario == 'GERENTE':
         return render(request, 'inicios/inicio.html')
     elif rol_usuario == 'ADMINISTRADOR':
-        return render(request, 'inicios/inicio.html')
+        return render(request, 'inicios/inicio_adm.html')
     elif rol_usuario == 'INGENIERO':
         return redirect(inicio_ingenieros)
 
@@ -38,6 +39,10 @@ def inicio_ingenieros(request):
     nombre = request.user.first_name
     return render(request, 'inicios/inicio_ingenieros.html', {'nombre': nombre})
 
+
+def inicio_adm(request):
+    nombre = request.user.first_name
+    return render(request, 'inicios/inicio_adm.html', {'nombre': nombre})
 # VISTAS PARA USUARIOS
 
 
@@ -208,8 +213,6 @@ def agregar_contacto(request, tipo, id):
         data = json.loads(request.body)
         nombre = data.get('nombre')
         numero = data.get('numero')
-        print(nombre)
-        print(numero)
         contacto = Contacto(nombre=nombre, numero=numero)
         if tipo == 'cliente':
             contacto.cliente = Cliente.objects.get(pk=id)
@@ -678,23 +681,6 @@ def ver_proyecto(request, id_proyecto):
 def ver_presupuestos(request):
     # falta verificar que el monto total sea valido y mostrar la misma pagina con el error si no lo es
     presupuestos = Presupuesto.objects.filter(encargado=request.user)
-    # Configurar el locale y el formato de moneda
-    locale.setlocale(locale.LC_ALL, 'gn_PY.UTF-8')
-    for presupuesto in presupuestos:
-        if presupuesto.monto_total is not None:
-            presupuesto.monto_total = locale.format_string('%.f', presupuesto.monto_total, grouping=True)
-
-    if request.method == 'POST':
-        presupuesto_id = request.POST.get('presupuesto_id')
-        monto_total = request.POST.get('monto_total')
-        monto_total = monto_total.replace('.', '')
-        estado = request.POST.get('estado')
-
-        presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id)
-        presupuesto.monto_total = monto_total
-        presupuesto.estado = estado
-        presupuesto.save()
-        return redirect('ver_presupuestos')
 
     return render(request, 'pantallas_ing/ver_presupuestos.html', {'presupuestos': presupuestos})
 
@@ -1026,6 +1012,16 @@ def exportar_excel(request):
     return response
 
 
+def extraer_plazo(sheet):
+    for row in sheet.iter_rows(values_only=True):
+        for cell in row:
+            if cell and "Plazo de ejecución" in str(cell):
+                match = re.search(r'Plazo de ejecución: (\d+) días', cell)
+                if match:
+                    return int(match.group(1))
+    return None
+
+
 def cargar_presupuesto(request, pk):
     presupuesto = get_object_or_404(Presupuesto, pk=pk)
     if request.method == "POST" and request.FILES['archivo_presupuesto']:
@@ -1045,21 +1041,24 @@ def cargar_presupuesto(request, pk):
         workbook = load_workbook(archivo_presupuesto.archivo)
         sheet = workbook.active
 
+        #extraemos el plazo de ejecucion
+        plazo = extraer_plazo(sheet)
+        if plazo:
+            obra = presupuesto.proyecto.obra
+            obra.plazo = plazo
+            obra.save()
+            print(plazo)
+
         # Variables para identificar el inicio de la tabla
         inicio_tabla_fila = None
         inicio_tabla_columna = None
 
-        for row in sheet.iter_rows(values_only=True):
-            print(row)
-
         # Navegar por cada fila
         for idx, row in enumerate(sheet.iter_rows(values_only=True)):
-            print('for idx entro')
             found_rubros = False
             for cell in row:
                 if cell and "Rubros" == cell.strip():
                     found_rubros = True
-                    print('found Rubros')
                     break
             if found_rubros:
                 # Obtener el índice de la celda que contiene "Rubros"
@@ -1079,13 +1078,10 @@ def cargar_presupuesto(request, pk):
 
             idx = inicio_tabla_fila + 2  # Comenzamos en la fila siguiente a inicio_tabla
 
-            while idx < sheet.max_row and sheet[idx][
-                inicio_tabla_columna].value:  # Mientras no lleguemos al final del archivo
+            while idx < sheet.max_row and sheet[idx][inicio_tabla_columna].value:  # Mientras no lleguemos al final del archivo
                 fila_actual = [cell.value for cell in sheet[idx]]
                 valor_rubros = fila_actual[inicio_tabla_columna].strip() if fila_actual[inicio_tabla_columna] else None
-                valor_un = fila_actual[inicio_tabla_columna + 1].strip() if fila_actual[
-                    inicio_tabla_columna + 1] else None
-
+                valor_un = fila_actual[inicio_tabla_columna + 1].strip() if fila_actual[inicio_tabla_columna + 1] else None
                 # Comprobar si la fila siguiente tiene valor en "Un"
                 fila_siguiente = [cell.value for cell in sheet[idx + 1]] if idx + 1 <= sheet.max_row else None
                 valor_un_siguiente = fila_siguiente[inicio_tabla_columna + 1].strip() if fila_siguiente and \
@@ -1124,6 +1120,11 @@ def cargar_presupuesto(request, pk):
             print("No se encontró la tabla en el archivo proporcionado.")
 
         workbook.close()
+        # Calcular la suma de todos los campos `precio_total` de los subitems que pertenecen al presupuesto en cuestión, y cargarlas como monto_total del presupuesto
+        suma_total = SubItem.objects.filter(item__categoria__archivo__presupuesto=presupuesto).aggregate(suma=Sum('precio_total'))['suma']
+        presupuesto.monto_total = suma_total
+        presupuesto.monto_anticipo = suma_total/2
+        presupuesto.save()
 
         # Redirige al usuario a donde desees luego de procesar el archivo
         return redirect('ver_presupuestos')
@@ -1134,13 +1135,27 @@ def cargar_presupuesto(request, pk):
 def ver_archivo_presupuesto(request, pk):
     archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=pk)
     categorias = Categoria.objects.filter(archivo=archivo_presupuesto).order_by('pk')
-
+    presupuesto = archivo_presupuesto.presupuesto
     # Pasamos el archivo_presupuesto y las categorías al template
     context = {
         'archivo_presupuesto': archivo_presupuesto,
-        'categorias': categorias
+        'categorias': categorias,
+        'presupuesto': presupuesto
     }
     return render(request, 'pantallas_ing/ver_presupuesto.html', context)
+
+
+def modificar_presupuesto(request, pk):
+    archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=pk)
+    categorias = Categoria.objects.filter(archivo=archivo_presupuesto).order_by('pk')
+    presupuesto = archivo_presupuesto.presupuesto
+    # Pasamos el archivo_presupuesto y las categorías al template
+    context = {
+        'archivo_presupuesto': archivo_presupuesto,
+        'categorias': categorias,
+        'presupuesto': presupuesto
+    }
+    return render(request, 'pantallas_ing/modificar_presupuesto.html', context)
 
 
 def editar_categoria(request, categoria_id):
@@ -1153,6 +1168,14 @@ def editar_item(request, item_id):
     return JsonResponse({'status': 'success'})
 
 
+# Función para actualizar el monto_total de un presupuesto basado en sus subitems
+def actualizar_monto_total(presupuesto):
+    suma_total = SubItem.objects.filter(item__categoria__archivo__presupuesto=presupuesto).aggregate(suma=Sum('precio_total'))['suma']
+    presupuesto.monto_total = suma_total
+    presupuesto.monto_anticipo = suma_total/2
+    presupuesto.save()
+
+
 @csrf_exempt
 def editar_subitem(request, subitem_id):
     if request.method == "POST":
@@ -1161,9 +1184,13 @@ def editar_subitem(request, subitem_id):
             subitem = SubItem.objects.get(pk=subitem_id)
             subitem.rubro = data.get('rubro')
             subitem.unidad_medida = data.get('unidad_medida')
-            subitem.cantidad = data.get('cantidad')
-            subitem.precio_unitario = data.get('precio_unitario')
+            subitem.cantidad = Decimal(data.get('cantidad'))
+            subitem.precio_unitario = Decimal(data.get('precio_unitario'))
+            subitem.precio_total = subitem.cantidad * subitem.precio_unitario
             subitem.save()
+
+            presupuesto_asociado = subitem.item.categoria.archivo.presupuesto
+            actualizar_monto_total(presupuesto_asociado)
 
             return JsonResponse({'status': 'success'})
 
@@ -1178,7 +1205,7 @@ def eliminar_subitem(request, subitem_id):
     if request.method == "DELETE":
         try:
             subitem = SubItem.objects.get(pk=subitem_id)
-
+            presupuesto_asociado = subitem.item.categoria.archivo.presupuesto
             # Capturamos el Item asociado al SubItem antes de eliminarlo
             item_asociado = subitem.item
             subitem.delete()
@@ -1193,9 +1220,147 @@ def eliminar_subitem(request, subitem_id):
                 if not categoria_asociada.item_set.exists():
                     categoria_asociada.delete()
 
+            actualizar_monto_total(presupuesto_asociado)
             return JsonResponse({'status': 'success'})
 
         except SubItem.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Subitem no encontrado'}, status=404)
 
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+@csrf_exempt
+def actualizar_estado(request, presupuesto_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            nuevo_estado = data.get('estado')
+            presupuesto = Presupuesto.objects.get(pk=presupuesto_id)
+            presupuesto.estado = nuevo_estado
+            presupuesto.save()
+            return JsonResponse({'status': 'success'})
+        except Presupuesto.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Presupuesto no encontrado'}, status=404)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+def ver_presupuestos_adm(request):
+    presupuestos = Presupuesto.objects.all()
+    # Configuración de la paginación
+    paginator = Paginator(presupuestos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'pantallas_adm/ver_presupuestos_adm.html', {'presupuestos': presupuestos, 'page_obj': page_obj})
+
+
+@csrf_exempt
+def actualizar_anticipo(request, presupuesto_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            presupuesto = Presupuesto.objects.get(pk=presupuesto_id)
+            presupuesto.anticipo = data['anticipo']
+            if presupuesto.estado == 'S' and presupuesto.anticipo is True:
+                presupuesto.estado = 'A'
+            if presupuesto.anticipo is True:
+                presupuesto.fecha_pago_anticipo = date.today()
+            presupuesto.save()
+            return JsonResponse({
+                'status': 'success',
+                'nuevo_estado': presupuesto.get_estado_display(),
+                'fecha_pago_anticipo': presupuesto.fecha_pago_anticipo.strftime(
+                    '%d/%m/%Y') if presupuesto.fecha_pago_anticipo else None
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+def asignar_obras(request):
+    # Buscamos los presupuestos que tienen anticipo pagado
+    presupuestos_con_anticipo = Presupuesto.objects.filter(anticipo=True)
+    # Filtramos aquellos presupuestos cuyo proyecto no tiene una obra con encargado asignado
+    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if not presupuesto.proyecto.obra.encargado]
+    ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
+    context = {'presupuestos': presupuestos_a_asignar,
+               'ingenieros': ingenieros}
+    return render(request, 'pantallas_adm/asignar_obras.html', context)
+
+
+@csrf_exempt
+def asignar_ingeniero_a_obra(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            presupuesto_id = data.get('presupuesto_id')
+            ingeniero_id = data.get('ingeniero_id')
+
+            # Obtener el presupuesto
+            presupuesto = Presupuesto.objects.get(pk=presupuesto_id)
+
+            # Obtener la obra relacionada con el proyecto del presupuesto
+            obra = Obra.objects.get(proyecto=presupuesto.proyecto)
+
+            # Asignar el ingeniero a la obra
+            obra.encargado = User.objects.get(pk=ingeniero_id)
+            obra.save()
+
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+def buscar_presupuestos(request):
+    query = request.GET.get('q', '')
+    presupuestos = Presupuesto.objects.filter(
+        Q(proyecto__nombre__icontains=query)
+    )
+    data = [
+        {
+            'id': presupuesto.id,
+            'proyecto_nombre': presupuesto.proyecto.nombre,
+            'cliente_nombre': presupuesto.proyecto.cliente.nombre
+        }
+        for presupuesto in presupuestos
+    ]
+    return JsonResponse(data, safe=False)
+
+
+def ver_presupuesto_adm(request, presupuesto_id):
+    presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id)
+    return render(request, 'pantallas_adm/ver_presupuesto_adm.html', {'presupuesto': presupuesto})
+
+
+def obtener_estados_anticipo(request):
+    estados = ['Sí', 'No']
+    return JsonResponse(list(estados), safe=False)
+
+
+def ver_proyectos_estado_anticipo(request, anticipo):
+    if anticipo == 'Sí':
+        presupuestos = Presupuesto.objects.filter(anticipo=True)
+    else:
+        presupuestos = Presupuesto.objects.filter(anticipo=False)
+    return render(request, 'pantallas_adm/ver_presupuestos_filtrados.html', {'presupuestos': presupuestos})
+
+
+def ver_presupuestos_cliente(request, cliente_nombre):
+    presupuestos = Presupuesto.objects.filter(proyecto__cliente__nombre=cliente_nombre)
+    return render(request, 'pantallas_adm/ver_presupuestos_filtrados.html', {'presupuestos': presupuestos})
+
+
+def ver_presupuestos_encargado_presupuesto(request, ingeniero_user):
+    ingeniero = User.objects.filter(username=ingeniero_user)
+    presupuestos = Presupuesto.objects.filter(encargado__in=ingeniero)
+    return render(request, 'pantallas_adm/ver_presupuestos_filtrados.html', {'presupuestos': presupuestos})
+
+
+def ver_presupuestos_estado_presupuesto(request, estado):
+    # Convertir el nombre legible del estado a su código correspondiente
+    estado_codigo = {value: key for key, value in dict(Presupuesto.ESTADOS).items()}[estado]
+
+    # Filtrar los proyectos basándose en el código del estado
+    presupuestos = Presupuesto.objects.filter(estado=estado_codigo)
+
+    return render(request, 'pantallas_adm/ver_presupuestos_filtrados.html', {'presupuestos': presupuestos})
