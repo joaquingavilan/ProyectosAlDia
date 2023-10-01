@@ -27,6 +27,7 @@ from decimal import Decimal
 def inicio(request):
     perfil = Perfil.objects.get(user=request.user)
     rol_usuario = perfil.rol.nombre
+    verificar_obras_agendadas()
     if rol_usuario == 'GERENTE':
         return render(request, 'inicios/inicio.html')
     elif rol_usuario == 'ADMINISTRADOR':
@@ -133,7 +134,10 @@ def get_cliente_data(request, cliente_id):
     data = {
         "nombre": cliente.nombre,
         "ruc": cliente.ruc,
-        "email": cliente.email
+        "email": cliente.email,
+        'tipo_persona': cliente.tipo_persona,
+        'ciudad': cliente.ciudad,
+        'direccion': cliente.direccion
         # ... otros campos ...
     }
     return JsonResponse(data)
@@ -157,6 +161,7 @@ def editar_cliente(request, pk):
             return JsonResponse({"status": "success"})
         else:
             # En caso de que el formulario no sea válido, devolvemos los errores en formato JSON
+            print(form.errors)
             return JsonResponse({"status": "error", "errors": form.errors}, status=400)
     return render(request, 'ABM/clientes/editar_cliente.html', {'form': form})
 
@@ -464,7 +469,10 @@ def get_proveedor_data(request, proveedor_id):
     data = {
         "nombre": proveedor.nombre,
         "ruc": proveedor.ruc,
-        "email": proveedor.email
+        "email": proveedor.email,
+        "ciudad": proveedor.ciudad,
+        "pagina_web": proveedor.pagina_web,
+        "direccion": proveedor.direccion
         # ... otros campos ...
     }
     return JsonResponse(data)
@@ -961,7 +969,7 @@ def exportar_excel(request):
     elif tipo_dato == 'Clientes':
         ws.title = "Clientes"
         # Añadir encabezados a la hoja
-        encabezados = ['ID', 'Nombre', 'RUC', 'Email']
+        encabezados = ['ID', 'Tipo_persona', 'Nombre', 'RUC', 'Email', 'Ciudad', 'Direccion']
         for col_num, encabezado in enumerate(encabezados, 1):
             col_letter = get_column_letter(col_num)
             ws['{}1'.format(col_letter)] = encabezado
@@ -972,8 +980,7 @@ def exportar_excel(request):
 
         # Añadir datos a la hoja
         for cliente in clientes:
-            ws.append([cliente.id, cliente.nombre, cliente.ruc, cliente.email])
-
+            ws.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.email, cliente.ciudad, cliente.direccion])
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=Clientes.xlsx'
         wb.save(response)
@@ -981,14 +988,14 @@ def exportar_excel(request):
     elif tipo_dato == 'Proveedores':
 
         ws.title = "Proveedores"
-        encabezados = ['ID', 'Nombre', 'RUC', 'Email']
+        encabezados = ['ID', 'Nombre', 'RUC', 'Email', 'Pagina web', 'Ciudad', 'Direccion']
         for col_num, encabezado in enumerate(encabezados, 1):
             col_letter = get_column_letter(col_num)
             ws['{}1'.format(col_letter)] = encabezado
             ws.column_dimensions[col_letter].width = 15
         proveedores = Proveedor.objects.all()
         for proveedor in proveedores:
-            ws.append([proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.email])
+            ws.append([proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.email, proveedor.pagina_web, proveedor.ciudad, proveedor.direccion])
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=Proveedores.xlsx'
         wb.save(response)
@@ -1348,6 +1355,15 @@ def ver_presupuestos_estado_presupuesto(request, estado):
     presupuestos = Presupuesto.objects.filter(estado=estado_codigo)
 
     return render(request, 'pantallas_adm/ver_presupuestos_filtrados.html', {'presupuestos': presupuestos})
+
+
+def verificar_obras_agendadas():
+    # Obtener todas las obras que deberían haber empezado pero aún están en estado "No Iniciada"
+    obras_a_iniciar = Obra.objects.filter(estado='NI', fecha_inicio__lte=date.today())
+
+    for obra in obras_a_iniciar:
+        obra.estado = 'E'  # Cambiar el estado a "En ejecución"
+        obra.save()
 
 
 def iniciar_obra(request, obra_id):

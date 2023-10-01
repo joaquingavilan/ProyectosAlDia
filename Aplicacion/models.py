@@ -1,4 +1,4 @@
-from django.core.validators import RegexValidator, EmailValidator
+from django.core.validators import RegexValidator, EmailValidator, URLValidator
 from django.db import models
 from datetime import date
 from django.core.exceptions import ValidationError
@@ -48,10 +48,18 @@ class Contacto(models.Model):
 
 
 class Cliente(models.Model):
+    TIPO_PERSONA_CHOICES = [
+        ('Juridica', 'Jurídica'),
+        ('Fisica', 'Física'),
+    ]
+
     nombre = models.CharField(max_length=50, validators=[
         RegexValidator(r'^[\w\s]*$', message='Introduzca solo letras, números y espacios en blanco')])
     ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
     email = models.EmailField()
+    tipo_persona = models.CharField(max_length=8, choices=TIPO_PERSONA_CHOICES, default='Fisica')
+    direccion = models.CharField(max_length=200, default='', blank=True)
+    ciudad = models.CharField(max_length=20, default='', blank=True)
 
     def __str__(self):
         return self.nombre
@@ -65,12 +73,18 @@ def validate_fecha_nacimiento(value):
 class Proveedor(models.Model):
     nombre = models.CharField(max_length=50, validators=[
         RegexValidator(r'^[\w\s]*$', message='Introduzca solo letras, números y espacios en blanco')])
-    ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
+    ruc = models.CharField(max_length=20, validators=[
+        RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
     email = models.EmailField(max_length=254, validators=[EmailValidator()])
+    direccion = models.CharField(max_length=200, default='', blank=True)
+    ciudad = models.CharField(max_length=20, default='', blank=True)
+    pagina_web = models.CharField(max_length=255, validators=[
+        RegexValidator(r'^[\w\-]+\.[\w\-]+(\.[\w\-]+)?$',
+                       message='La URL debe tener el formato "texto.texto" o "texto.texto.texto"')
+    ], blank=True, null=True)
 
     def __str__(self):
         return f"{self.id} - {self.nombre}"
-
 
 class Material(models.Model):
     nombre = models.CharField(max_length=100)

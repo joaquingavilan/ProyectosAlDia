@@ -14,7 +14,7 @@
     </div>
 
     <!-- Botón para abrir el modal de agregar contacto -->
-    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#contactoModal">
+    <button type="button" class="btn btn-primary" id="abrirModalBtn">
         Agregar Contacto
     </button>
 
@@ -28,36 +28,36 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="contactoModalLabel">Agregar Contacto</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <!-- Formulario de Contacto -->
-                <div>
-                    <label for="contactoNombre">Nombre:</label>
-                    <input type="text" id="contactoNombre">
+                <div class="mb-3">
+                    <label for="contactoNombre" class="form-label">Nombre:</label>
+                    <input type="text" class="form-control" id="contactoNombre">
                 </div>
-                <div>
-                    <label for="contactoNumero">Número:</label>
-                    <input type="text" id="contactoNumero">
+                <div class="mb-3">
+                    <label for="contactoNumero" class="form-label">Número:</label>
+                    <input type="text" class="form-control" id="contactoNumero">
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 <button type="button" class="btn btn-primary" id="agregarContactoBtn">Agregar</button>
             </div>
         </div>
     </div>
 </div>
 
+
+
 {% endblock %}
 
 {% block extra_js %}
     <script>
-        let contactos = []; // Almacenará los contactos agregados
+        let contactos = [];
 
-       document.getElementById("agregarContactoBtn").addEventListener("click", function() {
+        document.getElementById("agregarContactoBtn").addEventListener("click", function() {
             let nombre = document.getElementById("contactoNombre").value;
             let numero = document.getElementById("contactoNumero").value;
 
@@ -86,32 +86,39 @@
                 document.getElementById("contactoNombre").value = "";
                 document.getElementById("contactoNumero").value = "";
 
-                // Cerrar el modal
-                $('#contactoModal').modal('hide');
+                // Cerrar el modal usando la API de Bootstrap 5
+                let modalContacto = new bootstrap.Modal(document.getElementById('contactoModal'));
+                modalContacto.hide();
             } else {
                 alert("Por favor, rellena ambos campos.");
             }
        });
 
-    document.getElementById("mainForm").addEventListener("submit", function(event) {
-        // Antes de enviar el formulario, agregamos los contactos como campos ocultos
-        let form = event.target;
+        document.getElementById("mainForm").addEventListener("submit", function(event) {
+            // Antes de enviar el formulario, agregamos los contactos como campos ocultos
+            let form = event.target;
 
-        contactos.forEach(contacto => {
-            let inputNombre = document.createElement("input");
-            inputNombre.type = "hidden";
-            inputNombre.name = "contactos[]";
-            inputNombre.value = contacto.nombre;
-            form.appendChild(inputNombre);
+            contactos.forEach(contacto => {
+                let inputNombre = document.createElement("input");
+                inputNombre.type = "hidden";
+                inputNombre.name = "contactos[]";
+                inputNombre.value = contacto.nombre;
+                form.appendChild(inputNombre);
 
-            let inputNumero = document.createElement("input");
-            inputNumero.type = "hidden";
-            inputNumero.name = "contactos[]";
-            inputNumero.value = contacto.numero;
-            form.appendChild(inputNumero);
+                let inputNumero = document.createElement("input");
+                inputNumero.type = "hidden";
+                inputNumero.name = "contactos[]";
+                inputNumero.value = contacto.numero;
+                form.appendChild(inputNumero);
+            });
         });
-    });
+
+        document.getElementById("abrirModalBtn").addEventListener("click", function() {
+            let modalContacto = new bootstrap.Modal(document.getElementById('contactoModal'));
+            modalContacto.show();
+        });
+
     </script>
-  {% endblock %}
+{% endblock %}
 
 

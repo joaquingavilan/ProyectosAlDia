@@ -19,6 +19,9 @@
             <th scope="col">Nombre</th>
             <th scope="col">RUC</th>
             <th scope="col">Email</th>
+            <th scope="col">Pagina web</th>
+            <th scope="col">Ciudad</th>
+            <th scope="col">Direccion</th>
             <th scope="col">Acciones</th>
         </tr>
     </thead>
@@ -28,6 +31,19 @@
             <td>{{ proveedor.nombre }}</td>
             <td>{{ proveedor.ruc }}</td>
             <td>{{ proveedor.email }}</td>
+            <td>
+                {% if proveedor.pagina_web %}
+                    {% if "http://" in proveedor.pagina_web or "https://" in proveedor.pagina_web %}
+                        <a href="{{ proveedor.pagina_web }}" target="_blank">{{ proveedor.pagina_web }}</a>
+                    {% else %}
+                        <a href="http://{{ proveedor.pagina_web }}" target="_blank">{{ proveedor.pagina_web }}</a>
+                    {% endif %}
+                {%else%}
+                    -
+                {%endif%}
+            </td>
+            <td>{{ proveedor.ciudad }}</td>
+            <td>{{ proveedor.direccion }}</td>
             <td>
                 <!-- Botón para abrir el modal de edición -->
                 <button type="button" class="btn btn-primary editarProveedorBtn" data-proveedor-id="{{ proveedor.id }}">Editar</button>
@@ -108,6 +124,18 @@
                         <label for="emailProveedor">Email:</label>
                         <input type="email" class="form-control" id="emailProveedor" name="email">
                     </div>
+                    <div class="form-group">
+                        <label for="direccionProveedor">Dirección:</label>
+                        <input type="text" class="form-control" id="direccionProveedor" name="direccion">
+                    </div>
+                    <div class="form-group">
+                        <label for="ciudadProveedor">Ciudad:</label>
+                        <input type="text" class="form-control" id="ciudadProveedor" name="ciudad">
+                    </div>
+                    <div class="form-group">
+                        <label for="paginaWebProveedor">Página Web:</label>
+                        <input type="text" class="form-control" id="paginaWebProveedor" name="pagina_web">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -186,6 +214,9 @@
                     document.getElementById("nombreProveedor").value = data.nombre;
                     document.getElementById("rucProveedor").value = data.ruc;
                     document.getElementById("emailProveedor").value = data.email;
+                    document.getElementById("direccionProveedor").value = data.direccion || '';  // Añadido
+                    document.getElementById("ciudadProveedor").value = data.ciudad || '';        // Añadido
+                    document.getElementById("paginaWebProveedor").value = data.pagina_web || ''; // Añadido
                     document.getElementById("editarProveedorForm").action = `/editar_proveedor/${proveedorId}/`;
 
                     let modal = new bootstrap.Modal(document.getElementById('editarProveedorModal'));

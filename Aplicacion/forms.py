@@ -62,6 +62,9 @@ class CustomUserChangeForm(UserChangeForm):
 
 
 class ClienteForm(forms.ModelForm):
+    direccion = forms.CharField(required=False, max_length=200)
+    ciudad = forms.CharField(required=False, max_length=20)
+
     class Meta:
         model = Cliente
         fields = '__all__'
@@ -78,7 +81,7 @@ class BuscadorClienteForm(forms.Form):
 class ProveedorForm(forms.ModelForm):
     class Meta:
         model = Proveedor
-        fields = ['nombre', 'ruc', 'email']
+        fields = '__all__'
 
 
 class BuscadorProveedorForm(forms.Form):

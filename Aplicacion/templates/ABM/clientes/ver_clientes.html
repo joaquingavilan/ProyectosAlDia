@@ -18,8 +18,10 @@
     <thead>
         <tr>
             <th scope="col">Nombre</th>
+            <th scope="col">Tipo de persona</th>
             <th scope="col">RUC</th>
             <th scope="col">Email</th>
+            <th scope="col">Ciudad</th>
             <th scope="col">Acciones</th>
         </tr>
     </thead>
@@ -27,8 +29,16 @@
         {% for cliente in page_obj %}
         <tr>
             <td>{{ cliente.nombre }}</td>
+            <td>{{ cliente.tipo_persona }}</td>
             <td>{{ cliente.ruc }}</td>
             <td>{{ cliente.email }}</td>
+            <td>
+            {%if cliente.ciudad %}
+                {{ cliente.ciudad }}
+            {% else %}
+                -
+            {% endif %}
+            </td>
             <td>
                 <!-- Botón para abrir el modal de edición -->
                 <button type="button" class="btn btn-primary editarClienteBtn" data-cliente-id="{{ cliente.id }}">Editar</button>
@@ -99,12 +109,27 @@
                         <input type="text" class="form-control" id="nombre" name="nombre">
                     </div>
                     <div class="form-group">
+                        <label for="tipo_persona">Tipo de persona:</label>
+                        <select class="form-control" id="tipo_persona" name="tipo_persona">
+                            <option value="Fisica">Física</option>
+                            <option value="Juridica">Jurídica</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="ruc">RUC:</label>
                         <input type="text" class="form-control" id="ruc" name="ruc">
                     </div>
                     <div class="form-group">
                         <label for="email">Email:</label>
                         <input type="email" class="form-control" id="email" name="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="direccion">Direccion:</label>
+                        <input type="direccion" class="form-control" id="direccion" name="direccion">
+                    </div>
+                    <div class="form-group">
+                        <label for="ciudad">Ciudad:</label>
+                        <input type="ciudad" class="form-control" id="ciudad" name="ciudad">
                     </div>
                     <!-- ... otros campos ... -->
                 </div>
@@ -178,7 +203,10 @@
                 document.getElementById("nombre").value = data.nombre;
                 document.getElementById("ruc").value = data.ruc;
                 document.getElementById("email").value = data.email;
-
+                document.getElementById("direccion").value = data.direccion;
+                document.getElementById("ciudad").value = data.ciudad;
+                let tipoPersonaSelect = document.getElementById("tipo_persona");
+                tipoPersonaSelect.value = data.tipo_persona;
                 // Establecemos la URL correcta para el formulario en el modal
                 document.getElementById("editarClienteForm").action = `/editar_cliente/${clienteId}/`;
 
