@@ -115,6 +115,7 @@
                                     <th>Cantidad</th>
                                     <th>Precio Unitario</th>
                                     <th>Precio Total</th>
+                                    <th>Acción</th>
                                 </tr>
                             </thead>
                             <tbody id="certificadoBody">
@@ -183,11 +184,13 @@
                     <tr data-type="subitem" data-id="${subitem.id}" data-item-id="${subitem.itemId}">
                         <td>${subitem.rubro}</td>
                         <td>${subitem.unidad_medida}</td>
-                        <td>${subitem.cantidad}</td>
-                        <td>${subitem.precio_unitario}</td>
-                        <td>${subitem.precio_total}</td>
+                        <td class="subitem-cantidad"><input type="number" value="0" min="0" max="${subitem.cantidad}" class="cantidad-input"></td>
+                        <td class="subitem-precio-unitario">${subitem.precio_unitario}</td> <!-- Agregar clase -->
+                        <td class="subitem-precio-total">0</td> <!-- Establecer el precio total a 0 y agregar clase -->
+                        <td><button class="btn btn-danger btn-sm eliminar-btn">Eliminar</button></td>
                     </tr>
                 `;
+
                     if (itemId) {
                         const itemInCertificado = document.querySelector(`#certificadoBody > tr[data-type="item"][data-id="${itemId}"]`);
                         itemInCertificado.insertAdjacentHTML('afterend', fila);
@@ -197,7 +200,8 @@
                             const lastSubitemOfItem = allSubitemsOfItem[allSubitemsOfItem.length - 1];
                             lastSubitemOfItem.insertAdjacentHTML('afterend', fila);
                         } else {
-                            document.getElementById("certificadoBody").innerHTML += fila;
+                            document.getElementById("certificadoBody").insertAdjacentHTML('beforeend', fila);
+
                         }
                     }
                 }
@@ -215,6 +219,7 @@
                 const filaItem = `
                     <tr data-type="item" data-id="${item.id}" data-categoria-id="${item.categoriaId}" style="background-color: #DDD;">
                         <td colspan="5"><strong>${item.nombre}</strong></td>
+                        <td><button class="btn btn-danger btn-sm eliminar-btn">Eliminar</button></td>
                     </tr>
                 `;
 
@@ -232,7 +237,7 @@
                         lastItemOfCategoria.insertAdjacentHTML('afterend', filaItem);
                     }
                 } else {
-                    document.getElementById("certificadoBody").innerHTML += filaItem;
+                    document.getElementById("certificadoBody").insertAdjacentHTML('beforeend', filaItem);
                 }
 
                 if (agregarSubitems) {
@@ -254,9 +259,10 @@
                 const filaCategoria = `
                     <tr data-type="categoria" data-id="${categoria.id}" style="background-color: #EEE;">
                         <td colspan="5"><strong>${categoria.nombre}</strong></td>
+                        <td><button class="btn btn-danger btn-sm eliminar-btn">Eliminar</button></td>
                     </tr>
                 `;
-                document.getElementById("certificadoBody").innerHTML += filaCategoria;
+                document.getElementById("certificadoBody").insertAdjacentHTML('beforeend', filaCategoria);
                 if (agregarItems) {
                     for (let item of categoria.items) {
                         agregarItemAlCertificado(item.id);
@@ -264,6 +270,87 @@
                 }
             }
         }
+
+        document.addEventListener("click", function(event) {
+            if (event.target && event.target.classList.contains("eliminar-btn")) {
+                const row = event.target.closest('tr');
+                const type = row.getAttribute('data-type');
+                const id = row.getAttribute('data-id');
+
+                if (type === "subitem") {
+                    eliminarSubitem(row);
+                } else if (type === "item") {
+                    eliminarItem(row);
+                } else if (type === "categoria") {
+                    eliminarCategoria(row);
+                }
+            }
+        });
+
+        function eliminarSubitem(row) {
+            const itemId = row.getAttribute('data-item-id');
+            row.remove();
+
+            // Verificar si todos los subitems del ítem han sido eliminados
+            const subitemRows = document.querySelectorAll(`#certificadoBody > tr[data-type="subitem"][data-item-id="${itemId}"]`);
+            if (!subitemRows.length) {
+                const itemRow = document.querySelector(`#certificadoBody > tr[data-type="item"][data-id="${itemId}"]`);
+                eliminarItem(itemRow);
+            }
+        }
+
+        function eliminarItem(row) {
+            const categoriaId = row.getAttribute('data-categoria-id');
+
+            // Eliminar todos los subitems de este ítem
+            const subitemRows = document.querySelectorAll(`#certificadoBody > tr[data-type="subitem"][data-item-id="${row.getAttribute('data-id')}"]`);
+            subitemRows.forEach(r => r.remove());
+
+            row.remove();
+
+            // Verificar si todos los ítems de la categoría han sido eliminados
+            const itemRows = document.querySelectorAll(`#certificadoBody > tr[data-type="item"][data-categoria-id="${categoriaId}"]`);
+            if (!itemRows.length) {
+                const categoriaRow = document.querySelector(`#certificadoBody > tr[data-type="categoria"][data-id="${categoriaId}"]`);
+                eliminarCategoria(categoriaRow);
+            }
+        }
+
+        function eliminarCategoria(row) {
+            // Eliminar todos los ítems y subitems de esta categoría
+            const itemRows = document.querySelectorAll(`#certificadoBody > tr[data-type="item"][data-categoria-id="${row.getAttribute('data-id')}"]`);
+            itemRows.forEach(r => eliminarItem(r));
+
+            row.remove();
+        }
+
+
+
+        // Agregar un oyente de eventos para todos los campos de cantidad
+        document.addEventListener("input", function(event) {
+            if (event.target && event.target.classList.contains("cantidad-input")) {
+                const row = event.target.closest('tr');
+                const precioUnitario = parseFloat(row.querySelector(".subitem-precio-unitario").textContent);
+                let newCantidad = parseFloat(event.target.value);
+                const precioTotalCell = row.querySelector(".subitem-precio-total");
+
+                // Verificar si el valor ingresado excede el máximo
+                const maxCantidad = parseFloat(event.target.getAttribute('max'));
+                if (newCantidad > maxCantidad) {
+                    alert('No puedes ingresar una cantidad mayor a la establecida en el presupuesto.');
+                    newCantidad = 0;  // Restablecemos la cantidad a 0
+                    event.target.value = 0;  // Restablecemos el valor del input a 0
+                }else if (newCantidad < 0) {
+                    alert('La cantidad debe ser mayor o igual a 0.');
+                    newCantidad = 0;  // Restablecemos la cantidad a 0
+                    event.target.value = 0;  // Restablecemos el valor del input a 0
+                }
+
+
+                precioTotalCell.textContent = (precioUnitario * newCantidad).toFixed(2); // Asumiendo 2 decimales
+            }
+        });
+
 
         function getClosestWithDataId(element) {
             while (element && !element.getAttribute('data-id') && element.tagName !== 'BODY') {

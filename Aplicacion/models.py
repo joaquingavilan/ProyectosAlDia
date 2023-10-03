@@ -86,6 +86,7 @@ class Proveedor(models.Model):
     def __str__(self):
         return f"{self.id} - {self.nombre}"
 
+
 class Material(models.Model):
     nombre = models.CharField(max_length=100)
     marca = models.CharField(max_length=100)
@@ -235,10 +236,28 @@ class Certificado(models.Model):
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
 
 
+class CategoriaCertificado(models.Model):
+    certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE)
+    nombre = models.CharField(max_length=255)
+    def __str__(self):
+        return f'{self.nombre}'
+
+
+class ItemCertificado(models.Model):
+    categoria = models.ForeignKey(CategoriaCertificado, on_delete=models.CASCADE, null=True, blank=True)
+    certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE)
+    nombre = models.CharField(max_length=255)
+    def __str__(self):
+        return f'{self.nombre}'
+
+
 class SubItemCertificado(models.Model):
+    item = models.ForeignKey(ItemCertificado, on_delete=models.CASCADE)
     certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE)
     subitem = models.ForeignKey(SubItem, on_delete=models.CASCADE)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=0)
     unidad_medida = models.CharField(max_length=50)
     precio_total = models.DecimalField(max_digits=10, decimal_places=0)
+    def __str__(self):
+        return f'{self.nombre}'
