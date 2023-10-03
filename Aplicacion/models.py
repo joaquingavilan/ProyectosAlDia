@@ -222,3 +222,23 @@ class SubItem(models.Model):
 
     def __str__(self):
         return f'{self.rubro}'
+
+
+class Certificado(models.Model):
+    presupuesto = models.ForeignKey(Presupuesto, on_delete=models.CASCADE)
+    ingeniero = models.ForeignKey(User, on_delete=models.CASCADE)
+    fecha = models.DateField()
+    ESTADOS = (
+        ('P', 'Presentado'),
+        ('G', 'Pagado'),
+    )
+    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
+
+
+class SubItemCertificado(models.Model):
+    certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE)
+    subitem = models.ForeignKey(SubItem, on_delete=models.CASCADE)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=0)
+    unidad_medida = models.CharField(max_length=50)
+    precio_total = models.DecimalField(max_digits=10, decimal_places=0)

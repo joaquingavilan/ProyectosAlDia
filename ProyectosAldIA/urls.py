@@ -109,4 +109,6 @@ urlpatterns = [
     path('iniciar_obra/<int:obra_id>/', views.iniciar_obra, name='iniciar_obra'),
     path('agendar_inicio_obra/<int:obra_id>/', views.agendar_inicio_obra, name='agendar_inicio_obra'),
     path('finalizar_obra/<int:obra_id>/', views.finalizar_obra, name='finalizar_obra'),
+    path('elaborar_certificado', views.elaborar_certificado, name='elaborar_certificado'),
+    path('obtener_presupuesto_detalle/<int:proyecto_id>/', views.obtener_presupuesto_detalle, name='obtener_presupuesto_detalle'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

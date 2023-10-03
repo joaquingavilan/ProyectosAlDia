@@ -22,7 +22,7 @@ import pandas as pd
 from django.core.files import File
 from django.views.decorators.csrf import csrf_exempt
 from decimal import Decimal
-
+from django.core.serializers import serialize
 
 def inicio(request):
     perfil = Perfil.objects.get(user=request.user)
@@ -1403,3 +1403,80 @@ def finalizar_obra(request, obra_id):
             return JsonResponse({'status': 'success', 'message': 'Obra finalizada con éxito', 'fecha_fin': obra.fecha_fin.strftime('%Y-%m-%d')})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+def elaborar_certificado(request):
+    obras = Obra.objects.filter(encargado=request.user, estado='E')
+
+    # Extraemos los proyectos relacionados con las obras
+    proyectos = [obra.proyecto for obra in obras]
+
+    # Filtramos los presupuestos usando esos proyectos
+    presupuestos = Presupuesto.objects.filter(proyecto__in=proyectos)
+    presupuestos_dict = {presupuesto.proyecto.id: presupuesto for presupuesto in presupuestos}
+    presupuestos_serializados = serialize('json', presupuestos)
+
+    # Obtener el archivo_presupuesto
+    archivos_presupuesto = ArchivoPresupuesto.objects.filter(presupuesto__in=presupuestos)
+
+    # Obtener las categorías para cada archivo_presupuesto
+    categorias = {archivo.id: Categoria.objects.filter(archivo=archivo).order_by('pk') for archivo in archivos_presupuesto}
+
+    context = {
+        'obras': obras,
+        'presupuestos': presupuestos_serializados,
+        'archivos_presupuesto': archivos_presupuesto,
+        'categorias': categorias
+    }
+
+    return render(request, 'pantallas_ing/elaborar_certificado.html', context)
+
+
+def guardar_certificado(request):
+    # Lógica para crear el certificado y agregar todos los subitems.
+    # ...
+    return JsonResponse({"status": "success"})
+
+
+def obtener_presupuesto_detalle(request, proyecto_id):
+    try:
+        # Buscamos el presupuesto basado en el proyecto_id
+        presupuesto = Presupuesto.objects.get(proyecto_id=proyecto_id)
+
+        # Obtenemos el archivo_presupuesto relacionado
+        archivo_presupuesto = ArchivoPresupuesto.objects.get(presupuesto=presupuesto)
+
+        # Recuperamos las categorías y los subitems
+        categorias = Categoria.objects.filter(archivo=archivo_presupuesto).order_by('pk')
+
+        data = []
+        for categoria in categorias:
+            items_data = []
+            for item in categoria.item_set.all():
+                subitems_data = []
+                for subitem in item.subitem_set.all():
+                    subitems_data.append({
+                        'id': subitem.id,
+                        'rubro': subitem.rubro,
+                        'unidad_medida': subitem.unidad_medida,
+                        'cantidad': float(subitem.cantidad),
+                        'precio_unitario': float(subitem.precio_unitario),
+                        'precio_total': float(subitem.precio_total),
+                        'itemId': subitem.item.id,
+                        'categoriaId': subitem.item.categoria.id
+                    })
+                items_data.append({
+                    'id': item.id,
+                    'nombre': item.nombre,
+                    'subitems': subitems_data,
+                    'categoriaId': item.categoria.id
+                })
+            data.append({
+                'id': categoria.id,
+                'nombre': categoria.nombre,
+                'items': items_data
+            })
+
+        return JsonResponse(data, safe=False)
+    except (Presupuesto.DoesNotExist, ArchivoPresupuesto.DoesNotExist):
+        return JsonResponse({'error': 'Presupuesto no encontrado'}, status=404)
