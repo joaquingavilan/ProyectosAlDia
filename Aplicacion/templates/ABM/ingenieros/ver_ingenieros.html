@@ -27,13 +27,53 @@
           <td>{{ ingeniero.last_name }}</td>
           <td>{{ ingeniero.email}}</td>
           <td>
-            <a class="btn btn-primary" href="{% url 'editar_ingeniero' ingeniero.id %}">Editar</a>
+            <!-- Botón para abrir el modal de edición -->
+            <button type="button" class="btn btn-primary editarIngenieroBtn" data-ingeniero-id="{{ ingeniero.id }}">Editar</button>
             <a class="btn btn-primary" href="{% url 'eliminar_ingeniero' ingeniero.id %}">Eliminar</a>
           </td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
+<!-- Modal para editar ingeniero -->
+<div class="modal fade" id="editarIngenieroModal" tabindex="-1" aria-labelledby="editarIngenieroModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editarIngenieroModalLabel">Editar Ingeniero</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="errorContainer" style="display:none;"></div>
+                <form id="editarIngenieroForm">
+                  <input type="hidden" id="ingenieroId">
+                  <div class="mb-3">
+                      <label for="first_name" class="form-label">Nombre</label>
+                      <input type="text" class="form-control" id="first_name" name="first_name">
+                  </div>
+                  <div class="mb-3">
+                      <label for="last_name" class="form-label">Apellido</label>
+                      <input type="text" class="form-control" id="last_name" name="last_name">
+                  </div>
+                  <div class="mb-3">
+                      <label for="email" class="form-label">Email</label>
+                      <input type="email" class="form-control" id="email" name="email">
+                  </div>
+                  <!-- Aquí puedes agregar otros campos del formulario que desees editar -->
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <form id="editarIngenieroForm">
+                  <!-- ... otros campos del formulario ... -->
+                  <button type="submit" class="btn btn-primary" id="guardarIngenieroBtn">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <nav>
   <ul class="pagination">
     {% if page_obj.has_previous %}
@@ -71,6 +111,13 @@
     <input type="hidden" name="criterio" id="criterioInput">
     <button type="submit" class="btn btn-primary">Exportar xlsx</button>
   </form>
+<form id="exportarPdfForm" method="post" action="{% url 'exportar_pdf' %}">
+    {% csrf_token %}
+    <input type="hidden" name="tipo_dato" value="Ingenieros">
+    <input type="hidden" name="criterio" id="criterioInput">
+    <button type="submit" class="btn btn-primary">Exportar a PDF</button>
+</form>
+
   <a href="{% url 'registrar_ingeniero' %}" class="btn btn-primary">Registrar Ingeniero</a>
 
 </div>
@@ -100,6 +147,70 @@ document.getElementById('buscador').addEventListener('input', function() {
         resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
     }
 });
+
+let editarIngenieroBtns = document.querySelectorAll(".editarIngenieroBtn");
+
+editarIngenieroBtns.forEach(btn => {
+    btn.addEventListener("click", function() {
+        let ingenieroId = this.getAttribute("data-ingeniero-id");
+
+        // Hacemos una solicitud AJAX para obtener los datos del ingeniero
+        fetch(`/get_ingeniero_data/${ingenieroId}/`)
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);  // Imprime los datos obtenidos del servidor
+            // Llenamos el formulario dentro del modal con esos datos
+            document.getElementById("ingenieroId").value = ingenieroId;
+            document.getElementById("first_name").value = data.first_name;
+            document.getElementById("last_name").value = data.last_name;
+            document.getElementById("email").value = data.email;
+            // ... otros campos ...
+
+            // Establecemos la URL correcta para el formulario en el modal
+            document.getElementById("editarIngenieroForm").action = `/editar_ingeniero/${ingenieroId}/`;
+
+            // Muestra el modal usando Bootstrap 5
+            let modal = new bootstrap.Modal(document.getElementById('editarIngenieroModal'));
+            modal.show();
+        });
+    });
+});
+
+// Manejo del envío del formulario de edición
+document.getElementById("guardarIngenieroBtn").addEventListener("click", function(event) {
+    event.preventDefault();  // Previene el envío normal del formulario
+
+    let formData = new FormData(document.getElementById("editarIngenieroForm"));
+
+    // Obtener el token CSRF del formulario
+    let csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    fetch(document.getElementById("editarIngenieroForm").action, {
+        method: 'POST',
+        headers: {
+            // Incluye el token CSRF en los headers
+            "X-CSRFToken": csrfToken
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "success") {
+            location.reload(); // Recargamos la página para ver los cambios
+        } else if (data.status === "error") {
+            // Mostramos los errores en el modal
+            let errorContainer = document.getElementById("errorContainer");
+            errorContainer.innerHTML = "";
+            for (let field in data.errors) {
+                errorContainer.innerHTML += `${field}: ${data.errors[field]}<br>`;
+            }
+            errorContainer.style.display = "block";
+        }
+    });
+});
+
+
+
 
 
 </script>

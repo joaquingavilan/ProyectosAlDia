@@ -14,7 +14,7 @@ from io import BytesIO
 from django.contrib import messages
 from .decorators import gerente_required, administrador_required, ingeniero_required
 from django.forms import formset_factory
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, FileResponse
 from django.core.paginator import Paginator
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
@@ -23,6 +23,11 @@ from django.core.files import File
 from django.views.decorators.csrf import csrf_exempt
 from decimal import Decimal
 from django.core.serializers import serialize
+from reportlab.lib.pagesizes import letter, landscape, A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+
 
 def inicio(request):
     perfil = Perfil.objects.get(user=request.user)
@@ -125,8 +130,12 @@ def registrar_cliente(request):
 
     else:
         form = ClienteForm()
+        rucs_actuales = list(Cliente.objects.values_list('ruc', flat=True))
+        rucs_json = json.dumps(rucs_actuales)
+        emails = list(Cliente.objects.values_list('email', flat=True))
+        emails_json = json.dumps(emails)
 
-    return render(request, 'ABM/clientes/registro_cliente.html', {'form': form})
+    return render(request, 'ABM/clientes/registro_cliente.html', {'form': form, 'rucs_json': rucs_json, 'emails_json': emails_json})
 
 
 def get_cliente_data(request, cliente_id):
@@ -169,7 +178,10 @@ def editar_cliente(request, pk):
 def ver_clientes(request):
     clientes = Cliente.objects.all()
     form_buscar = BuscadorClienteForm()
-
+    rucs_actuales = list(Cliente.objects.values_list('ruc', flat=True))
+    rucs_json = json.dumps(rucs_actuales)
+    emails_actuales = list(Cliente.objects.values_list('email', flat=True))
+    emails_json = json.dumps(emails_actuales)
     # Configuración de la paginación
     paginator = Paginator(clientes, 10)  # Muestra 10 clientes por página
     page_number = request.GET.get('page')
@@ -195,7 +207,7 @@ def ver_clientes(request):
             if termino_busqueda:
                 clientes = clientes.filter(Q(ruc__icontains=termino_busqueda) | Q(nombre__icontains=termino_busqueda))
 
-    return render(request, 'ABM/clientes/ver_clientes.html', {'clientes': clientes, 'form_buscar': form_buscar, 'page_obj': page_obj})
+    return render(request, 'ABM/clientes/ver_clientes.html', {'clientes': clientes, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json, 'emails_json': emails_json})
 
 
 def buscar_clientes(request):
@@ -244,43 +256,33 @@ def registrar_ingeniero(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password1']
             email = form.cleaned_data['email']
-            username = request.POST['username']
-            password = request.POST['password1']
-            nombre = request.POST['first_name']
-            apellido = request.POST['last_name']
-            if User.objects.filter(username=username).exists():
-                error = 'El nombre de usuario ya está en uso.'
-                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
-            elif not re.match(r'^[A-Za-z]+$', nombre):
-                error = "Nombre inválido. Solo se permiten letras."
-                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
-            elif not re.match(r'^[A-Za-z]+$', apellido):
-                error = "Apellido inválido. Solo se permiten letras."
-                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
-            elif User.objects.filter(email=email).exists():
-                error = 'El email ya está registrado.'
-                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
-            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                error = "Email inválido."
-                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
-            elif not re.search(r'[A-Za-z]', username):
-                error = "Nombre de usuario inválido."
-                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
-            else:
-                usuario = User.objects.create_user(username=username, first_name=request.POST['first_name'], last_name=request.POST['last_name'], password=password, email=email)
+            nombre = form.cleaned_data['first_name']
+            apellido = form.cleaned_data['last_name']
+
+            # Verificamos que el nombre y apellido solo contienen letras
+            if not re.match(r'^[A-Za-z]+$', nombre):
+                form.add_error('first_name', "Nombre inválido. Solo se permiten letras.")
+            if not re.match(r'^[A-Za-z]+$', apellido):
+                form.add_error('last_name', "Apellido inválido. Solo se permiten letras.")
+            if not re.search(r'[A-Za-z]', username):
+                form.add_error('username', "Nombre de usuario inválido.")
+
+            # Si no hay errores adicionales, creamos el usuario
+            if not form.errors:
+                usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido,
+                                                   password=password, email=email)
                 rol = Rol.objects.get(nombre='INGENIERO')
                 perfil = Perfil.objects.create(user=usuario, rol=rol)
                 return redirect('ver_ingenieros')
         else:
-            form = CustomUserCreationForm(request.POST)
-            error = ''
-            return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
-
+            # Si el formulario no es válido, simplemente renderizamos la página con los errores
+            return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form})
     else:
         form = CustomUserCreationForm()
-        error = ''
-        return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'error': error})
+        return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form})
 
 
 def ver_ingenieros(request):
@@ -296,30 +298,45 @@ def ver_ingenieros(request):
 
 def editar_ingeniero(request, pk):
     ingeniero = get_object_or_404(User, pk=pk)
+
+    # Comprobamos si es una solicitud POST
     if request.method == 'POST':
         form = CustomUserChangeForm(request.POST, instance=ingeniero)
+
         if form.is_valid():
             nombre = request.POST['first_name']
             apellido = request.POST['last_name']
             email = form.cleaned_data['email']
+
+            errors = {}
+
             if not re.match(r'^[A-Za-z]+$', nombre):
-                error = "Nombre inválido. Solo se permiten letras."
-                return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
-            elif not re.match(r'^[A-Za-z]+$', apellido):
-                error = "Apellido inválido. Solo se permiten letras."
-                return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
-            elif User.objects.filter(email=email).exists() and email != ingeniero.email:
-                error = 'El email ya está registrado.'
-                return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
-            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                error = "Email inválido."
-                return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero, 'error':error})
+                errors["first_name"]="Nombre inválido. Solo se permiten letras."
+            if not re.match(r'^[A-Za-z]+$', apellido):
+                errors["last_name"]="Apellido inválido. Solo se permiten letras."
+            if User.objects.filter(email=email).exclude(pk=pk).exists():
+                return JsonResponse({"status": "error", "errors": {"email": ["El email ya está registrado."]}})
+            if errors.keys():
+                return JsonResponse({"status": "error", "errors": errors})
             else:
                 form.save()
-                return redirect('ver_ingenieros')
-    else:
-        return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero})
-    return render(request, 'ABM/ingenieros/editar_ingeniero.html', {'form': CustomUserChangeForm(instance=ingeniero), 'ingeniero': ingeniero})
+                return JsonResponse({"status": "success"})
+        else:
+            print(form.errors)
+            return JsonResponse({"status": "error", "errors": form.errors})
+
+    return JsonResponse({"status": "error", "message": "Metodo no permitido"})
+
+
+def get_ingeniero_data(request, ingeniero_id):
+    ingeniero = get_object_or_404(User, pk=ingeniero_id)
+    data = {
+        "first_name": ingeniero.first_name,
+        "last_name": ingeniero.last_name,
+        "email": ingeniero.email,
+        # ... otros campos ...
+    }
+    return JsonResponse(data)
 
 
 def eliminar_ingeniero(request, pk):
@@ -398,13 +415,20 @@ def registrar_proveedor(request):
             return redirect('ver_proveedores')
     else:
         form = ProveedorForm()
-
-    return render(request, 'ABM/proveedores/registrar_proveedor.html', {'form': form})
+        rucs_actuales = list(Proveedor.objects.values_list('ruc', flat=True))
+        rucs_json = json.dumps(rucs_actuales)
+        emails = list(Proveedor.objects.values_list('email', flat=True))
+        emails_json = json.dumps(emails)
+    return render(request, 'ABM/proveedores/registrar_proveedor.html', {'form': form, 'rucs_json': rucs_json, 'emails_json': emails_json})
 
 
 def ver_proveedores(request):
     proveedores = Proveedor.objects.all()
     form_buscar = BuscadorProveedorForm()
+    rucs_actuales = list(Proveedor.objects.values_list('ruc', flat=True))
+    rucs_json = json.dumps(rucs_actuales)
+    emails_actuales = list(Proveedor.objects.values_list('email', flat=True))
+    emails_json = json.dumps(emails_actuales)
     # Configuración de la paginación
     paginator = Paginator(proveedores, 10)  # Muestra 10 ingenieros por página
     page_number = request.GET.get('page')
@@ -420,7 +444,21 @@ def ver_proveedores(request):
                 else:
                     proveedores = proveedores.filter(nombre__icontains=termino_busqueda)
 
-    return render(request, 'ABM/proveedores/ver_proveedores.html', {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj})
+    return render(request, 'ABM/proveedores/ver_proveedores.html', {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json, 'emails_json': emails_json})
+
+
+def get_proveedor_data(request, proveedor_id):
+    proveedor = Proveedor.objects.get(pk=proveedor_id)
+    data = {
+        "nombre": proveedor.nombre,
+        "ruc": proveedor.ruc,
+        "email": proveedor.email,
+        'ciudad': proveedor.ciudad,
+        'direccion': proveedor.direccion,
+        'pagina_web': proveedor.pagina_web
+        # ... otros campos ...
+    }
+    return JsonResponse(data)
 
 
 def eliminar_proveedor(request, pk):
@@ -1000,6 +1038,131 @@ def exportar_excel(request):
         response['Content-Disposition'] = 'attachment; filename=Proveedores.xlsx'
         wb.save(response)
 
+    return response
+
+
+def exportar_pdf(request):
+    tipo_dato = request.POST.get('tipo_dato')  # Por ejemplo, 'Ingenieros', 'Proyectos', etc.
+    criterio = request.POST.get('criterio')  # Por ejemplo, el nombre del cliente
+    # Crear un nuevo documento PDF
+    response = HttpResponse(content_type='application/pdf')
+
+
+
+    if tipo_dato == 'Ingenieros':
+        response['Content-Disposition'] = 'attachment; filename="Ingenieros.pdf"'
+        doc = SimpleDocTemplate(response, pagesize=A4)
+        # Obtener datos de los ingenieros
+        ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
+        data = [['ID', 'Usuario', 'Nombre', 'Apellido', 'Email']]
+        for ingeniero in ingenieros:
+            data.append([ingeniero.id, ingeniero.username, ingeniero.first_name, ingeniero.last_name, ingeniero.email])
+
+        # Crear una tabla con los datos
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+
+        # Construir el documento
+        story = [table]
+        doc.build(story)
+
+    elif tipo_dato =='Clientes':
+        response['Content-Disposition'] = 'attachment; filename="Clientes.pdf"'
+        doc = SimpleDocTemplate(response, pagesize=landscape(A4))
+        # Datos para la tabla
+        data = [['ID', 'Tipo de Persona', 'Nombre', 'RUC', 'Email', 'Ciudad', 'Direccion']]
+
+        # Obtener datos de los clientes
+        clientes = Cliente.objects.all()
+        for cliente in clientes:
+            data.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.email, cliente.ciudad,
+                         cliente.direccion])
+
+        # Crear tabla
+        table = Table(data)
+
+        # Aplicar estilos a la tabla
+        style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ])
+        table.setStyle(style)
+
+        # Alternar colores de fondo para las filas
+        rowNumb = len(data)
+        for i in range(1, rowNumb):
+            if i % 2 == 0:
+                bc = colors.bisque
+            else:
+                bc = colors.beige
+            ts = TableStyle(
+                [('BACKGROUND', (0, i), (-1, i), bc)]
+            )
+            table.setStyle(ts)
+
+        # Agregar tabla al documento
+        elems = []
+        elems.append(table)
+
+        doc.build(elems)
+    elif tipo_dato == 'Proveedores':
+        response['Content-Disposition'] = 'attachment; filename="Proveedores.pdf"'
+        doc = SimpleDocTemplate(response, pagesize=landscape(A4))
+        # Datos para la tabla
+        data = [['ID', 'Nombre', 'RUC', 'Email', 'Ciudad', 'Direccion', 'Página Web']]
+
+        # Obtener datos de los proveedores
+        proveedores = Proveedor.objects.all()
+        for proveedor in proveedores:
+            data.append(
+                [proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.email, proveedor.ciudad, proveedor.direccion,
+                 proveedor.pagina_web or ""])
+
+        # Crear tabla
+        table = Table(data)
+
+        # Aplicar estilos a la tabla
+        style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ])
+        table.setStyle(style)
+
+        # Alternar colores de fondo para las filas
+        rowNumb = len(data)
+        for i in range(1, rowNumb):
+            if i % 2 == 0:
+                bc = colors.bisque
+            else:
+                bc = colors.beige
+            ts = TableStyle(
+                [('BACKGROUND', (0, i), (-1, i), bc)]
+            )
+            table.setStyle(ts)
+
+        # Agregar tabla al documento
+        elems = []
+        elems.append(table)
+
+        doc.build(elems)
     return response
 
 

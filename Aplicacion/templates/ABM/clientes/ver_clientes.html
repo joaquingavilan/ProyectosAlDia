@@ -181,6 +181,12 @@
     <input type="hidden" name="tipo_dato" value="Clientes">
     <button type="submit" class="btn btn-primary">Exportar a Excel</button>
 </form>
+<form id="exportarPdfForm" method="post" action="{% url 'exportar_pdf' %}">
+    {% csrf_token %}
+    <input type="hidden" name="tipo_dato" value="Clientes">
+    <input type="hidden" name="criterio" id="criterioInput">
+    <button type="submit" class="btn btn-primary">Exportar a PDF</button>
+</form>
 
 <a href="{% url 'registro_cliente' %}" class="btn btn-primary">Registrar nuevo cliente</a>
 </div>
@@ -190,6 +196,8 @@
 <script>
     let currentClienteId = null;
     let editarClienteBtns = document.querySelectorAll(".editarClienteBtn");
+    let rucsActuales = {{ rucs_json|safe }};
+    let emailsActuales = {{emails_json|safe }};
     editarClienteBtns.forEach(btn => {
         btn.addEventListener("click", function() {
             let clienteId = this.getAttribute("data-cliente-id");
@@ -219,6 +227,30 @@
     // Manejo del envío del formulario de edición
     document.getElementById("editarClienteForm").addEventListener("submit", function(event) {
         event.preventDefault();
+        let rucField = document.getElementById("ruc");
+        let rucIngresado = rucField.value;
+        let emailField = document.getElementById("email");
+        let emailIngresado = emailField.value;
+        // Excluye el RUC del cliente actual que se está editando
+        let rucOriginal = this.getAttribute('data-original-ruc');
+        let rucsSinActual = rucsActuales.filter(ruc => ruc !== rucOriginal);
+        let emailOriginal = this.getAttribute('data-original-email');
+        let emailsSinActual = emailsActuales.filter(email => email !== emailOriginal);
+
+        if (rucsSinActual.includes(rucIngresado)) {
+            event.preventDefault();  // Evitar que el formulario se envíe
+            alert("El RUC ingresado ya está registrado para otro proveedor");
+            rucField.value = rucOriginal;  // Restaurar el valor original del RUC
+            rucField.focus();     // Colocar el foco en el campo RUC
+            return;
+        }
+        if (emailsSinActual.includes(emailIngresado)) {
+                event.preventDefault();  // Evitar que el formulario se envíe
+                alert("El email ingresado ya está registrado para otro proveedor");
+                emailField.value = emailOriginal;  // Restaurar el valor original del email
+                emailField.focus();     // Colocar el foco en el campo email
+                return;
+            }
 
         let formData = new FormData(this);
 
@@ -241,6 +273,7 @@
             }
         });
     });
+
 
 // Botones para mostrar contactos de los proveedores
     document.addEventListener('DOMContentLoaded', (event) => {

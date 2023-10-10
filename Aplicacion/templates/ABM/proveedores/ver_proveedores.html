@@ -183,19 +183,21 @@
         <input type="hidden" name="criterio" id="criterioInput">
         <button type="submit" class="btn btn-primary">Exportar xlsx</button>
     </form>
+    <form id="exportarPdfForm" method="post" action="{% url 'exportar_pdf' %}">
+        {% csrf_token %}
+        <input type="hidden" name="tipo_dato" value="Proveedores">
+        <input type="hidden" name="criterio" id="criterioInput">
+        <button type="submit" class="btn btn-primary">Exportar a PDF</button>
+    </form>
     <a href="{% url 'registrar_proveedor' %}" class="btn btn-primary">Registrar nuevo proveedor</a>
-
 </div>
-
-
-
-
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
     let currentProveedorId = null;
+    let rucsActuales = {{ rucs_json|safe }};
+    let emailsActuales = {{emails_json|safe }};
     document.addEventListener('DOMContentLoaded', (event) => {
         // Manejo de botones editar proveedor
         let editarProveedorBtns = document.querySelectorAll(".editarProveedorBtn");
@@ -231,6 +233,32 @@
 
         document.getElementById("editarProveedorForm").addEventListener("submit", function(event) {
             event.preventDefault();
+            let rucField = document.getElementById("rucProveedor");
+            let rucIngresado = rucField.value;
+
+            let emailField = document.getElementById("emailProveedor");
+            let emailIngresado = emailField.value;
+
+            // Excluye el RUC del cliente actual que se está editando y el email del cliente actual
+            let rucOriginal = this.getAttribute('data-original-ruc');
+            let rucsSinActual = rucsActuales.filter(ruc => ruc !== rucOriginal);
+            let emailOriginal = this.getAttribute('data-original-email');
+            let emailsSinActual = emailsActuales.filter(email => email !== emailOriginal);
+
+            if (rucsSinActual.includes(rucIngresado)) {
+                event.preventDefault();  // Evitar que el formulario se envíe
+                alert("El RUC ingresado ya está registrado en el sistema.");
+                rucField.value = rucOriginal;  // Restaurar el valor original del RUC
+                rucField.focus();     // Colocar el foco en el campo RUC
+                return;
+            }
+            if (emailsSinActual.includes(emailIngresado)) {
+                event.preventDefault();  // Evitar que el formulario se envíe
+                alert("El email ingresado ya está registrado para otro proveedor");
+                emailField.value = emailOriginal;  // Restaurar el valor original del email
+                emailField.focus();     // Colocar el foco en el campo email
+                return;
+            }
             let formData = new FormData(this);
             fetch(this.action, {
                 method: 'POST',
@@ -249,22 +277,16 @@
                     let modal = bootstrap.Modal.getInstance(document.getElementById('editarProveedorModal'));
                     modal.hide();
                     location.reload();
+                } else if (data.status === "error") {
+                    // Mostramos los errores en el modal
+                    let errorContainer = document.getElementById("errorContainer");
+                    errorContainer.innerHTML = "";
+                    for (let field in data.errors) {
+                        errorContainer.innerHTML += `${field}: ${data.errors[field]}<br>`;
+                    }
+                    errorContainer.style.display = "block";
                 }
             })
-            .catch(error => {
-                if (error.errors) {
-                    for (let [key, value] of Object.entries(error.errors)) {
-                        let input = document.getElementById(key + "Proveedor");
-                        let errorDiv = document.createElement("div");
-                        errorDiv.className = "invalid-feedback";
-                        errorDiv.innerText = value;
-                        input.classList.add("is-invalid");
-                        input.parentElement.appendChild(errorDiv);
-                    }
-                } else {
-                    console.error("Hubo un error al enviar el formulario:", error);
-                }
-            });
         });
     });
 

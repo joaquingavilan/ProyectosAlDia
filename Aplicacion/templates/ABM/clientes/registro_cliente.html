@@ -18,7 +18,7 @@
         Agregar Contacto
     </button>
 
-    <input type="submit" class="btn btn-primary" value="Guardar">
+    <input type="submit" class="btn btn-primary" value="Guardar" id="guardarBtn">
     <a href="{% url 'ver_clientes' %}" class="btn btn-primary">Cancelar</a>
 </form>
 
@@ -56,6 +56,27 @@
 {% block extra_js %}
     <script>
         let contactos = [];
+        let rucsActuales = {{ rucs_json|safe }};
+        let emailsActuales = {{ emails_json|safe }};
+
+        document.getElementById("guardarBtn").addEventListener("click", function(event) {
+            let rucField = document.getElementById("id_ruc");
+            let rucIngresado = rucField.value;
+            let emailField = document.getElementById("id_email");
+            let emailIngresado = emailField.value;
+            if (rucsActuales.includes(rucIngresado)) {
+                event.preventDefault();  // Evitar que el formulario se envíe
+                alert("El RUC ingresado ya está registrado en el sistema.");
+                rucField.value = "";  // Limpiar el campo RUC
+                rucField.focus();     // Colocar el foco en el campo RUC
+            }
+            if (emailsActuales.includes(emailIngresado)) {
+                event.preventDefault();  // Evitar que el formulario se envíe
+                alert("El email ingresado ya está registrado para un proveedor");
+                emailField.value = "";  // Limpiar el campo RUC
+                emailField.focus();     // Colocar el foco en el campo RUC
+            }
+        });
 
         document.getElementById("agregarContactoBtn").addEventListener("click", function() {
             let nombre = document.getElementById("contactoNombre").value;
@@ -119,6 +140,7 @@
         });
 
     </script>
+
 {% endblock %}
 
 

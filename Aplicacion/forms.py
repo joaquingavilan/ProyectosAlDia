@@ -2,6 +2,7 @@ from django import forms
 from .models import Cliente, Proveedor, Material, Proyecto, User, Contacto
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from django.core.exceptions import ValidationError
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -41,6 +42,7 @@ class CustomUserCreationForm(UserCreationForm):
             'password_entirely_numeric': _('La contraseña no puede ser totalmente numérica.'),
         }
     )
+
     class Meta(UserCreationForm.Meta):
         fields = UserCreationForm.Meta.fields + ('first_name', 'last_name', 'email')
         labels = {
@@ -48,6 +50,12 @@ class CustomUserCreationForm(UserCreationForm):
             'password1': _('Contraseña'),
             'password2': _('Confirmar contraseña'),
         }
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        if User.objects.filter(email=email).exists():
+            raise ValidationError('El email ya está registrado.')
+        return email
 
 
 class CustomUserChangeForm(UserChangeForm):
