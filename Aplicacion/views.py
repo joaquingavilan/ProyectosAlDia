@@ -1481,6 +1481,25 @@ def buscar_presupuestos(request):
     return JsonResponse(data, safe=False)
 
 
+def buscar_presupuestos_terminados(request):
+    query = request.GET.get('q', '')
+    presupuestos = Presupuesto.objects.filter(
+        Q(proyecto__nombre__icontains=query),
+        Q(estado__in=['S', 'A']),
+        Q(anticipo=False)
+    )
+    data = [
+        {
+            'id': presupuesto.id,
+            'proyecto_nombre': presupuesto.proyecto.nombre,
+            'cliente_nombre': presupuesto.proyecto.cliente.nombre,
+            'monto_total': str(presupuesto.monto_total)  # Convertir a string para serialización JSON
+        }
+        for presupuesto in presupuestos
+    ]
+    return JsonResponse(data, safe=False)
+
+
 def ver_presupuesto_adm(request, presupuesto_id):
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id)
     return render(request, 'pantallas_adm/ver_presupuesto_adm.html', {'presupuesto': presupuesto})
@@ -1643,3 +1662,62 @@ def obtener_presupuesto_detalle(request, proyecto_id):
         return JsonResponse(data, safe=False)
     except (Presupuesto.DoesNotExist, ArchivoPresupuesto.DoesNotExist):
         return JsonResponse({'error': 'Presupuesto no encontrado'}, status=404)
+
+
+def registrar_anticipo(request):
+    presupuestos = Presupuesto.objects.filter(estado__in=['S', 'A']).filter(anticipo=False)
+    return render(request, 'pantallas_adm/registrar_anticipo.html', {'presupuestos': presupuestos})
+
+
+def obtener_filtro_valores(request):
+    tipo = request.GET.get('tipo')
+    presupuestos = Presupuesto.objects.filter(estado__in=['S', 'A']).filter(anticipo=False)
+    if tipo == 'cliente':
+        proyectos = [presupuesto.proyecto for presupuesto in presupuestos]
+        clientes = Cliente.objects.filter(proyecto__in=proyectos).distinct()
+        data = [{'id': cliente.id, 'nombre': cliente.nombre} for cliente in clientes]
+    elif tipo == 'encargadoPresupuesto':
+        ingenieros = User.objects.filter(presupuesto__in=presupuestos).distinct()
+        data = [{'id': ingeniero.id, 'nombre': f"{ingeniero.first_name} {ingeniero.last_name}"} for ingeniero in ingenieros]
+    elif tipo == 'estadoPresupuesto':
+        data = [
+            {'id': 'S', 'nombre': 'Enviado'},
+            {'id': 'A', 'nombre': 'Aprobado'}
+        ]
+    else:
+        data = []
+
+    return JsonResponse(data, safe=False)
+
+
+def obtener_presupuestos_filtrados(request):
+    campo = request.GET.get('campo')
+    valor = request.GET.get('valor')
+
+    if campo == 'cliente':
+        presupuestos = Presupuesto.objects.filter(proyecto__cliente_id=valor, estado__in=['S', 'A'], anticipo=False)
+    elif campo == 'encargadoPresupuesto':
+        presupuestos = Presupuesto.objects.filter(encargado_id=valor, estado__in=['S', 'A'], anticipo=False)
+    elif campo == 'estadoPresupuesto':
+        presupuestos = Presupuesto.objects.filter(estado=valor)
+    else:
+        presupuestos = []
+
+    data = [
+        {
+            'id': presupuesto.id,
+            'nombre': presupuesto.proyecto.nombre
+        }
+        for presupuesto in presupuestos
+    ]
+
+    return JsonResponse(data, safe=False)
+
+
+def obtener_monto_presupuesto(request):
+    presupuesto_id = request.GET.get('id')
+    presupuesto = Presupuesto.objects.get(id=presupuesto_id)
+    data = {
+        'monto_total': str(presupuesto.monto_total)  # Convertir a string para que sea serializable
+    }
+    return JsonResponse(data)

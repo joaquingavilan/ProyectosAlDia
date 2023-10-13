@@ -128,6 +128,7 @@ class Presupuesto(models.Model):
     anticipo = models.BooleanField(_('anticipo'), default=False)
     monto_anticipo = models.DecimalField(_('monto anticipo'), max_digits=15, decimal_places=0, null=True)
     fecha_pago_anticipo = models.DateField(_('fecha de pago del anticipo'), null=True, blank=True)
+    comprobante_anticipo = models.FileField(upload_to='comprobantes/', blank=True, null=True)
     ESTADOS = (
         ('E', _('En elaboración')),
         ('S', _('Enviado')),

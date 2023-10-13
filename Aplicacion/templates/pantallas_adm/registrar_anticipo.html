@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container mt-5">
+    <h1 class="display-4 text-center mb-4">Registrar Anticipo</h1>
+
+    <!-- Buscador de presupuestos -->
+    <div class="mb-3">
+        <input class="form-control" type="text" id="buscadorPresupuesto" placeholder="Buscar por nombre del proyecto">
+    </div>
+    <div id="resultadosBusqueda" class="mb-3"></div>
+
+    <!-- Dropdown para seleccionar el campo de filtro -->
+    <select id="filtroCampo">
+        <option value="cliente">Cliente</option>
+        <option value="encargadoPresupuesto">Encargado del Presupuesto</option>
+        <option value="estadoPresupuesto">Estado del Presupuesto</option>
+    </select>
+    <!-- Dropdown para seleccionar el valor específico del filtro -->
+    <select id="filtroValor">
+        <!-- Este se llenará dinámicamente usando JS -->
+    </select>
+    <br><br>
+    <!-- Dropdown de presupuestos -->
+    <div class="mb-3">
+        <select id="dropdownPrincipal" class="form-select">
+            <option value="">Selecciona un presupuesto</option>
+            {% for presupuesto in presupuestos %}
+            <option value="{{ presupuesto.id }}">{{ presupuesto.proyecto.nombre }} - {{ presupuesto.encargado.first_name }} {{ presupuesto.encargado.last_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <!-- Monto total del presupuesto -->
+    <div class="mb-3">
+        <label>Monto total del presupuesto:</label>
+        <span id="montoTotalPresupuesto"></span>
+    </div>
+    <!-- Formulario para registrar anticipo -->
+    <form method="post" enctype="multipart/form-data" class="mb-3">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label>Monto del anticipo:</label>
+            <input type="number" name="monto" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label>Medio de pago:</label>
+            <select id="dropdownPago" name="medioPago" class="form-select">
+
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <!-- ... otros medios de pago ... -->
+            </select>
+        </div>
+        <div class="mb-3">
+            <input type="file" name="comprobante" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Registrar Anticipo</button>
+    </form>
+</div>
+
+
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropdownPrincipal = document.getElementById('dropdownPrincipal');
+    const montoTotalPresupuestoSpan = document.getElementById('montoTotalPresupuesto');
+    const montoInput = document.querySelector('input[name="monto"]');
+    //cuando se selecciona un presupuesto en el dropdown principal se cargan sus datos
+    dropdownPrincipal.addEventListener('change', function() {
+        const presupuestoId = this.value;
+
+        if (presupuestoId) {
+            fetch(`/obtener_monto_presupuesto/?id=${presupuestoId}`)
+            .then(response => response.json())
+            .then(data => {
+                montoTotalPresupuestoSpan.textContent = data.monto_total;
+                montoInput.value = data.monto_total / 2;
+            });
+        } else {
+            montoTotalPresupuestoSpan.textContent = '';
+            montoInput.value = '';
+        }
+    });
+
+    document.getElementById('buscadorPresupuesto').addEventListener('input', function() {
+
+        let query = this.value;
+        let resultadosDiv = document.getElementById('resultadosBusqueda');
+
+        if (query.length >= 3) {
+            fetch(`/buscar_presupuestos_terminados/?q=${query}`)
+            .then(response => response.json())
+            .then(data => {
+                resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+                data.forEach(presupuesto => {
+                    let div = document.createElement('div');
+                    div.innerHTML = `<a href="#" class="result-link" data-id="${presupuesto.id}" data-nombre="${presupuesto.proyecto_nombre}" data-monto="${presupuesto.monto_total}">${presupuesto.proyecto_nombre} - ${presupuesto.cliente_nombre}</a>`;
+                    div.addEventListener('click', function(e) {
+                        e.preventDefault();
+
+                        // Actualizar el dropdown con el presupuesto seleccionado
+                        let dropdown = document.getElementById("dropdownPrincipal");
+                        dropdown.innerHTML = `<option value="${e.target.getAttribute('data-id')}" selected>${e.target.getAttribute('data-nombre')}</option>`;
+
+                        // Mostrar el monto total y cargar el input con el monto/2
+                        let montoTotal = parseFloat(e.target.getAttribute('data-monto'));
+                        let inputMonto = document.querySelector("input[name='monto']");
+                        let displayMontoTotal = document.getElementById("montoTotalPresupuesto");
+                        inputMonto.value = montoTotal / 2;
+                        displayMontoTotal.textContent = montoTotal;
+
+                        // Ocultar los resultados de búsqueda
+                        resultadosDiv.innerHTML = '';
+                    });
+                    resultadosDiv.appendChild(div);
+                });
+            });
+        } else {
+            resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+        }
+    });
+    document.getElementById('filtroCampo').addEventListener('change', function() {
+        let tipo = this.value;
+        let dropdownValor = document.getElementById('filtroValor');
+
+        fetch(`/obtener_filtro_valores/?tipo=${tipo}`)
+        .then(response => response.json())
+        .then(data => {
+            dropdownValor.innerHTML = '<option value="">Selecciona un valor</option>';
+            data.forEach(item => {
+                let option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.nombre;
+                dropdownValor.appendChild(option);
+            });
+        });
+    });
+
+    document.getElementById('filtroValor').addEventListener('change', function() {
+        let campo = document.getElementById('filtroCampo').value;
+        let valor = this.value;
+        let dropdownPresupuesto = document.getElementById('dropdownPrincipal');
+
+        fetch(`/obtener_presupuestos_filtrados/?campo=${campo}&valor=${valor}`)
+        .then(response => response.json())
+        .then(data => {
+            dropdownPresupuesto.innerHTML = '<option value="">Selecciona un presupuesto</option>';
+            data.forEach(presupuesto => {
+                let option = document.createElement('option');
+                option.value = presupuesto.id;
+                option.textContent = presupuesto.nombre;
+                dropdownPresupuesto.appendChild(option);
+            });
+        });
+    });
+
+});
+
+</script>
+{% endblock %}
