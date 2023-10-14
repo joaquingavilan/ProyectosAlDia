@@ -222,6 +222,18 @@ def buscar_clientes(request):
 
 def ver_cliente(request, id_cliente):
     cliente = Cliente.objects.get(pk=id_cliente)
+    if request.method == 'POST':
+        cliente_id = request.POST.get('cliente_id')
+        cliente = get_object_or_404(Cliente, pk=cliente_id)
+
+        proyectos_asociados = Proyecto.objects.filter(cliente=cliente)
+
+        if proyectos_asociados.exists():
+            messages.error(request, 'El cliente tiene proyectos activos y no puede ser eliminado')
+        else:
+            cliente.delete()
+            messages.success(request, 'Cliente eliminado exitosamente')
+            return redirect('ver_clientes')
     return render(request, 'ABM/clientes/ver_cliente.html', {'cliente': cliente})
 
 
@@ -976,6 +988,7 @@ def ver_materiales_stock(request, cantidad):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales, 'page_obj': page_obj})
+
 
 
 def exportar_excel(request):

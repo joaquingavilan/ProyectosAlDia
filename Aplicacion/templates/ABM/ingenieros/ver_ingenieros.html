@@ -1,127 +1,135 @@
-{% extends 'base.html' %}
+{% extends 'base_gerente.html' %}
 {% load static %}
+
+
+
 {% block content %}
-  <h1 class="display-4 text-center">Ingenieros</h1>
-  <br>
-<div class="input-group w-25 mb-3">
-  <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre de usuario, nombre o apellido">
-  <input type="hidden" id="ingenieroUrl" value="{% url 'ver_ingeniero' 999999 %}">
-</div>
-<div id="resultadosBusqueda"></div>
-  <br>
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th scope="col" style="width: 15%">Nombre de Usuario</th>
-        <th scope="col" style="width: 15%">Nombre</th>
-        <th scope="col" style="width: 15%">Apellido</th>
-        <th scope="col" style="width: 10%">email</th>
-        <th scope="col" style="width: 10%">Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        {% for ingeniero in page_obj%}
-          <td>{{ ingeniero.username }}</td>
-          <td>{{ ingeniero.first_name  }}</td>
-          <td>{{ ingeniero.last_name }}</td>
-          <td>{{ ingeniero.email}}</td>
-          <td>
-            <!-- Botón para abrir el modal de edición -->
-            <button type="button" class="btn btn-primary editarIngenieroBtn" data-ingeniero-id="{{ ingeniero.id }}">Editar</button>
-            <a class="btn btn-primary" href="{% url 'eliminar_ingeniero' ingeniero.id %}">Eliminar</a>
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-<!-- Modal para editar ingeniero -->
-<div class="modal fade" id="editarIngenieroModal" tabindex="-1" aria-labelledby="editarIngenieroModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editarIngenieroModalLabel">Editar Ingeniero</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Ingenieros</h2>
+        <div class="btn-group pull-right">
+            <form action="{% url 'exportar_excel' %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_dato" value="Ingenieros">
+                <button type="submit" class="btn btn-success btn-sm" title="Exportar a Excel"><i class="fa fa-file-excel-o"></i></button>
+            </form>
+            <form action="{% url 'exportar_pdf' %}" method="post" class="ml-2">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_dato" value="Ingenieros">
+                <button type="submit" class="btn btn-danger btn-sm" title="Exportar a PDF"><i class="fa fa-file-pdf-o"></i></button>
+            </form>
+        </div>
+        <ul class="nav navbar-right panel_toolbox">
+            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+        </ul>
+        <div class="clearfix"></div>
+    </div>
+
+
+    <div class="x_content">
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <div class="input-group w-25">
+                <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre de usuario, nombre o apellido">
+                <input type="hidden" id="ingenieroUrl" value="{% url 'ver_ingeniero' 999999 %}">
             </div>
-            <div class="modal-body">
-                <div id="errorContainer" style="display:none;"></div>
-                <form id="editarIngenieroForm">
-                  <input type="hidden" id="ingenieroId">
-                  <div class="mb-3">
-                      <label for="first_name" class="form-label">Nombre</label>
-                      <input type="text" class="form-control" id="first_name" name="first_name">
-                  </div>
-                  <div class="mb-3">
-                      <label for="last_name" class="form-label">Apellido</label>
-                      <input type="text" class="form-control" id="last_name" name="last_name">
-                  </div>
-                  <div class="mb-3">
-                      <label for="email" class="form-label">Email</label>
-                      <input type="email" class="form-control" id="email" name="email">
-                  </div>
-                  <!-- Aquí puedes agregar otros campos del formulario que desees editar -->
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <form id="editarIngenieroForm">
-                  <!-- ... otros campos del formulario ... -->
-                  <button type="submit" class="btn btn-primary" id="guardarIngenieroBtn">Guardar Cambios</button>
-                </form>
+            <a href="{% url 'registrar_ingeniero' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir Ingeniero</a>
+        </div>
+        <div id="resultadosBusqueda"></div>
+        <br>
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th style="width: 15%">Nombre de Usuario</th>
+                    <th style="width: 15%">Nombre</th>
+                    <th style="width: 15%">Apellido</th>
+                    <th style="width: 10%">Email</th>
+                    <th style="width: 10%">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ingeniero in page_obj %}
+                <tr>
+                    <td>{{ ingeniero.username }}</td>
+                    <td>{{ ingeniero.first_name  }}</td>
+                    <td>{{ ingeniero.last_name }}</td>
+                    <td>{{ ingeniero.email }}</td>
+                    <td>
+                        <button type="button" class="btn btn-primary btn-sm editarIngenieroBtn" data-ingeniero-id="{{ ingeniero.id }}"><i class="fa fa-pencil"></i></button>
+                        <a class="btn btn-danger btn-sm" href="{% url 'eliminar_ingeniero' ingeniero.id %}"><i class="fa fa-trash-o"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Modal para editar ingeniero -->
+        <div class="modal fade" id="editarIngenieroModal" tabindex="-1" aria-labelledby="editarIngenieroModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editarIngenieroModalLabel">Editar Ingeniero</h5>
+                        <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="errorContainer" class="alert alert-danger" style="display:none;"></div>
+                        <form id="editarIngenieroForm">
+                            {% csrf_token %}
+                            <input type="hidden" id="ingenieroId">
+                            <div class="mb-3">
+                                <label for="first_name" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="last_name" class="form-label">Apellido</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email">
+                            </div>
+                            <!-- Aquí puedes agregar otros campos del formulario que desees editar -->
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" id="guardarIngenieroBtn">Guardar Cambios</button>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- Paginador -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page=1" aria-label="First"><i class="fa fa-angle-double-left"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous"><i class="fa fa-angle-left"></i></a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link"><i class="fa fa-angle-double-left"></i></a></li>
+                <li class="page-item disabled"><a class="page-link"><i class="fa fa-angle-left"></i></a></li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next"><i class="fa fa-angle-right"></i></a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last"><i class="fa fa-angle-double-right"></i></a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link"><i class="fa fa-angle-right"></i></a></li>
+                <li class="page-item disabled"><a class="page-link"><i class="fa fa-angle-double-right"></i></a></li>
+                {% endif %}
+            </ul>
+        </nav>
+
+
     </div>
 </div>
-
-
-<nav>
-  <ul class="pagination">
-    {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Primera</a></li>
-      <li class="page-item disabled"><a class="page-link">Anterior</a></li>
-    {% endif %}
-
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}
-        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
-      {% else %}
-        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-      {% endif %}
-    {% endfor %}
-
-    {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
-      <li class="page-item disabled"><a class="page-link">Última</a></li>
-    {% endif %}
-  </ul>
-</nav>
-
-<div class="d-flex justify-content-between align-items-center">
-
-  <a href="{% url 'inicio' %}" class="btn btn-primary">Volver a Inicio</a>
-  <form id="exportarForm" method="post" action="{% url 'exportar_excel' %}">
-    {% csrf_token %}
-    <input type="hidden" name="tipo_dato" value="Ingenieros">
-    <input type="hidden" name="criterio" id="criterioInput">
-    <button type="submit" class="btn btn-primary">Exportar xlsx</button>
-  </form>
-<form id="exportarPdfForm" method="post" action="{% url 'exportar_pdf' %}">
-    {% csrf_token %}
-    <input type="hidden" name="tipo_dato" value="Ingenieros">
-    <input type="hidden" name="criterio" id="criterioInput">
-    <button type="submit" class="btn btn-primary">Exportar a PDF</button>
-</form>
-
-  <a href="{% url 'registrar_ingeniero' %}" class="btn btn-primary">Registrar Ingeniero</a>
-
-</div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -139,7 +147,7 @@ document.getElementById('buscador').addEventListener('input', function() {
             data.forEach(ingeniero => {
                 let div = document.createElement('div');
                 let ingenieroUrl = baseUrl.replace('999999', ingeniero.id);
-                div.innerHTML = `<a class="container" href="${ingenieroUrl}">${ingeniero.nombre} ${ingeniero.apellido}</a>`;
+                div.innerHTML = `<a href="${ingenieroUrl}" class="list-group-item list-group-item-action">${ingeniero.nombre} ${ingeniero.apellido}</a>`;
                 resultadosDiv.appendChild(div);
             });
         });
@@ -158,7 +166,6 @@ editarIngenieroBtns.forEach(btn => {
         fetch(`/get_ingeniero_data/${ingenieroId}/`)
         .then(response => response.json())
         .then(data => {
-            console.log(data);  // Imprime los datos obtenidos del servidor
             // Llenamos el formulario dentro del modal con esos datos
             document.getElementById("ingenieroId").value = ingenieroId;
             document.getElementById("first_name").value = data.first_name;
@@ -208,10 +215,6 @@ document.getElementById("guardarIngenieroBtn").addEventListener("click", functio
         }
     });
 });
-
-
-
-
 
 </script>
 {% endblock %}

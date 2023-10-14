@@ -1,27 +1,71 @@
 {% extends 'base.html' %}
-{% block content %}
-    <h1 class="display-4 text-center">Proyectos al dia</h1>
-    <h2 class="display-4 text-center">Panel de administración</h2>
-<br>
-<div class="container d-flex align-items-center justify-content-center">
-    <div class="mx-2">
-        <a href="{% url 'ver_ingenieros' %}" class="btn btn-primary btn-lg">Ingenieros</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'ver_clientes' %}" class="btn btn-primary btn-lg">Clientes</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'ver_proveedores' %}" class="btn btn-primary btn-lg">Proveedores</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'ver_materiales' %}" class="btn btn-primary btn-lg">Materiales</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'ver_proyectos' %}" class="btn btn-primary btn-lg">Proyectos</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'salir' %}" class="btn btn-primary btn-lg">Cerrar Sesion</a>
-    </div>
-</div>
 
+{% block title %}Panel de administración{% endblock %}
+
+{% block content %}
+    <div class="page-title">
+        <div class="title_left">
+            <h3>Proyectos al día</h3>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <div class="row">
+        <div class="col-md-12 col-sm-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Panel de administración</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <!-- Aquí irá el contenido principal de la página -->
+
+                    <div class="row justify-content-center">
+                        <!-- Ejemplo de un botón -->
+                        <div class="col-md-2">
+                            <a href="{% url 'ver_ingenieros' %}" class="btn btn-primary btn-block btn-lg">Ingenieros</a>
+                        </div>
+                        <!-- Repite el patrón para otros botones -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
+
+{% block sidebar %}
+    <!-- Contenido de la barra lateral -->
+    <!-- Menú de la barra lateral -->
+    <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
+        <div class="menu_section">
+            <ul class="nav side-menu">
+                <li><a href="{% url 'inicio' %}"><i class="fa fa-home"></i> Inicio </a></li> <!-- Aquí está el nuevo enlace -->
+                <li><a href="{% url 'ver_ingenieros' %}"><i class="fa fa-users"></i> Ingenieros </a></li>
+                <li><a href="{% url 'ver_clientes' %}"><i class="fa fa-briefcase"></i> Clientes </a></li>
+                <li><a href="{% url 'ver_proveedores' %}"><i class="fa fa-truck"></i> Proveedores </a></li>
+                <li><a href="{% url 'ver_materiales' %}"><i class="fa fa-wrench"></i> Materiales </a></li>
+                <li><a href="{% url 'ver_proyectos' %}"><i class="fa fa-tasks"></i> Proyectos </a></li>
+            </ul>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block top_navigation %}
+<div class="nav toggle">
+    <a id="menu_toggle"><i class="fa fa-bars"></i></a>
+</div>
+<div class="nav_menu">
+    <nav>
+        <ul class="nav navbar-nav navbar-right">
+            <li class="">
+                <a href="{% url 'salir' %}" class="user-profile">
+                    <i class="fa fa-sign-out"></i> Cerrar sesión
+                </a>
+            </li>
+        </ul>
+    </nav>
+</div>
+{% endblock %}
+

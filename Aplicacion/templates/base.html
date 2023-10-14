@@ -1,32 +1,60 @@
 {% load static %}
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>{% block title %}{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/estilos.css' %}">
-   <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}Título del sitio{% endblock %}</title>
 
-    <!-- Bootstrap 5 JavaScript Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap -->
+    <link href="{% static 'vendors/bootstrap/dist/css/bootstrap.min.css' %}" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="{% static 'vendors/font-awesome/css/font-awesome.min.css' %}" rel="stylesheet">
+    <!-- Custom Theme Style -->
+    <link href="{% static 'build/css/custom.min.css' %}" rel="stylesheet">
 
-    <!-- jQuery library -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-
-
-
-
-    {% block stylesheets %}{% endblock %}
+    {% block stylesheets %}
+    {% endblock %}
 </head>
-<body>
-    <header>
-        <nav>
-        </nav>
-    </header>
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+
+<body class="nav-md"> <!-- Esta clase es específica de Gentelella -->
+    <div class="container body">
+        <div class="main_container">
+
+            <!-- Sidebar -->
+            <div class="col-md-3 left_col">
+                {% block sidebar %}{% endblock %}
+            </div>
+
+            <!-- Top Navigation -->
+            <div class="top_nav">
+                {% block top_navigation %}{% endblock %}
+            </div>
+
+            <!-- Page Content -->
+            <div class="right_col" role="main">
+                {% block content %}{% endblock %}
+            </div>
+
+            <!-- Footer -->
+            <footer>
+                <div class="pull-right">
+                    Gentelella - Bootstrap Admin Template by <a href="https://colorlib.com">Colorlib</a>
+                </div>
+                <div class="clearfix"></div>
+            </footer>
+
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="{% static 'vendors/jquery/dist/jquery.min.js' %}"></script>
+    <!-- Bootstrap -->
+    <script src="{% static 'vendors/bootstrap/dist/js/bootstrap.bundle.min.js' %}"></script>
+    <!-- Custom Theme Scripts -->
+    <script src="{% static 'build/js/custom.min.js' %}"></script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

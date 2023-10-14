@@ -1,52 +1,66 @@
-{% extends 'base.html' %}
+{% extends 'base_gerente.html' %}
+{% load static %}
 
 {% block content %}
-<h1 class="display-4 text-center">Clientes</h1>
-<br>
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th scope="col">Nombre</th>
-            <th scope="col">RUC</th>
-            <th scope="col">Email</th>
-            <th scope="col">Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>{{ cliente.nombre }}</td>
-            <td>{{ cliente.ruc }}</td>
-            <td>{{ cliente.email }}</td>
-            <td>
-                <!-- Botón para abrir el modal de edición -->
-                <button type="button" class="btn btn-primary editarClienteBtn" data-cliente-id="{{ cliente.id }}">Editar</button>
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Cliente: {{ cliente.nombre }}</h2>
+        <ul class="nav navbar-right panel_toolbox">
+            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+        </ul>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        <!-- Contenido principal -->
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo de persona</th>
+                    <th>RUC</th>
+                    <th>Email</th>
+                    <th>Ciudad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ cliente.nombre }}</td>
+                    <td>{{ cliente.tipo_persona }}</td>
+                    <td>{{ cliente.ruc }}</td>
+                    <td>{{ cliente.email }}</td>
+                    <td>{{ cliente.ciudad|default:"-" }}</td>
+                    <td>
+                        <button type="button" class="btn btn-info btn-sm mostrarContactosBtn" data-cliente-id="{{ cliente.id }}">Ver Contactos</button>
+                        <button type="button" class="btn btn-primary btn-sm editarClienteBtn" data-cliente-id="{{ cliente.id }}"><i class="fa fa-pencil"></i></button>
+                        <form method="POST" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="cliente_id" value="{{ cliente.id }}">
+                            <button type="submit" class="btn btn-danger btn-sm"><i class="fa fa-trash-o"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
-                <!-- Botón para abrir el modal de contactos -->
-                <button type="button" class="btn btn-primary mostrarContactosBtn" data-cliente-id="{{ cliente.id }}">
-                    Mostrar Contactos
-                </button>
-
-                <!-- Formulario para eliminar cliente -->
-                <form method="POST" class="d-inline">
-                    {% csrf_token %}
-                    <input type="hidden" name="cliente_id" value="{{ cliente.id }}">
-                    <button type="submit" class="btn btn-primary">Eliminar</button>
-                </form>
-            </td>
-        </tr>
-    </tbody>
-</table>
-<a href="{% url 'ver_clientes' %}" class="btn btn-primary">Volver a Clientes</a>
-<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+        <!-- Botones para volver -->
+        <a href="{% url 'ver_clientes' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Clientes</a>
+    </div>
+</div>
 
 
 <!-- Modal para editar cliente -->
-<div class="modal fade" id="editarClienteModal" tabindex="-1" aria-labelledby="editarClienteModalLabel" aria-hidden="true">
+<div class="modal fade" id="editarClienteModal" tabindex="-1" role="dialog" aria-labelledby="editarClienteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editarClienteModalLabel">Editar Cliente</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'editar_cliente' 0 %}" id="editarClienteForm"> <!-- La URL se actualiza con JS -->
                 {% csrf_token %}
@@ -61,6 +75,13 @@
                         <input type="text" class="form-control" id="nombre" name="nombre">
                     </div>
                     <div class="form-group">
+                        <label for="tipo_persona">Tipo de persona:</label>
+                        <select class="form-control" id="tipo_persona" name="tipo_persona">
+                            <option value="Fisica">Física</option>
+                            <option value="Juridica">Jurídica</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="ruc">RUC:</label>
                         <input type="text" class="form-control" id="ruc" name="ruc">
                     </div>
@@ -68,10 +89,18 @@
                         <label for="email">Email:</label>
                         <input type="email" class="form-control" id="email" name="email">
                     </div>
+                    <div class="form-group">
+                        <label for="direccion">Direccion:</label>
+                        <input type="direccion" class="form-control" id="direccion" name="direccion">
+                    </div>
+                    <div class="form-group">
+                        <label for="ciudad">Ciudad:</label>
+                        <input type="ciudad" class="form-control" id="ciudad" name="ciudad">
+                    </div>
                     <!-- ... otros campos ... -->
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
                     <button type="submit" class="btn btn-primary">Guardar Cambios</button>
                 </div>
             </form>
@@ -80,13 +109,14 @@
 </div>
 
 
+
 <!-- Modal para mostrar contactos -->
 <div class="modal fade" id="mostrarContactosModal" tabindex="-1" aria-labelledby="mostrarContactosModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="mostrarContactosModalLabel">Contactos</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div id="contactosBody"></div>
@@ -103,7 +133,7 @@
                 <button type="button" class="btn btn-primary" id="agregarContactoBtn">Agregar Contacto</button>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>

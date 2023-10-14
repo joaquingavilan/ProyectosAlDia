@@ -1,26 +1,39 @@
-{% extends 'base.html' %}
+{% extends 'base_gerente.html' %}
+{% load widget_tweaks %}
 
 {% block content %}
-<h2>Registro de cliente</h2>
-
-<!-- Formulario principal de Cliente -->
-<form method="post" id="mainForm">
-    {% csrf_token %}
-    {{ form.as_p }}
-
-    <!-- Sección donde se mostrarán los contactos agregados -->
-    <div id="contactosAgregados">
-        <!-- Los contactos agregados se mostrarán aquí -->
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Registrar Cliente</h2>
+        <div class="clearfix"></div>
     </div>
-
-    <!-- Botón para abrir el modal de agregar contacto -->
-    <button type="button" class="btn btn-primary" id="abrirModalBtn">
-        Agregar Contacto
-    </button>
-
-    <input type="submit" class="btn btn-primary" value="Guardar" id="guardarBtn">
-    <a href="{% url 'ver_clientes' %}" class="btn btn-primary">Cancelar</a>
-</form>
+    <div class="x_content">
+        <form method="post" id="mainForm">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field|add_class:"form-control" }}
+                    {% if field.errors %}
+                        {% for error in field.errors %}
+                            <p class="text-danger">{{ error }}</p>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <!-- Botón para abrir el modal de agregar contacto -->
+            <button type="button" class="btn btn-primary" id="abrirModalBtn">
+                Agregar Contacto
+            </button>
+            <!-- Sección donde se mostrarán los contactos agregados -->
+            <div id="contactosAgregados" class="mb-3">
+                <!-- Los contactos agregados se mostrarán aquí -->
+            </div>
+            <button type="submit" class="btn btn-success" id="guardarBtn">Registrar</button>
+        </form>
+        <a href="{% url 'ver_clientes' %}" class="btn btn-secondary mt-3"><i class="fa fa-arrow-left"></i> Volver a Clientes</a>
+    </div>
+</div>
 
 <!-- Modal para agregar contacto -->
 <div class="modal fade" id="contactoModal" tabindex="-1" aria-labelledby="contactoModalLabel" aria-hidden="true">
@@ -28,7 +41,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="contactoModalLabel">Agregar Contacto</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body">
                 <!-- Formulario de Contacto -->
@@ -42,15 +55,12 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
                 <button type="button" class="btn btn-primary" id="agregarContactoBtn">Agregar</button>
             </div>
         </div>
     </div>
 </div>
-
-
-
 {% endblock %}
 
 {% block extra_js %}
