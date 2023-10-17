@@ -11,48 +11,54 @@
         <div class="card-body">
             <h4 class="mb-4" style="font-size: 1.5rem;">¿Confirma que desea eliminar a <strong>{{ ingeniero.first_name }} {{ ingeniero.last_name }}</strong>?</h4>
 
-            {% if obras_asociadas or presupuestos_asociados %}
-                <h4 class="mt-4 mb-3">Recursos Asociados</h4>
-                {% if obras_asociadas %}
-                    <ul class="list-group mb-3">
-                    {% for obra in obras_asociadas %}
-                        <li class="list-group-item">
-                            <span class="h5 font-weight-bold">Obra: {{ obra.proyecto.nombre }}</span>
-                            <div class="mt-2">
-                                Reasignar a:
-                                <select class="custom-select" name="reassign_obra_{{ obra.id }}">
-                                    {% for ingeniero in otros_ingenieros %}
-                                        <option value="{{ ingeniero.user.id }}">{{ ingeniero.user.first_name }} {{ ingeniero.user.last_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </li>
-                    {% endfor %}
-                    </ul>
-                {% endif %}
+            <!-- Formulario de confirmación de eliminación -->
+            <form method="POST" action="{% url 'eliminar_ingeniero' ingeniero.pk %}">
+                {% csrf_token %}
 
-                {% if presupuestos_asociados %}
-                    <ul class="list-group mb-3">
-                    {% for presupuesto in presupuestos_asociados %}
-                        <li class="list-group-item">
-                            <span class="h5 font-weight-bold">Presupuesto: {{ presupuesto.proyecto.nombre }}</span>
-                            <div class="mt-2">
-                                Reasignar a:
-                                <select class="custom-select" name="reassign_presupuesto_{{ presupuesto.id }}">
-                                    {% for ingeniero in otros_ingenieros %}
-                                        <option value="{{ ingeniero.user.id }}">{{ ingeniero.user.first_name }} {{ ingeniero.user.last_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </li>
-                    {% endfor %}
-                    </ul>
+                {% if obras_asociadas or presupuestos_asociados %}
+                    <h4 class="mt-4 mb-3">Recursos Asociados</h4>
+                    {% if obras_asociadas %}
+                        <ul class="list-group mb-3">
+                        {% for obra in obras_asociadas %}
+                            <li class="list-group-item">
+                                <span class="h5 font-weight-bold">Obra: {{ obra.proyecto.nombre }}</span>
+                                <div class="mt-2">
+                                    Reasignar a:
+                                    <select class="custom-select" name="reassign_obra_{{ obra.id }}">
+                                        {% for ingeniero in otros_ingenieros %}
+                                            <option value="{{ ingeniero.user.id }}">{{ ingeniero.user.first_name }} {{ ingeniero.user.last_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+
+                    {% if presupuestos_asociados %}
+                        <ul class="list-group mb-3">
+                        {% for presupuesto in presupuestos_asociados %}
+                            <li class="list-group-item">
+                                <span class="h5 font-weight-bold">Presupuesto: {{ presupuesto.proyecto.nombre }}</span>
+                                <div class="mt-2">
+                                    Reasignar a:
+                                    <select class="custom-select" name="reassign_presupuesto_{{ presupuesto.id }}">
+                                        {% for ingeniero in otros_ingenieros %}
+                                            <option value="{{ ingeniero.user.id }}">{{ ingeniero.user.first_name }} {{ ingeniero.user.last_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
                 {% endif %}
-            {% endif %}
-            <div class="mt-4">
-                <button type="submit" class="btn btn-danger mr-2" name="confirmar">Eliminar</button>
-                <a class="btn btn-secondary" href="{% url 'ver_ingenieros' %}">Cancelar</a>
-            </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-danger mr-2" name="confirmar">Eliminar</button>
+                    <a class="btn btn-secondary" href="{% url 'ver_ingenieros' %}">Cancelar</a>
+                </div>
+            </form> <!-- Fin del formulario -->
+
         </div>
     </div>
 </div>

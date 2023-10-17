@@ -1,100 +1,122 @@
-{% extends 'base.html' %}
+{% extends 'base_gerente.html' %}
+{% load static %}
 
 {% block content %}
-  <h1 class="display-4 text-center">Proyectos </h1>
-<br>
-<div class="input-group w-25 mb-3">
-  <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre">
-  <input type="hidden" id="proyectoUrl" value="{% url 'ver_proyecto' 999999 %}">
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Proyectos</h2>
+        <ul class="nav navbar-right panel_toolbox">
+            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+        </ul>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fa fa-search"></i></span>
+                    </div>
+                    <input type="hidden" id="proyectoUrl" value="{% url 'ver_proyecto' 999999 %}">
+                </div>
+                <div id="resultadosBusqueda"></div>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroCampo" class="custom-select">
+                    <option value="cliente">Cliente</option>
+                    <option value="encargadoPresupuesto">Encargado del Presupuesto</option>
+                    <option value="estadoPresupuesto">Estado del Presupuesto</option>
+                    <option value="encargadoObra">Encargado de la Obra</option>
+                    <option value="estadoObra">Estado de la Obra</option>
+                    <option value="ciudad">Ciudad</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroValor" class="custom-select"></select>
+            </div>
+            <div class="col-md-3 d-flex justify-content-end">
+                <a href="{% url 'registrar_proyecto' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir proyecto</a>
+            </div>
+        </div>
+
+        {% if page_obj %}
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Nombre del proyecto</th>
+                        <th>Cliente</th>
+                        <th>Encargado del presupuesto</th>
+                        <th>Estado del Presupuesto</th>
+                        <th>Encargado de la obra</th>
+                        <th>Estado de la Obra</th>
+                        <th>Ciudad</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for proyecto in page_obj %}
+                        <tr>
+                            <td>{{proyecto.nombre}}</td>
+                            <td>{{ proyecto.cliente.nombre }}</td>
+                            <td>{% if proyecto.presupuesto.encargado %}{{ proyecto.presupuesto.encargado.first_name }} {{ proyecto.presupuesto.encargado.last_name }}{% else %}-{% endif %}</td>
+                            <td>{{ proyecto.presupuesto.get_estado_display }}</td>
+                            <td>{% if proyecto.obra.encargado %}{{ proyecto.obra.encargado.first_name }} {{ proyecto.obra.encargado.last_name }}{% else %}No asignado{% endif %}</td>
+                            <td>{{ proyecto.obra.get_estado_display }}</td>
+                            <td>{{ proyecto.ciudad }}</td>
+                            <td>
+                                <a href="{% url 'modificar_proyecto' proyecto.id%}" class="btn btn-primary btn-sm"><i class="fa fa-pencil"></i></a>
+                                <a class="btn btn-danger btn-sm" href="{% url 'eliminar_proyecto' proyecto.id %}"><i class="fa fa-trash-o"></i></a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <nav>
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link">Primera</a></li>
+                        <li class="page-item disabled"><a class="page-link">Anterior</a></li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+                        <li class="page-item disabled"><a class="page-link">Última</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% else %}
+            <div class="alert alert-warning" role="alert">
+                No se encontraron proyectos.
+            </div>
+        {% endif %}
+    </div>
 </div>
-<div id="resultadosBusqueda"></div>
-
-
-<!-- Dropdown para seleccionar el campo de filtro -->
-<select id="filtroCampo">
-    <option value="cliente">Cliente</option>
-    <option value="encargadoPresupuesto">Encargado del Presupuesto</option>
-    <option value="estadoPresupuesto">Estado del Presupuesto</option>
-    <option value="encargadoObra">Encargado de la Obra</option>
-    <option value="estadoObra">Estado de la Obra</option>
-    <option value="ciudad">Ciudad</option>
-</select>
-
-<!-- Dropdown para seleccionar el valor específico del filtro -->
-<select id="filtroValor">
-    <!-- Este se llenará dinámicamente usando JS -->
-</select>
-
-<button id="aplicarFiltro" class="btn btn-primary">Filtrar</button>
-
-<br><br>
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th>Nombre del proyecto</th>
-        <th>Cliente</th>
-        <th>Encargado del presupuesto</th>
-        <th>Estado del Presupuesto</th>
-        <th>Encargado de la obra</th>
-        <th>Estado de la Obra</th>
-        <th>Ciudad</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for proyecto in page_obj %}
-        <tr>
-          <td>{{proyecto.nombre}}</td>
-          <td>{{ proyecto.cliente.nombre }}</td>
-          <td>{% if proyecto.presupuesto.encargado %}{{ proyecto.presupuesto.encargado.first_name }} {{ proyecto.presupuesto.encargado.last_name }}{% else %}-{% endif %}</td>
-          <td>{{ proyecto.presupuesto.get_estado_display }}</td>
-          <td>{% if proyecto.obra.encargado %}{{ proyecto.obra.encargado.first_name }} {{ proyecto.obra.encargado.last_name }}{% else %}No asignado{% endif %}</td>
-          <td>{{ proyecto.obra.get_estado_display }}</td>
-          <td>{{ proyecto.ciudad }}</td>
-          <td>
-            <a href="{% url 'modificar_proyecto' proyecto.id%}" class="btn btn-primary">Modificar Proyecto</a>
-            <a class="btn btn-primary" href="{% url 'eliminar_proyecto' proyecto.id %}">Eliminar Proyecto</a>
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-<nav>
-  <ul class="pagination">
-    {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Primera</a></li>
-      <li class="page-item disabled"><a class="page-link">Anterior</a></li>
-    {% endif %}
-
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}
-        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
-      {% else %}
-        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-      {% endif %}
-    {% endfor %}
-
-    {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
-      <li class="page-item disabled"><a class="page-link">Última</a></li>
-    {% endif %}
-  </ul>
-</nav>
-
-
-<a href="{% url 'registrar_proyecto' %}" class="btn btn-primary">Registrar nuevo proyecto</a>
-<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
-
 {% endblock %}
 {% block extra_js %}
 <script>
+document.addEventListener('DOMContentLoaded', (event) => {
+    inicializarFiltroValorProyectos();  // Llamar a la función al cargar la página
 
         //buscador
     document.getElementById('buscador').addEventListener('input', function() {
@@ -168,9 +190,7 @@ function inicializarFiltroValorProyectos() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', (event) => {
-    inicializarFiltroValorProyectos();  // Llamar a la función al cargar la página
-});
+
 
 // Inicializar el dropdown al cambiar el valor del primer dropdown
 document.getElementById('filtroCampo').addEventListener('change', function() {
@@ -210,8 +230,7 @@ function filtrarProyectos() {
 }
 
 document.getElementById('filtroValor').addEventListener('change', filtrarProyectos);
-document.getElementById('aplicarFiltro').addEventListener('click', filtrarProyectos);
 
-
+});
 </script>
 {% endblock %}

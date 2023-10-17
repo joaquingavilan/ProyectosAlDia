@@ -1,111 +1,130 @@
-{% extends 'base.html' %}
+{% extends 'base_gerente.html' %}
+{% load static %}
 
 {% block content %}
-
-
-  <h1>Lista de Materiales</h1>
-<br>
-<div class="input-group w-25 mb-3">
-  <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre">
-  <input type="hidden" id="materialUrl" value="{% url 'ver_material' 999999 %}">
-</div>
-<div id="resultadosBusqueda"></div>
-  <!-- Sección para mostrar mensajes -->
-  {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">
-        {{ message }}
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Materiales</h2>
+        <div class="btn-group pull-right">
+            <form action="{% url 'exportar_excel' %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_dato" value="Materiales">
+                <button type="submit" class="btn btn-success btn-sm" title="Exportar a Excel"><i class="fa fa-file-excel-o"></i></button>
+            </form>
+            <form action="{% url 'exportar_pdf' %}" method="post" class="ml-2">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_dato" value="Materiales">
+                <button type="submit" class="btn btn-danger btn-sm" title="Exportar a PDF"><i class="fa fa-file-pdf-o"></i></button>
+            </form>
+        </div>
+        <ul class="nav navbar-right panel_toolbox">
+            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+        </ul>
+        <div class="clearfix"></div>
     </div>
-  {% endfor %}
 
-<!-- Dropdown para seleccionar el campo de filtro -->
-<select id="filtroCampo">
-    <option value="marca">Marca</option>
-    <option value="proveedor">Proveedor</option>
-    <option value="unidadesStock">Unidades en stock</option>
-</select>
-
-<!-- Dropdown para seleccionar el valor específico del filtro -->
-<select id="filtroValor">
-    <!-- Este se llenará dinámicamente usando JS -->
-</select>
-
-<button id="aplicarFiltro" class="btn btn-primary">Filtrar</button>
-  <hr>
-
-  {% if materiales %}
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Nombre</th>
-          <th>Marca</th>
-          <th>Proveedor</th>
-          <th>Medida</th>
-          <th>Mínimo</th>
-          <th>Unidades en Stock</th>
-          <th>Imagen</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for material in page_obj %}
-          <tr>
-            <td>{{ material.id }}</td>
-            <td>{{ material.nombre }}</td>
-            <td>{{ material.marca }}</td>
-            <td>{{ material.id_proveedor }}</td>
-            <td>{{ material.medida }}</td>
-            <td>{{ material.minimo }}</td>
-            <td>{{ material.unidades_stock }}</td>
-            {% if material.fotografia %}
-              <td><a href="/{{ material.fotografia }}" target="_blank"><img src="/{{ material.fotografia }}"></a></td>
-            {% else %}
-              <td>--</td>
-            {% endif %}
-            <td>
-              <a href="{% url 'editar_material' material.id %}" class="btn btn-primary">Editar</a>
-              <!-- Actualización del enlace de eliminación -->
-              <a href="{% url 'ver_materiales' %}?eliminar_material_id={{ material.id }}" class="btn btn-primary">Eliminar</a>
-            </td>
-          </tr>
+    <div class="x_content">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
         {% endfor %}
-      </tbody>
-    </table>
-<nav>
-  <ul class="pagination">
-    {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Primera</a></li>
-      <li class="page-item disabled"><a class="page-link">Anterior</a></li>
-    {% endif %}
 
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}
-        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
-      {% else %}
-        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-      {% endif %}
-    {% endfor %}
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fa fa-search"></i></span>
+                    </div>
+                    <input type="hidden" id="materialUrl" value="{% url 'ver_material' 999999 %}">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroCampo" class="custom-select">
+                    <option value="marca">Marca</option>
+                    <option value="proveedor">Proveedor</option>
+                    <option value="unidadesStock">Unidades en stock</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroValor" class="custom-select"></select>
+            </div>
+            <div class="col-md-3 d-flex justify-content-end">
+                <a href="{% url 'registrar_material' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir material</a>
+            </div>
+        </div>
 
-    {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
-      <li class="page-item disabled"><a class="page-link">Última</a></li>
-    {% endif %}
-  </ul>
-</nav>
+        {% if materiales %}
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Marca</th>
+                        <th>Proveedor</th>
+                        <th>Medida</th>
+                        <th>Mínimo</th>
+                        <th>Unidades en Stock</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in page_obj %}
+                        <tr>
+                            <td>{{ material.id }}</td>
+                            <td>{{ material.nombre }}</td>
+                            <td>{{ material.marca }}</td>
+                            <td>{{ material.id_proveedor }}</td>
+                            <td>{{ material.medida }}</td>
+                            <td>{{ material.minimo }}</td>
+                            <td>{{ material.unidades_stock }}</td>
+                            <td>
+                                <a href="{% url 'editar_material' material.id %}" class="btn btn-primary btn-sm"><i class="fa fa-pencil"></i></a>
+                                <a href="{% url 'ver_materiales' %}?eliminar_material_id={{ material.id }}" class="btn btn-danger btn-sm"><i class="fa fa-trash-o"></i></a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
 
-  {% else %}
-    <p>No se encontraron materiales.</p>
-  {% endif %}
-  <a href="{% url 'registrar_material' %}" class="btn btn-primary">Registrar Material</a>
-  <a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+            <nav>
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link">Primera</a></li>
+                        <li class="page-item disabled"><a class="page-link">Anterior</a></li>
+                    {% endif %}
 
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+                        <li class="page-item disabled"><a class="page-link">Última</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% else %}
+            <div class="alert alert-warning" role="alert">
+                No se encontraron materiales.
+            </div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
+
+
 {% block extra_js %}
 <script>
   //buscador
@@ -203,7 +222,6 @@ function filtrarMateriales() {
     }
 
     document.getElementById('filtroValor').addEventListener('change', filtrarMateriales);
-    document.getElementById('aplicarFiltro').addEventListener('click', filtrarMateriales);
 
 </script>
 {% endblock %}

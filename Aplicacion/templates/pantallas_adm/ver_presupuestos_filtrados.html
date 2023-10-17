@@ -1,79 +1,82 @@
-{% extends 'base.html' %}
+{% extends 'base_adm.html' %}
 {% load custom_filters %}
+
 {% block content %}
-  <h1 class="display-4 text-center">Presupuestos</h1>
-<br>
+<div class="container mt-4">
+    <h2 class="mb-4" style="font-size: 2rem;">Presupuestos Filtrados</h2>
 
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Nombre del proyecto</th>
-          <th>Cliente</th>
-          <th>Ingeniero asignado</th>
-          <th>Estado</th>
-          <th>Anticipo recibido</th>
-          <th>Monto Presupuesto</th>
-          <th>Monto Anticipo</th>
-          <th>Fecha de pago de Anticipo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for presupuesto in presupuestos %}
-          <tr>
-            <td>{{ presupuesto.proyecto.nombre }}</td>
-            <td>
-              {{ presupuesto.proyecto.cliente.nombre }}
-            </td>
-            <td>
-                {{ presupuesto.encargado.first_name }} {{ presupuesto.encargado.last_name }}
-            </td>
-            <td data-id="{{ presupuesto.id }}" class="estado-celda">
-                {% if presupuesto.estado == 'S' %}
-                    <select class="form-select estado-select" data-id="{{ presupuesto.id }}" onchange="actualizarEstado(this)">
-                        <option value="S" selected>Enviado</option>
-                        <option value="A">Aprobado</option>
-                    </select>
-                {% else %}
-                    {{ presupuesto.get_estado_display }}
-                {% endif %}
-            </td>
-            <td>
-                {% if presupuesto.anticipo %}
-                    Sí
-                {% elif presupuesto.estado == 'E' %}
-                    No
-                {% else %}
-                    <select class="form-select anticipo-select" data-id="{{ presupuesto.id }}" onchange="actualizarAnticipo(this)">
-                        <option value="False" selected>No</option>
-                        <option value="True">Sí</option>
-                    </select>
-                {% endif %}
-            </td>
-            <td>
-                {% if presupuesto.estado != 'E' %}
-                {{presupuesto.monto_total|intcomma}}
-                {% else %}
-                -
-                {% endif %}
-            </td>
-            <td>
-                {% if presupuesto.estado != 'E' %}
-                {{presupuesto.monto_anticipo|intcomma}}
-                {% else %}
-                -
-                {% endif %}
-            </td>
-            <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
-                {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
-            </td>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    <th>Nombre del proyecto</th>
+                    <th>Cliente</th>
+                    <th>Ingeniero asignado</th>
+                    <th>Estado</th>
+                    <th>Anticipo recibido</th>
+                    <th>Monto Presupuesto</th>
+                    <th>Monto Anticipo</th>
+                    <th>Fecha de pago de Anticipo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for presupuesto in presupuestos %}
+                <tr>
+                    <td>{{ presupuesto.proyecto.nombre }}</td>
+                    <td>{{ presupuesto.proyecto.cliente.nombre }}</td>
+                    <td>{{ presupuesto.encargado.first_name }} {{ presupuesto.encargado.last_name }}</td>
+                    <td data-id="{{ presupuesto.id }}" class="estado-celda">
+                        {% if presupuesto.estado == 'S' %}
+                        <select class="form-select estado-select" data-id="{{ presupuesto.id }}" onchange="actualizarEstado(this)">
+                            <option value="S" selected>Enviado</option>
+                            <option value="A">Aprobado</option>
+                        </select>
+                        {% else %}
+                        {{ presupuesto.get_estado_display }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.anticipo %}
+                        Sí
+                        {% elif presupuesto.estado == 'E' %}
+                        No
+                        {% else %}
+                        <select class="form-select anticipo-select" data-id="{{ presupuesto.id }}" onchange="actualizarAnticipo(this)">
+                            <option value="False" selected>No</option>
+                            <option value="True">Sí</option>
+                        </select>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.estado != 'E' %}
+                        {{presupuesto.monto_total|intcomma}}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.estado != 'E' %}
+                        {{presupuesto.monto_anticipo|intcomma}}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
+                        {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-<a href="{% url 'ver_presupuestos_adm' %}" class="btn btn-primary">Volver a presupuestos</a>
-  <a href="{% url 'inicio_adm' %}" class="btn btn-primary">Inicio</a>
+    <div class="mt-4">
+        <a href="{% url 'ver_presupuestos_adm' %}" class="btn btn-primary">Volver a presupuestos</a>
+        <a href="{% url 'inicio_adm' %}" class="btn btn-secondary">Inicio</a>
+    </div>
+</div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
 function actualizarAnticipo(selectElem) {

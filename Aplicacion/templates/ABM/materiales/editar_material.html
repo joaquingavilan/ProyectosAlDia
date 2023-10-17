@@ -1,47 +1,29 @@
-{% extends 'base.html' %}
+{% extends 'base_gerente.html' %}
+{% load widget_tweaks %}
 
 {% block content %}
-  <h1>Editar material</h1>
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Guardar cambios</button>
-    <button id="btn-atras" type="button" class="btn btn-primary">Atrás</button>
-  </form>
-{% endblock %}
-{% block extra_js %}
-  <script>
-    // añadir la clase form-modificado si se modifica algun input
-    let form = document.querySelector('form');
-    let inputs = form.querySelectorAll('input, select, textarea, p');
-
-    inputs.forEach(input => {
-      input.addEventListener('change', function() {
-        form.classList.add('form-modificado');
-      });
-    });
-
-    //verificar si se modificó antes de ir atras
-
-    let btnAtras = document.getElementById('btn-atras');
-    btnAtras.addEventListener('click', function() {
-      let formModificado = document.querySelector('.form-modificado');
-      if (formModificado) {
-        if (confirm('¿Está seguro que desea salir? Se perderán los cambios no guardados.')) {
-          window.location.href = "{% url 'ver_materiales' %}";
-        }
-      } else {
-        window.location.href = "{% url 'ver_materiales' %}";
-      }
-    });
-
-    //verificar si se modificó antes de actualizar
-
-    window.addEventListener('beforeunload', function (event) {
-      let form = document.querySelector('form');
-      if (form.classList.contains('form-modificado')) {
-        event.returnValue = 'Hay cambios sin guardar. ¿Seguro que desea salir de la página?';
-      }
-    });
-    </script>
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Editar Material</h2>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field|add_class:"form-control" }}
+                    {% if field.errors %}
+                        {% for error in field.errors %}
+                            <p class="text-danger">{{ error }}</p>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-success">Guardar cambios</button>
+        </form>
+        <a href="{% url 'ver_materiales' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Materiales</a>
+    </div>
+</div>
 {% endblock %}

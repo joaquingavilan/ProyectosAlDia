@@ -29,7 +29,7 @@
                 <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
                 <input type="hidden" id="clienteUrl" value="{% url 'ver_cliente' 999999 %}">
             </div>
-            <a href="{% url 'registro_cliente' %}" class="btn btn-success"><i class="fa fa-plus"></i> Registrar nuevo cliente</a>
+            <a href="{% url 'registro_cliente' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir cliente</a>
         </div>
         <div id="resultadosBusqueda"></div>
         <br>
@@ -72,37 +72,36 @@
         </table>
 
         <!-- Paginador -->
-        <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center">
+        <nav>
+            <ul class="pagination">
                 {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page=1" aria-label="First"><i class="fa fa-angle-double-left"></i></a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous"><i class="fa fa-angle-left"></i></a></li>
+                    <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
                 {% else %}
-                <li class="page-item disabled"><a class="page-link" href="#"><i class="fa fa-angle-double-left"></i></a></li>
-                <li class="page-item disabled"><a class="page-link" href="#"><i class="fa fa-angle-left"></i></a></li>
+                    <li class="page-item disabled"><a class="page-link">Primera</a></li>
+                    <li class="page-item disabled"><a class="page-link">Anterior</a></li>
                 {% endif %}
 
-                {% for i in paginator.page_range %}
-                {% if page_obj.number == i %}
-                <li class="page-item active"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
-                {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
-                <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
-                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                    {% endif %}
                 {% endfor %}
 
                 {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next"><i class="fa fa-angle-right"></i></a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ paginator.num_pages }}" aria-label="Last"><i class="fa fa-angle-double-right"></i></a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
                 {% else %}
-                <li class="page-item disabled"><a class="page-link" href="#"><i class="fa fa-angle-right"></i></a></li>
-                <li class="page-item disabled"><a class="page-link" href="#"><i class="fa fa-angle-double-right"></i></a></li>
+                    <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+                    <li class="page-item disabled"><a class="page-link">Última</a></li>
                 {% endif %}
             </ul>
         </nav>
     </div>
 </div>
 
-<!-- Modal para editar cliente -->
 <!-- Modal para editar cliente -->
 <div class="modal fade" id="editarClienteModal" tabindex="-1" role="dialog" aria-labelledby="editarClienteModalLabel" aria-hidden="true">
     <div class="modal-dialog">

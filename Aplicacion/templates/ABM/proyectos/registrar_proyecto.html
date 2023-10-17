@@ -1,26 +1,42 @@
-{% extends 'base.html' %}
+{% extends 'base_gerente.html' %}
+{% load widget_tweaks %}
 
 {% block content %}
-  <h1>Registrar Proyecto</h1>
-  <form method="POST">
-    {% csrf_token %}
-    <label for="nombre">Nombre del proyecto:</label>
-    <input type="text" id="nombre" name="nombre"><br>
-    <label for="nombre">Ciudad:</label>
-    <input type="text" id="ciudad" name="ciudad"><br>
-    <label for="cliente">Cliente:</label>
-    <select name="cliente" id="cliente">
-      {% for cliente in clientes %}
-        <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
-      {% endfor %}
-    </select><br>
-    <label for="encargado">Encargado del presupuesto:</label>
-    <select name="encargado" id="encargado">
-      {% for ingeniero in ingenieros %}
-        <option value="{{ ingeniero.id }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
-      {% endfor %}
-    </select><br>
-    <button type="submit" class="btn btn-primary">Guardar</button>
-    <a href="{% url 'ver_proyectos' %}" class="btn btn-primary">Cancelar</a>
-  </form>
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Registrar Proyecto</h2>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="nombre">Nombre del proyecto:</label>
+                <input type="text" id="nombre" name="nombre" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="ciudad">Ciudad:</label>
+                <input type="text" id="ciudad" name="ciudad" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="cliente">Cliente:</label>
+                <select name="cliente" id="cliente" class="form-control">
+                    {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="encargado">Encargado del presupuesto:</label>
+                <select name="encargado" id="encargado" class="form-control">
+                    {% for ingeniero in ingenieros %}
+                        <option value="{{ ingeniero.id }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar</button>
+        </form>
+        <a href="{% url 'ver_proyectos' %}" class="btn btn-secondary mt-3"><i class="fa fa-arrow-left"></i> Volver a Proyectos</a>
+    </div>
+</div>
 {% endblock %}

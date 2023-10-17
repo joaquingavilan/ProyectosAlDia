@@ -422,8 +422,16 @@ def ver_ingeniero(request, id_ingeniero):
 def registrar_proveedor(request):
     if request.method == 'POST':
         form = ProveedorForm(request.POST)
+        # Extraemos la data de los contactos desde el request.
+        # La estructura de contactos_data será una lista de diccionarios, donde cada diccionario tiene la información de un contacto.
+        contactos_data = request.POST.getlist('contactos[]')
+        contactos_list = [(contactos_data[i], contactos_data[i + 1]) for i in range(0, len(contactos_data), 2)]
+
         if form.is_valid():
-            form.save()
+            proveedor = form.save()
+            # Ahora, para cada contacto en contactos_data, lo creamos y asociamos con el cliente.
+            for nombre_contacto, numero_contacto in contactos_list:
+                Contacto.objects.create(nombre=nombre_contacto, numero=numero_contacto, proveedor=proveedor)
             return redirect('ver_proveedores')
     else:
         form = ProveedorForm()
@@ -712,8 +720,9 @@ def modificar_proyecto(request, pk):
         nombre_proyecto = request.POST['nombre']
         proyecto.cliente = Cliente.objects.get(id=cliente)
         proyecto.nombre = nombre_proyecto
-        proyecto.presupuesto.encargado = User.objects.get(id=encargado_presupuesto)
-        proyecto.presupuesto.save()
+        if encargado_presupuesto:
+            proyecto.presupuesto.encargado = User.objects.get(id=encargado_presupuesto)
+            proyecto.presupuesto.save()
         if encargado_obra != '':
             proyecto.obra.encargado = User.objects.get(id=encargado_obra)
             proyecto.obra.save()
@@ -1050,6 +1059,26 @@ def exportar_excel(request):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=Proveedores.xlsx'
         wb.save(response)
+    elif tipo_dato == 'Materiales':
+        ws.title = "Materiales"
+        # Añadir encabezados a la hoja
+        encabezados = ['ID', 'Nombre', 'Marca', 'Proveedor', 'Medida', 'Mínimo', 'Unidades en Stock']
+        for col_num, encabezado in enumerate(encabezados, 1):
+            col_letter = get_column_letter(col_num)
+            ws['{}1'.format(col_letter)] = encabezado
+            ws.column_dimensions[col_letter].width = 15
+
+        # Obtener datos de los materiales
+        materiales = Material.objects.all().select_related(
+            'id_proveedor')  # select_related para optimizar la consulta relacionada con Proveedor
+
+        # Añadir datos a la hoja
+        for material in materiales:
+            ws.append([material.id, material.nombre, material.marca, material.id_proveedor.nombre, material.medida,
+                       material.minimo, material.unidades_stock])
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=Materiales.xlsx'
+        wb.save(response)
 
     return response
 
@@ -1143,6 +1172,52 @@ def exportar_pdf(request):
             data.append(
                 [proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.email, proveedor.ciudad, proveedor.direccion,
                  proveedor.pagina_web or ""])
+
+        # Crear tabla
+        table = Table(data)
+
+        # Aplicar estilos a la tabla
+        style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ])
+        table.setStyle(style)
+
+        # Alternar colores de fondo para las filas
+        rowNumb = len(data)
+        for i in range(1, rowNumb):
+            if i % 2 == 0:
+                bc = colors.bisque
+            else:
+                bc = colors.beige
+            ts = TableStyle(
+                [('BACKGROUND', (0, i), (-1, i), bc)]
+            )
+            table.setStyle(ts)
+
+        # Agregar tabla al documento
+        elems = []
+        elems.append(table)
+
+        doc.build(elems)
+    elif tipo_dato == 'Materiales':
+        response['Content-Disposition'] = 'attachment; filename="Materiales.pdf"'
+        doc = SimpleDocTemplate(response, pagesize=landscape(A4))
+        # Datos para la tabla
+        data = [['ID', 'Nombre', 'Marca', 'Proveedor', 'Medida', 'Mínimo', 'Unidades en Stock']]
+
+        # Obtener datos de los materiales
+        materiales = Material.objects.all().select_related(
+            'id_proveedor')  # select_related para optimizar la consulta relacionada con Proveedor
+        for material in materiales:
+            data.append(
+                [material.id, material.nombre, material.marca, material.id_proveedor.nombre, material.medida,
+                 material.minimo, material.unidades_stock])
 
         # Crear tabla
         table = Table(data)

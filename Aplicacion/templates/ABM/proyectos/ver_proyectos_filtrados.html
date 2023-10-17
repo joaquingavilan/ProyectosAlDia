@@ -1,69 +1,79 @@
-{% extends 'base.html' %}
+{% extends 'base_adm.html' %}
+{% load custom_filters %}
 
 {% block content %}
-  <h1 class="display-4 text-center">Proyectos </h1>
-<br>
+<div class="container mt-4">
+    <h2 class="mb-4" style="font-size: 2rem;">Presupuestos Filtrados</h2>
 
-<br><br>
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th>Nombre del proyecto</th>
-        <th>Cliente</th>
-        <th>Encargado del presupuesto</th>
-        <th>Estado del Presupuesto</th>
-        <th>Encargado de la obra</th>
-        <th>Estado de la Obra</th>
-        <th>Ciudad</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for proyecto in page_obj %}
-        <tr>
-          <td>{{proyecto.nombre}}</td>
-          <td>{{ proyecto.cliente.nombre }}</td>
-          <td>{% if proyecto.presupuesto.encargado %}{{ proyecto.presupuesto.encargado.first_name }} {{ proyecto.presupuesto.encargado.last_name }}{% else %}-{% endif %}</td>
-          <td>{{ proyecto.presupuesto.get_estado_display }}</td>
-          <td>{% if proyecto.obra.encargado %}{{ proyecto.obra.encargado.first_name }} {{ proyecto.obra.encargado.last_name }}{% else %}No asignado{% endif %}</td>
-          <td>{{ proyecto.obra.get_estado_display }}</td>
-          <td>{{ proyecto.ciudad }}</td>
-          <td>
-            <a href="{% url 'modificar_proyecto' proyecto.id%}" class="btn btn-primary">Modificar Proyecto</a>
-            <a class="btn btn-primary" href="{% url 'eliminar_proyecto' proyecto.id %}">Eliminar Proyecto</a>
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    <th>Nombre del proyecto</th>
+                    <th>Cliente</th>
+                    <th>Ingeniero asignado</th>
+                    <th>Estado</th>
+                    <th>Anticipo recibido</th>
+                    <th>Monto Presupuesto</th>
+                    <th>Monto Anticipo</th>
+                    <th>Fecha de pago de Anticipo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for presupuesto in presupuestos %}
+                <tr>
+                    <td>{{ presupuesto.proyecto.nombre }}</td>
+                    <td>{{ presupuesto.proyecto.cliente.nombre }}</td>
+                    <td>{{ presupuesto.encargado.first_name }} {{ presupuesto.encargado.last_name }}</td>
+                    <td data-id="{{ presupuesto.id }}" class="estado-celda">
+                        {% if presupuesto.estado == 'S' %}
+                        <select class="form-select estado-select" data-id="{{ presupuesto.id }}" onchange="actualizarEstado(this)">
+                            <option value="S" selected>Enviado</option>
+                            <option value="A">Aprobado</option>
+                        </select>
+                        {% else %}
+                        {{ presupuesto.get_estado_display }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.anticipo %}
+                        Sí
+                        {% elif presupuesto.estado == 'E' %}
+                        No
+                        {% else %}
+                        <select class="form-select anticipo-select" data-id="{{ presupuesto.id }}" onchange="actualizarAnticipo(this)">
+                            <option value="False" selected>No</option>
+                            <option value="True">Sí</option>
+                        </select>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.estado != 'E' %}
+                        {{presupuesto.monto_total|intcomma}}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.estado != 'E' %}
+                        {{presupuesto.monto_anticipo|intcomma}}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
+                        {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-<nav>
-  <ul class="pagination">
-    {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Primera</a></li>
-      <li class="page-item disabled"><a class="page-link">Anterior</a></li>
-    {% endif %}
-
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}
-        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
-      {% else %}
-        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-      {% endif %}
-    {% endfor %}
-
-    {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
-    {% else %}
-      <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
-      <li class="page-item disabled"><a class="page-link">Última</a></li>
-    {% endif %}
-  </ul>
-</nav>
-<a href="{% url 'ver_proyectos' %}" class="btn btn-primary">Volver a proyectos</a>
-<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+    <div class="mt-4">
+        <a href="{% url 'ver_presupuestos_adm' %}" class="btn btn-primary">Volver a presupuestos</a>
+        <a href="{% url 'inicio_adm' %}" class="btn btn-secondary">Inicio</a>
+    </div>
+</div>
 {% endblock %}
+

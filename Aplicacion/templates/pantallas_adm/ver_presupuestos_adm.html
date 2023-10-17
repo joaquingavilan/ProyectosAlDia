@@ -1,103 +1,116 @@
-{% extends 'base.html' %}
+{% extends 'base_adm.html' %}
 {% load custom_filters %}
+
 {% block content %}
-  <h1 class="display-4 text-center">Presupuestos</h1>
-<br>
+<div class="container mt-4">
+    <h2 class="mb-4" style="font-size: 2rem;">Presupuestos</h2>
 
-<div class="input-group w-25 mb-3">
-  <input class="form-control" type="text" id="buscadorPresupuestos" placeholder="Buscar por nombre de proyecto">
-  <input type="hidden" id="presupuestoUrl" value="{% url 'ver_presupuesto_adm' 999999 %}">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group">
+                <input class="form-control" type="text" id="buscadorPresupuestos" placeholder="Buscar por nombre de proyecto">
+                <div class="input-group-append">
+                    <span class="input-group-text"><i class="fa fa-search"></i></span>
+                </div>
+                <input type="hidden" id="presupuestoUrl" value="{% url 'ver_presupuesto_adm' 999999 %}">
+            </div>
+            <div id="resultadosBusquedaPresupuestos"></div>
+        </div>
+        <div class="col-md-3">
+            <!-- Dropdown para seleccionar el campo de filtro -->
+            <select id="filtroCampo" class="form-control">
+                <option value="cliente">Cliente</option>
+                <option value="encargadoPresupuesto">Encargado del Presupuesto</option>
+                <option value="estadoPresupuesto">Estado del Presupuesto</option>
+                <option value="estadoAnticipo">Anticipo</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <!-- Dropdown para seleccionar el valor específico del filtro -->
+            <select id="filtroValor" class="form-control">
+                <!-- Este se llenará dinámicamente usando JS -->
+            </select>
+        </div>
+    </div>
+
+    <button id="aplicarFiltro" class="btn btn-primary mb-4">Filtrar</button>
+
+    {% if presupuestos %}
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre del proyecto</th>
+                    <th>Cliente</th>
+                    <th>Ingeniero asignado</th>
+                    <th>Estado</th>
+                    <th>Anticipo recibido</th>
+                    <th>Monto Presupuesto</th>
+                    <th>Monto Anticipo</th>
+                    <th>Fecha de pago de Anticipo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for presupuesto in presupuestos %}
+                <tr>
+                    <td>{{ presupuesto.proyecto.nombre }}</td>
+                    <td>{{ presupuesto.proyecto.cliente.nombre }}</td>
+                    <td>{{ presupuesto.encargado.first_name }} {{ presupuesto.encargado.last_name }}</td>
+                    <td data-id="{{ presupuesto.id }}" class="estado-celda">
+                        {% if presupuesto.estado == 'S' %}
+                        <select class="form-select estado-select" data-id="{{ presupuesto.id }}" onchange="actualizarEstado(this)">
+                            <option value="S" selected>Enviado</option>
+                            <option value="A">Aprobado</option>
+                        </select>
+                        {% else %}
+                        {{ presupuesto.get_estado_display }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.anticipo %}
+                        Sí
+                        {% elif presupuesto.estado == 'E' %}
+                        No
+                        {% else %}
+                        <select class="form-select anticipo-select" data-id="{{ presupuesto.id }}" onchange="actualizarAnticipo(this)">
+                            <option value="False" selected>No</option>
+                            <option value="True">Sí</option>
+                        </select>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.estado != 'E' %}
+                        {{presupuesto.monto_total|intcomma}}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if presupuesto.estado != 'E' %}
+                        {{presupuesto.monto_anticipo|intcomma}}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
+                        {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        No se encontraron presupuestos asignados.
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{% url 'inicio_adm' %}" class="btn btn-primary">Inicio</a>
+    </div>
 </div>
-<div id="resultadosBusquedaPresupuestos"></div>
-<br>
-
-<!-- Dropdown para seleccionar el campo de filtro -->
-<select id="filtroCampo">
-    <option value="cliente">Cliente</option>
-    <option value="encargadoPresupuesto">Encargado del Presupuesto</option>
-    <option value="estadoPresupuesto">Estado del Presupuesto</option>
-    <option value="estadoAnticipo">Anticipo</option>
-</select>
-
-<!-- Dropdown para seleccionar el valor específico del filtro -->
-<select id="filtroValor">
-    <!-- Este se llenará dinámicamente usando JS -->
-</select>
-
-<button id="aplicarFiltro" class="btn btn-primary">Filtrar</button>
-  {% if presupuestos %}
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Nombre del proyecto</th>
-          <th>Cliente</th>
-          <th>Ingeniero asignado</th>
-          <th>Estado</th>
-          <th>Anticipo recibido</th>
-          <th>Monto Presupuesto</th>
-          <th>Monto Anticipo</th>
-          <th>Fecha de pago de Anticipo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for presupuesto in presupuestos %}
-          <tr>
-            <td>{{ presupuesto.proyecto.nombre }}</td>
-            <td>
-              {{ presupuesto.proyecto.cliente.nombre }}
-            </td>
-            <td>
-                {{ presupuesto.encargado.first_name }} {{ presupuesto.encargado.last_name }}
-            </td>
-            <td data-id="{{ presupuesto.id }}" class="estado-celda">
-                {% if presupuesto.estado == 'S' %}
-                    <select class="form-select estado-select" data-id="{{ presupuesto.id }}" onchange="actualizarEstado(this)">
-                        <option value="S" selected>Enviado</option>
-                        <option value="A">Aprobado</option>
-                    </select>
-                {% else %}
-                    {{ presupuesto.get_estado_display }}
-                {% endif %}
-            </td>
-            <td>
-                {% if presupuesto.anticipo %}
-                    Sí
-                {% elif presupuesto.estado == 'E' %}
-                    No
-                {% else %}
-                    <select class="form-select anticipo-select" data-id="{{ presupuesto.id }}" onchange="actualizarAnticipo(this)">
-                        <option value="False" selected>No</option>
-                        <option value="True">Sí</option>
-                    </select>
-                {% endif %}
-            </td>
-            <td>
-                {% if presupuesto.estado != 'E' %}
-                {{presupuesto.monto_total|intcomma}}
-                {% else %}
-                -
-                {% endif %}
-            </td>
-            <td>
-                {% if presupuesto.estado != 'E' %}
-                {{presupuesto.monto_anticipo|intcomma}}
-                {% else %}
-                -
-                {% endif %}
-            </td>
-            <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
-                {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
-            </td>
-
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No se encontraron presupuestos asignados.</p>
-  {% endif %}
-  <a href="{% url 'inicio_adm' %}" class="btn btn-primary">Inicio</a>
 {% endblock %}
+
 {% block extra_js %}
 <script>
 function actualizarAnticipo(selectElem) {

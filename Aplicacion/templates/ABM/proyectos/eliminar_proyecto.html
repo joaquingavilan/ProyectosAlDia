@@ -1,11 +1,29 @@
-{% extends 'base.html' %}
-
+{% extends 'base_gerente.html' %}
 {% block content %}
-  <h1>Eliminar proyecto</h1>
-  <p>¿Estás seguro que deseas eliminar el proyecto "{{ proyecto.nombre }}"? Una vez que lo elimines no podras deshacer la operacion</p>
-  <form method="post">
-    {% csrf_token %}
-    <button type="submit" name="confirmar">Eliminar</button>
-    <button type="submit"><a href="{% url 'ver_proyectos' %}" class="no-link">Cancelar</a></button>
-  </form>
+<div class="container mt-4">
+    <h2 class="mb-4" style="font-size: 2rem;">Eliminar Proyecto</h2>
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+    {% endfor %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="mb-4" style="font-size: 1.5rem;">¿Confirma que desea eliminar el proyecto <strong>{{ proyecto.nombre }}</strong>?</h4>
+
+            <!-- Formulario de confirmación de eliminación -->
+            <form method="POST" action="{% url 'eliminar_proyecto' proyecto.pk %}">
+                {% csrf_token %}
+
+                <!-- Aquí puedes agregar cualquier otro contenido adicional similar a "materiales_asociados" si es necesario -->
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-danger mr-2" name="confirmar">Eliminar</button>
+                    <a class="btn btn-secondary" href="{% url 'ver_proyectos' %}">Cancelar</a>
+                </div>
+            </form> <!-- Fin del formulario -->
+
+        </div>
+    </div>
+</div>
 {% endblock %}
