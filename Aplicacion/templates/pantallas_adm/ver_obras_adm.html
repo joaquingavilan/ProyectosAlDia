@@ -1,0 +1,315 @@
+{% extends request.base_template %}
+
+{% block content %}
+<div class="x_panel {% if not presupuestos %}collapsed{% endif %}">
+    <div class="x_title">
+        <h2>Obras pendientes de asignación</h2>
+        <ul class="nav navbar-right panel_toolbox">
+            <li><a class="collapse-link">
+                <i class="fa {% if not presupuestos %}fa-chevron-down{% else %}fa-chevron-up{% endif %}"></i>
+            </a></li>
+        </ul>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content"{% if not presupuestos %}style="display: none;"{% endif %}>
+{% if presupuestos %}
+<!-- Panel desplegable para obras sin asignar -->
+
+        <!-- Tabla para asignar obras -->
+        <!-- Tabla para asignar obras -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre del proyecto</th>
+                    <th>Fecha Pago Anticipo</th>
+                    <th>Plazo de ejecución</th>
+                    <th>Ingeniero Encargado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for presupuesto in presupuestos %}
+                <tr>
+                    <td>{{ presupuesto.proyecto.nombre }}</td>
+                    <td>{{ presupuesto.fecha_pago_anticipo }}</td>
+                    <td>{{ presupuesto.proyecto.obra.plazo }}</td>
+                    <td>
+                        <div class="d-flex justify-content-between">
+                            <select class="form-control ingeniero-select" data-presupuesto-id="{{ presupuesto.id }}" style="width: 60%;">
+                                <option value="" selected>Seleccione Ingeniero</option>
+                                {% for ingeniero in ingenieros %}
+                                    <option value="{{ ingeniero.id }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button onclick="asignarIngeniero(this)" class="btn btn-primary btn-sm" style="display: none; width: 30%;">Asignar</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+
+{% else %}
+        <div class="alert alert-warning" role="alert">
+            No hay obras pendientes de asignacion
+        </div>
+{% endif %}
+    </div>
+</div>
+<!-- Búsqueda y filtros -->
+<div class="row mb-4">
+    <!-- Buscador -->
+    <div class="col-md-4">
+        <div class="input-group">
+            <input class="form-control" type="text" id="buscadorObras" placeholder="Buscar por nombre de proyecto">
+            <div class="input-group-append">
+                <span class="input-group-text"><i class="fa fa-search"></i></span>
+            </div>
+            <!-- El siguiente input es para ayudarnos a construir URLs, similar a como lo hiciste con presupuestos -->
+            <input type="hidden" id="obraUrl" value="{% url 'ver_obra_adm' 999999 %}">
+        </div>
+        <div id="resultadosBusquedaObras"></div>
+    </div>
+    <!-- Filtro Campo -->
+    <div class="col-md-2">
+        <select id="filtroCampo" class="form-control">
+            <option value="estado" {% if campo_seleccionado == "estado" %}selected{% endif %}>Estado</option>
+            <option value="encargado" {% if campo_seleccionado == "encargado" %}selected{% endif %}>Ingeniero Encargado</option>
+            <option value="fechaInicio" {% if campo_seleccionado == "fechaInicio" %}selected{% endif %}>Fecha de Inicio</option>
+            <option value="fechaFin" {% if campo_seleccionado == "fechaFin" %}selected{% endif %}>Fecha de Fin</option>
+        </select>
+    </div>
+    <!-- Filtro Valor -->
+    <div class="col-md-2">
+        <select id="filtroValor" class="form-control"></select>
+    </div>
+    <!-- Botón de limpiar filtros -->
+    <div class="col-md-2">
+        <a href="{% url 'ver_obras_adm' %}" class="btn btn-secondary btn-block">Limpiar Filtros</a>
+    </div>
+</div>
+
+
+{% if obras %}
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Obras</h2>
+        <ul class="nav navbar-right panel_toolbox">
+            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+        </ul>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        <!-- Tabla con todas las obras -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre del proyecto</th>
+                    <th>Ingeniero Encargado</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Plazo</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for obra in obras %}
+                <tr>
+                    <td>{{ obra.proyecto.nombre }}</td>
+                    <td>{{ obra.encargado.first_name }} {{ obra.encargado.last_name }} </td>
+                    <td>
+                        {% if obra.fecha_inicio %}
+                            {{ obra.fecha_inicio }}
+                        {% else %}
+                            No iniciada
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if obra.fecha_fin %}
+                            {{ obra.fecha_fin }}
+                        {% else %}
+                            No finalizada
+                        {% endif %}
+                    </td>
+                    <td>{{ obra.plazo }}</td>
+                    <td>{{ obra.get_estado_display }}</td>
+                    <td><a href="#" class="btn btn-primary btn-sm" style="font-size: 0.8rem; padding: 4px 10px;">Ver</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Obtener todos los elementos select con la clase 'ingeniero-select'
+    const selects = document.querySelectorAll('.ingeniero-select');
+
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            const button = this.nextElementSibling;  // Referencia al botón "Asignar" relacionado
+            if (this.value) {  // Si se selecciona un ingeniero
+                button.style.display = "inline-block";  // Mostrar el botón
+            } else {
+                button.style.display = "none";  // Ocultar el botón si no hay selección
+            }
+        });
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function asignarIngeniero(buttonElem) {
+    const selectElem = buttonElem.previousElementSibling;  // Esto obtiene el elemento <select> justo antes del botón
+    const idPresupuesto = selectElem.getAttribute('data-presupuesto-id');
+    const idIngeniero = selectElem.value;
+
+    fetch(`/asignar_ingeniero_a_obra/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({presupuesto_id: idPresupuesto, ingeniero_id: idIngeniero})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();  // Recargar la página
+        } else {
+            alert('Hubo un error al asignar el ingeniero: ' + data.message);
+        }
+    });
+}
+
+document.getElementById('buscadorObras').addEventListener('input', function() {
+    let query = this.value;
+    let resultadosDiv = document.getElementById('resultadosBusquedaObras');
+    let baseUrl = document.getElementById('obraUrl').value;
+
+    if (query.length >= 3) {
+        fetch(`/buscar_obras/?q=${query}`)
+        .then(response => response.json())
+        .then(data => {
+            resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+            data.forEach(obra => {
+                let div = document.createElement('div');
+                let obraUrl = baseUrl.replace('999999', obra.id);
+                div.innerHTML = `<a href="${obraUrl}"><strong>Proyecto:</strong> ${obra.proyecto_nombre}</a>`;
+                resultadosDiv.appendChild(div);
+            });
+        });
+    } else {
+        resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+    }
+});
+
+function inicializarFiltroValorObras() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let dropdownValor = document.getElementById('filtroValor');
+
+    // Limpiar opciones previas excepto la primera opción "Seleccione"
+    let options = dropdownValor.options;
+    for (let i = options.length - 1; i > 0; i--) {
+        dropdownValor.remove(i);
+    }
+
+    let url = '';
+
+    switch (campoSeleccionado) {
+        case 'estado':
+            url = '/obtener_estados_obra/';
+            break;
+        case 'encargado':
+            url = '/obtener_ingenieros_obra/';
+            break;
+        case 'fechaInicio':
+            url = '/obtener_fechas_inicio/';
+            break;
+        case 'fechaFin':
+            url = '/obtener_fechas_fin/';
+            break;
+    }
+    if (dropdownValor.options.length === 0) {
+        let defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.text = "-- Seleccione --";
+        dropdownValor.appendChild(defaultOption);
+    }
+    // Si hay una URL válida, hacer la solicitud AJAX
+    if (url) {
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (campoSeleccionado === 'fechaInicio') {
+                let option = document.createElement('option');
+                option.value = "No iniciada";
+                option.text = "No iniciada";
+                dropdownValor.appendChild(option);
+            } else if (campoSeleccionado === 'fechaFin') {
+                let option = document.createElement('option');
+                option.value = "No finalizada";
+                option.text = "No finalizada";
+                dropdownValor.appendChild(option);
+            }
+
+            data.forEach(item => {
+                let option = document.createElement('option');
+                option.value = item;
+                option.text = item;
+                if (item == '{{ valor_seleccionado }}') {
+                    option.selected = true;
+                }
+                dropdownValor.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error al obtener datos:', error);
+        });
+    }
+}
+document.addEventListener('DOMContentLoaded', (event) => {
+    inicializarFiltroValorObras();  // Llamar a la función al cargar la página
+});
+
+// Inicializar el dropdown al cambiar el valor del primer dropdown
+document.getElementById('filtroCampo').addEventListener('change', function() {
+    inicializarFiltroValorObras();
+});
+function filtrarObras() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let valorSeleccionado = document.getElementById('filtroValor').value;
+    let url = `/pantallas_adm/ver_obras_filtradas/?campo=${campoSeleccionado}&valor=${valorSeleccionado}`;
+
+    window.location.href = url;  // Esto redirigirá a la nueva página de obras filtradas.
+}
+
+
+document.getElementById('filtroValor').addEventListener('change', function() {
+    // Si el valor seleccionado no es vacío, aplicar el filtro.
+    if (this.value !== "") {
+        filtrarObras();
+    }
+});
+
+
+</script>
+{% endblock %}

@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends request.base_template %}
 {% load custom_filters %}
 {% block content %}
 <h1 class="display-4 text-center">Presupuesto: {{ archivo_presupuesto.presupuesto.proyecto.nombre }} - Cliente: {{ archivo_presupuesto.presupuesto.proyecto.cliente.nombre }}</h1>

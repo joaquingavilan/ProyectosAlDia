@@ -4,30 +4,7 @@ from datetime import date
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
-
-
-class Rol(models.Model):
-
-    ROL_CHOICES = [
-        ('', ''),
-        ('GERENTE', 'Gerente'),
-        ('ADMINISTRADOR', 'Administrador'),
-        ('INGENIERO', 'Ingeniero'),
-        ('ENCARGADO_DEPOSITO', 'Encargado de Depósito'),
-    ]
-
-    nombre = models.CharField(choices=ROL_CHOICES, max_length=20)
-
-    def __str__(self):
-        return self.nombre
-
-
-class Perfil(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    rol = models.ForeignKey(Rol, on_delete=models.CASCADE, default='', blank=True, null=True)
-
-    def __str__(self):
-        return self.user.username
+from django.db.models import Q
 
 
 class Contacto(models.Model):
@@ -102,7 +79,7 @@ class Material(models.Model):
 
 class Obra(models.Model):
     proyecto = models.OneToOneField('Proyecto', on_delete=models.CASCADE)
-    encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'}, null=True)
+    encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groups__name='INGENIERO'), null=True)
     fecha_inicio = models.DateField(_('fecha de inicio'), null=True)
     fecha_fin = models.DateField(_('fecha de fin'), null=True)
     plazo = models.PositiveIntegerField(null=True)
@@ -113,9 +90,6 @@ class Obra(models.Model):
     )
     estado = models.CharField(_('estado'), max_length=2, choices=ESTADOS, default='NI')
 
-    def get_estado_display(self):
-        return dict(self.ESTADOS)[self.estado]
-
     class Meta:
         verbose_name = _('obra')
         verbose_name_plural = _('obras')
@@ -123,7 +97,7 @@ class Obra(models.Model):
 
 class Presupuesto(models.Model):
     proyecto = models.OneToOneField('Proyecto', on_delete=models.CASCADE)
-    encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'})
+    encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groups__name='INGENIERO'))
     monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
     anticipo = models.BooleanField(_('anticipo'), default=False)
     monto_anticipo = models.DecimalField(_('monto anticipo'), max_digits=15, decimal_places=0, null=True)
@@ -157,7 +131,7 @@ class Proyecto(models.Model):
 
 
 class Pedido(models.Model):
-    solicitante = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'perfil__rol__nombre': 'INGENIERO'})
+    solicitante = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groups__name='INGENIERO'))
     obra = models.ForeignKey(Obra, on_delete=models.CASCADE, verbose_name=_('obra'))
     fecha_solicitud = models.DateField(_('fecha de solicitud'))
     fecha_entrega = models.DateField(_('fecha de entrega'), null=True, blank=True)

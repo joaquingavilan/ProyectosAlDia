@@ -57,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.locale.LocaleMiddleware',
+    'Aplicacion.middlewares.TemplateBaseMiddleware'
 ]
 
 ROOT_URLCONF = 'ProyectosAldIA.urls'

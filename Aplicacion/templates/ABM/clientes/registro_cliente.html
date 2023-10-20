@@ -1,4 +1,10 @@
-{% extends 'base_gerente.html' %}
+{% if request.user.groups.all.0.name == "GERENTE" %}
+    {% extends "base_gerente.html" %}
+{% elif request.user.groups.all.0.name == "ADMINISTRADOR" %}
+    {% extends "base_adm.html" %}
+{% else %}
+    {% extends request.base_template %}
+{% endif %}
 {% load widget_tweaks %}
 
 {% block content %}

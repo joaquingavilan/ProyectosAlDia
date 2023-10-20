@@ -2,17 +2,16 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View
 from .models import *
 from .forms import *
-from django.db.models import Q, Sum
+from django.db.models import Q, F, Sum
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, UserChangeForm
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.utils import timezone
 import re, locale, json, os
 from datetime import date, datetime
 from io import BytesIO
 from django.contrib import messages
-from .decorators import gerente_required, administrador_required, ingeniero_required
 from django.forms import formset_factory
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.core.paginator import Paginator
@@ -30,14 +29,12 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 
 
 def inicio(request):
-    perfil = Perfil.objects.get(user=request.user)
-    rol_usuario = perfil.rol.nombre
     verificar_obras_agendadas()
-    if rol_usuario == 'GERENTE':
+    if request.user.groups.filter(name='GERENTE').exists():
         return render(request, 'inicios/inicio.html')
-    elif rol_usuario == 'ADMINISTRADOR':
+    elif request.user.groups.filter(name='ADMINISTRADOR').exists():
         return render(request, 'inicios/inicio_adm.html')
-    elif rol_usuario == 'INGENIERO':
+    elif request.user.groups.filter(name='INGENIERO').exists():
         return redirect(inicio_ingenieros)
 
 
@@ -88,7 +85,8 @@ def registrar_usuario(request):
             return render(request, 'usuarios/registro.html', {'error': error})
         else:
             user = User.objects.create_user(username=username, email=email, password=password1, first_name=first_name, last_name=last_name)
-            perfil = Perfil.objects.create(user=user, rol=Rol.objects.get(nombre='INGENIERO'))
+            group = Group.objects.get(name='INGENIERO')
+            user.groups.add(group)
             user = authenticate(username=username, password=password1)
             login(request, user)
             return redirect('inicio')
@@ -286,8 +284,8 @@ def registrar_ingeniero(request):
             if not form.errors:
                 usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido,
                                                    password=password, email=email)
-                rol = Rol.objects.get(nombre='INGENIERO')
-                perfil = Perfil.objects.create(user=usuario, rol=rol)
+                group = Group.objects.get(name='INGENIERO')
+                usuario.groups.add(group)
                 return redirect('ver_ingenieros')
         else:
             # Si el formulario no es válido, simplemente renderizamos la página con los errores
@@ -298,8 +296,8 @@ def registrar_ingeniero(request):
 
 
 def ver_ingenieros(request):
-    usuarios_ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
-
+    group_ingeniero = Group.objects.get(name='INGENIERO')
+    usuarios_ingenieros = group_ingeniero.user_set.all()
     # Configuración de la paginación
     paginator = Paginator(usuarios_ingenieros, 10)  # Muestra 10 ingenieros por página
     page_number = request.GET.get('page')
@@ -359,7 +357,8 @@ def eliminar_ingeniero(request, pk):
     presupuestos_asociados = Presupuesto.objects.filter(encargado=ingeniero).exclude(estado='A')
     # Si tiene recursos asociados, obtenemos una lista de todos los ingenieros disponibles para la reasignación
     if obras_asociadas.exists() or presupuestos_asociados.exists():
-        otros_ingenieros = Perfil.objects.filter(rol__nombre='INGENIERO').exclude(user=ingeniero).all()
+        group_ingeniero = Group.objects.get(name='INGENIERO')
+        otros_ingenieros = group_ingeniero.user_set.exclude(id=ingeniero.id)
     else:
         otros_ingenieros = []
 
@@ -401,13 +400,15 @@ def eliminar_ingeniero(request, pk):
 
 def buscar_ingenieros(request):
     query = request.GET.get('q', '')
-    ingenieros = User.objects.filter(
+    group_ingeniero = Group.objects.get(name='INGENIERO')
+    ingenieros = group_ingeniero.user_set.filter(
         Q(username__icontains=query) |
         Q(first_name__icontains=query) |
-        Q(last_name__icontains=query),
-        perfil__rol=Rol.objects.get(nombre='INGENIERO')
+        Q(last_name__icontains=query)
     )
-    data = [{'id': ingeniero.id, 'username': ingeniero.username, 'nombre': ingeniero.first_name, 'apellido': ingeniero.last_name} for ingeniero in ingenieros]
+
+    data = [{'id': ingeniero.id, 'username': ingeniero.username, 'nombre': ingeniero.first_name,
+             'apellido': ingeniero.last_name} for ingeniero in ingenieros]
     return JsonResponse(data, safe=False)
 
 
@@ -656,7 +657,8 @@ def ver_material(request, id_material):
 
 
 def registrar_proyecto(request):
-    ingenieros = User.objects.filter(perfil__rol__nombre='INGENIERO')
+    group_ingeniero = Group.objects.get(name='INGENIERO')
+    ingenieros = group_ingeniero.user_set.all()
     clientes = Cliente.objects.all()
 
     if request.method == 'POST':
@@ -711,8 +713,9 @@ def eliminar_proyecto(request, pk):
 
 def modificar_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
+    group_ingeniero = Group.objects.get(name='INGENIERO')
+    ingenieros = group_ingeniero.user_set.all()
     clientes = Cliente.objects.all()
-    ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
     if request.method == 'POST':
         cliente = request.POST['cliente']
         encargado_obra = request.POST['encargado_obra']
@@ -999,7 +1002,6 @@ def ver_materiales_stock(request, cantidad):
     return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales, 'page_obj': page_obj})
 
 
-
 def exportar_excel(request):
     # Crear un nuevo libro de Excel y una nueva hoja
     wb = Workbook()
@@ -1017,8 +1019,8 @@ def exportar_excel(request):
             ws.column_dimensions[col_letter].width = 15
 
         # Obtener datos de los ingenieros
-        ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
-
+        group_ingeniero = Group.objects.get(name='INGENIERO')
+        ingenieros = group_ingeniero.user_set.all()
         # Añadir datos a la hoja
         for ingeniero in ingenieros:
             ws.append([ingeniero.id, ingeniero.username, ingeniero.first_name, ingeniero.last_name, ingeniero.email])
@@ -1089,13 +1091,12 @@ def exportar_pdf(request):
     # Crear un nuevo documento PDF
     response = HttpResponse(content_type='application/pdf')
 
-
-
     if tipo_dato == 'Ingenieros':
         response['Content-Disposition'] = 'attachment; filename="Ingenieros.pdf"'
         doc = SimpleDocTemplate(response, pagesize=A4)
         # Obtener datos de los ingenieros
-        ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
+        group_ingeniero = Group.objects.get(name='INGENIERO')
+        ingenieros = group_ingeniero.user_set.all()
         data = [['ID', 'Usuario', 'Nombre', 'Apellido', 'Email']]
         for ingeniero in ingenieros:
             data.append([ingeniero.id, ingeniero.username, ingeniero.first_name, ingeniero.last_name, ingeniero.email])
@@ -1518,12 +1519,189 @@ def actualizar_anticipo(request, presupuesto_id):
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 
+def ver_obras_adm(request):
+    obras = Obra.objects.filter(encargado__isnull=False)
+    presupuestos_con_anticipo = Presupuesto.objects.filter(anticipo=True)
+    # Filtramos aquellos presupuestos cuyo proyecto no tiene una obra con encargado asignado
+    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if not presupuesto.proyecto.obra.encargado]
+
+    # Obtenemos los ingenieros disponibles
+    group_ingeniero = Group.objects.get(name='INGENIERO')
+    ingenieros = group_ingeniero.user_set.all()
+
+    # Obtenemos los meses de las fechas de inicio y fin
+    meses_inicio = list(set(obras.values_list('fecha_inicio__month', flat=True)))
+    meses_fin = list(set(obras.values_list('fecha_fin__month', flat=True)))
+
+    context = {
+        'obras': obras,
+        'presupuestos': presupuestos_a_asignar,
+        'ingenieros': ingenieros,
+        'meses_inicio': meses_inicio,
+        'meses_fin': meses_fin
+    }
+
+    return render(request, 'pantallas_adm/ver_obras_adm.html', context)
+
+
+def ver_obra_adm(request, obra_id):
+    obra = get_object_or_404(Obra, id=obra_id)
+    return render(request, 'pantallas_adm/ver_obra_adm.html', {'obra': obra})
+
+
+def buscar_obras(request):
+    q = request.GET.get('q', '')
+    obras = Obra.objects.filter(proyecto__nombre__icontains=q).values('id', 'proyecto__nombre')
+    return JsonResponse(list(obras), safe=False)
+
+
+def obtener_estados_obra(request):
+    # Obtenemos los estados distintos del modelo Obra
+    estados_distintos = Obra.objects.values_list('estado', flat=True).distinct()
+
+    # Creamos una instancia ficticia de Obra para poder usar el método get_estado_display()
+    obra_dummy = Obra()
+
+    # Obtenemos la representación legible para cada estado
+    estados_legibles = [obra_dummy.get_estado_display() for obra_dummy.estado in estados_distintos]
+
+    return JsonResponse(estados_legibles, safe=False)
+
+
+def obtener_ingenieros_obra(request):
+    # Obtener ingenieros de las obras
+    ingenieros = Obra.objects.exclude(encargado=None).values_list('encargado__first_name', 'encargado__last_name').distinct()
+
+    # Convertir la tupla (first_name, last_name) a la cadena "first_name last_name"
+    formatted_ingenieros = [f"{ingeniero[0]} {ingeniero[1]}" for ingeniero in ingenieros]
+
+    return JsonResponse(formatted_ingenieros, safe=False)
+
+
+def obtener_fechas_inicio(request):
+    fechas = Obra.objects.exclude(fecha_inicio=None).dates('fecha_inicio', 'month').distinct()
+    fechas_formateadas = ["{} {}".format(traducir_mes(fecha.strftime('%B')), fecha.year) for fecha in fechas]
+    return JsonResponse(fechas_formateadas, safe=False)
+
+
+def obtener_fechas_fin(request):
+    fechas = Obra.objects.exclude(fecha_fin=None).dates('fecha_fin', 'month').distinct()
+    fechas_formateadas = ["{} {}".format(traducir_mes(fecha.strftime('%B')), fecha.year) for fecha in fechas]
+    return JsonResponse(fechas_formateadas, safe=False)
+
+
+def traducir_mes(mes_ingles):
+    """Traduce un mes de inglés a español."""
+    traducciones = {
+        'January': 'Enero',
+        'February': 'Febrero',
+        'March': 'Marzo',
+        'April': 'Abril',
+        'May': 'Mayo',
+        'June': 'Junio',
+        'July': 'Julio',
+        'August': 'Agosto',
+        'September': 'Septiembre',
+        'October': 'Octubre',
+        'November': 'Noviembre',
+        'December': 'Diciembre',
+    }
+    return traducciones.get(mes_ingles, mes_ingles)
+
+
+def traducir_mes_inverso(mes_espanol):
+    """Traduce un mes de español a inglés."""
+    traducciones = {
+        'Enero': 'January',
+        'Febrero': 'February',
+        'Marzo': 'March',
+        'Abril': 'April',
+        'Mayo': 'May',
+        'Junio': 'June',
+        'Julio': 'July',
+        'Agosto': 'August',
+        'Septiembre': 'September',
+        'Octubre': 'October',
+        'Noviembre': 'November',
+        'Diciembre': 'December',
+    }
+    return traducciones.get(mes_espanol, mes_espanol)
+
+
+def estado_legible_a_codigo(estado_legible):
+    # Usamos el diccionario invertido para obtener el código a partir de la representación legible
+    estado_codigo = dict((v, k) for k, v in Obra.ESTADOS).get(estado_legible)
+    return estado_codigo
+
+
+def ver_obras_filtradas(request):
+
+    campo = request.GET.get('campo')
+    valor = request.GET.get('valor')
+
+    if campo == 'estado':
+        # Convertimos el estado legible a su código correspondiente
+        estado_codigo = estado_legible_a_codigo(valor)
+        obras = Obra.objects.filter(estado=estado_codigo, encargado__isnull=False)
+    elif campo == 'encargado':
+        # Divide el valor en nombre y apellido
+        first_name, last_name = valor.split(' ', 1)
+
+        # Obtiene el usuario por nombre y apellido
+        ingeniero = User.objects.get(first_name=first_name, last_name=last_name)
+
+        # Filtra las obras por el ID del ingeniero
+        obras = Obra.objects.filter(encargado=ingeniero)
+    elif campo == 'fechaInicio':
+        if valor == 'No iniciada':
+            obras = Obra.objects.filter(fecha_inicio__isnull=True, encargado__isnull=False)
+        else:
+            # Convertir el mes en formato textual a un valor numérico
+            month_es, year = valor.split()
+            month_en = traducir_mes_inverso(month_es)
+            month_num = datetime.strptime(month_en, '%B').month
+            obras = Obra.objects.filter(fecha_inicio__month=month_num, fecha_inicio__year=year, encargado__isnull=False)
+    elif campo == 'fechaFin':
+        if valor == 'No finalizada':
+            obras = Obra.objects.filter(fecha_fin__isnull=True, encargado__isnull=False)
+        else:
+            # Convertir el mes en formato textual a un valor numérico
+            month_es, year = valor.split()
+            month_en = traducir_mes_inverso(month_es)
+            month_num = datetime.datetime.strptime(month_en, '%B').month
+            obras = Obra.objects.filter(fecha_fin__month=month_num, fecha_fin__year=year, encargado__isnull=False)
+    else:
+        obras = Obra.objects.filter(encargado__isnull=False)
+
+    presupuestos_con_anticipo = Presupuesto.objects.filter(anticipo=True)
+    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if not presupuesto.proyecto.obra.encargado]
+
+    group_ingeniero = Group.objects.get(name='INGENIERO')
+    ingenieros = group_ingeniero.user_set.all()
+
+    meses_inicio = list(set(obras.values_list('fecha_inicio__month', flat=True)))
+    meses_fin = list(set(obras.values_list('fecha_fin__month', flat=True)))
+
+    context = {
+        'obras': obras,
+        'presupuestos': presupuestos_a_asignar,
+        'ingenieros': ingenieros,
+        'meses_inicio': meses_inicio,
+        'meses_fin': meses_fin,
+        'campo_seleccionado': campo,
+        'valor_seleccionado': valor
+    }
+
+    return render(request, 'pantallas_adm/ver_obras_adm.html', context)
+
+
 def asignar_obras(request):
     # Buscamos los presupuestos que tienen anticipo pagado
     presupuestos_con_anticipo = Presupuesto.objects.filter(anticipo=True)
     # Filtramos aquellos presupuestos cuyo proyecto no tiene una obra con encargado asignado
     presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if not presupuesto.proyecto.obra.encargado]
-    ingenieros = User.objects.filter(perfil__rol=Rol.objects.get(nombre='INGENIERO'))
+    group_ingeniero = Group.objects.get(name='INGENIERO')
+    ingenieros = group_ingeniero.user_set.all()
     context = {'presupuestos': presupuestos_a_asignar,
                'ingenieros': ingenieros}
     return render(request, 'pantallas_adm/asignar_obras.html', context)
@@ -1536,10 +1714,10 @@ def asignar_ingeniero_a_obra(request):
             data = json.loads(request.body)
             presupuesto_id = data.get('presupuesto_id')
             ingeniero_id = data.get('ingeniero_id')
-
+            print(presupuesto_id)
             # Obtener el presupuesto
             presupuesto = Presupuesto.objects.get(pk=presupuesto_id)
-
+            print(presupuesto)
             # Obtener la obra relacionada con el proyecto del presupuesto
             obra = Obra.objects.get(proyecto=presupuesto.proyecto)
 

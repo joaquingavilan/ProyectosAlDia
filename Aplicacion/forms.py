@@ -112,7 +112,7 @@ class BuscadorMaterialForm(forms.Form):
 
 class ProyectoForm(forms.ModelForm):
     cliente = forms.ModelChoiceField(queryset=Cliente.objects.all(), label=_('cliente'))
-    encargado = forms.ModelChoiceField(queryset=User.objects.filter(perfil__rol__nombre='INGENIERO'), label='Encargado de presupuesto')
+    encargado = forms.ModelChoiceField(queryset=User.objects.filter(groups__name='INGENIERO'), label='Encargado de presupuesto')
 
     class Meta:
         model = Proyecto
