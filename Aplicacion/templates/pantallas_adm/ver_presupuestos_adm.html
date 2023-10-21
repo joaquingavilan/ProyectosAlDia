@@ -14,7 +14,7 @@
     <div class="x_content">
         <!-- Filtros y búsqueda -->
         <div class="row mb-4">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="input-group">
                     <input class="form-control" type="text" id="buscadorPresupuestos" placeholder="Buscar por nombre de proyecto">
                     <div class="input-group-append">
@@ -36,10 +36,14 @@
             <div class="col-md-3">
                 <!-- Dropdown para seleccionar el valor específico del filtro -->
                 <select id="filtroValor" class="form-control">
-                    <!-- Este se llenará dinámicamente usando JS -->
+                    <!-- El resto se llenará dinámicamente usando JS -->
                 </select>
             </div>
+            <div class="col-md-2">
+                <button onclick="window.location.href='{% url 'ver_presupuestos_adm' %}'" class="btn btn-secondary btn-block">Borrar Filtros</button>
+            </div>
         </div>
+
 
         <!-- Tabla de presupuestos -->
         {% if presupuestos %}
@@ -54,6 +58,7 @@
                     <th>Monto Presupuesto</th>
                     <th>Monto Anticipo</th>
                     <th>Fecha de pago de Anticipo</th>
+                    <th>Acciones</th> <!-- Nueva columna para el botón -->
                 </tr>
             </thead>
             <tbody>
@@ -101,15 +106,54 @@
                     <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
                         {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
                     </td>
+                    <!-- Nueva celda para el botón -->
+                    <td>
+                        {% if presupuesto.estado != 'E' %}
+                            {% if not presupuesto.anticipo %}
+                            <button type="button" class="btn btn-secondary" onclick="mostrarModalAnticipo({{ presupuesto.id }}, '{{ presupuesto.proyecto.nombre }}', '{{ presupuesto.monto_total|intcomma }}')">Registrar Anticipo</button>
+                            {% endif %}
+                        <a href="{% url 'ver_presupuesto_adm' presupuesto.id %}" class="btn btn-primary">Ver Presupuesto</a>
+                        {% else %}
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+
         {% else %}
         <div class="alert alert-warning">
             No se encontraron presupuestos asignados.
         </div>
         {% endif %}
+        <div class="modal fade" id="modalAnticipo" tabindex="-1" role="dialog" aria-labelledby="modalAnticipoLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAnticipoLabel">Registrar Anticipo</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="modalProyecto">Proyecto: </p>
+                        <p id="modalMonto">Monto: </p>
+                        <div class="form-group">
+                            <label for="comprobante" class="form-label">Adjuntar comprobante</label>
+                            <input type="file" class="form-control-file" id="comprobante" data-presupuesto-id="">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" onclick="registrarAnticipo(this)" data-presupuesto-id="">Registrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
         <!-- Paginador -->
         <nav>
             <ul class="pagination">
@@ -145,32 +189,54 @@
 
 {% block extra_js %}
 <script>
-function actualizarAnticipo(selectElem) {
-    const idPresupuesto = selectElem.getAttribute('data-id');
-    const nuevoValor = selectElem.value === 'True';
+function mostrarModalAnticipo(presupuestoId, nombreProyecto, montoTotal) {
+    // Actualizar el contenido del modal
+    document.getElementById('modalProyecto').textContent = "Proyecto: " + nombreProyecto;
+    document.getElementById('modalMonto').textContent = "Monto: " + montoTotal;
+
+    const inputComprobante = document.getElementById('comprobante');
+    inputComprobante.setAttribute('data-presupuesto-id', presupuestoId);
+
+    // Configurar el atributo data-presupuesto-id del botón "Registrar"
+    const botonRegistrar = document.querySelector('#modalAnticipo button[data-presupuesto-id]');
+    botonRegistrar.setAttribute('data-presupuesto-id', presupuestoId);
+
+    // Mostrar el modal
+    $('#modalAnticipo').modal('show');
+}
+
+function registrarAnticipo(buttonElem) {
+    const idPresupuesto = buttonElem.getAttribute('data-presupuesto-id');
+    const inputFile = document.getElementById('comprobante');
+
+    if (!inputFile.files.length) {
+        alert('Cargue el comprobante para registrar el anticipo');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('comprobante', inputFile.files[0]);
+    formData.append('anticipo', true);
 
     fetch(`/actualizar_anticipo/${idPresupuesto}/`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
         },
-        body: JSON.stringify({anticipo: nuevoValor})
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            selectElem.outerHTML = 'Sí';
-            // Localizar y actualizar la celda de estado
-            const celdaEstado = document.querySelector(`.estado-celda[data-id="${idPresupuesto}"]`);
-            celdaEstado.innerText = data.nuevo_estado;
-            const celdaFechaPagoAnticipo = document.querySelector(`.fecha-pago-anticipo-celda[data-id="${idPresupuesto}"]`);
-            celdaFechaPagoAnticipo.innerText = data.fecha_pago_anticipo;  // Asumiendo que envías la fecha en la respuesta
+            // Cerrar el modal
+            $('#modalAnticipo').modal('hide');
+            location.reload();  // Recargar la página o hacer las actualizaciones necesarias en el DOM
         } else {
-            alert('Hubo un error al actualizar el anticipo');
+            alert('Hubo un error al registrar el anticipo');
         }
     });
 }
+
 
 function getCookie(name) {
     let cookieValue = null;
@@ -235,8 +301,19 @@ function inicializarFiltroValorPresupuestos() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
     let dropdownValor = document.getElementById('filtroValor');
 
-    // Limpiar opciones previas
-    dropdownValor.innerHTML = '';
+    // Limpiar opciones previas excepto la primera opción "Seleccione"
+    let options = dropdownValor.options;
+    for (let i = options.length - 1; i > 0; i--) {
+        dropdownValor.remove(i);
+    }
+
+    // Agregar la opción "Seleccione" si no está presente
+    if (dropdownValor.options.length === 0) {
+        let defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.text = "-- Seleccione --";
+        dropdownValor.appendChild(defaultOption);
+    }
 
     let url = '';  // URL de donde obtener los datos
 
@@ -285,27 +362,13 @@ document.getElementById('filtroCampo').addEventListener('change', function() {
 function filtrarPresupuestos() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
     let valorSeleccionado = document.getElementById('filtroValor').value;
-    let url = '';
 
-    switch (campoSeleccionado) {
-        case 'cliente':
-            url = `/ver_presupuestos_cliente/${valorSeleccionado}/`;
-            break;
-        case 'encargadoPresupuesto':
-            url = `/ver_presupuestos_encargado_presupuesto/${valorSeleccionado}/`;
-            break;
-        case 'estadoPresupuesto':
-            url = `/ver_presupuestos_estado_presupuesto/${valorSeleccionado}/`;
-            break;
-        case 'estadoAnticipo':
-            url = `/ver_proyectos_estado_anticipo/${valorSeleccionado}/`;
-            break;
-    }
-
-    if (url) {
-        window.location.href = url;
+    if (valorSeleccionado !== "") { // Asegurarnos de que no sea el valor por defecto "Seleccione"
+        window.location.href = `?campo=${campoSeleccionado}&valor=${valorSeleccionado}`;
     }
 }
+
+
 
 document.getElementById('filtroValor').addEventListener('change', filtrarPresupuestos);
 

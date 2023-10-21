@@ -1,55 +1,62 @@
 {% extends request.base_template %}
 
 {% block content %}
-  <h1 class="display-4 text-center">Obras asignadas</h1>
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Obras asignadas</h2>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        {% if obras %}
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Obra</th>
+                    <th>Cliente</th>
+                    <th>Fecha de pago anticipo</th>
+                    <th>Fecha de inicio</th>
+                    <th>Plazo</th>
+                    <th>Fecha de fin</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for obra in obras %}
+                <tr>
+                    <td>{{ obra.proyecto.nombre }}</td>
+                    <td>{{ obra.proyecto.cliente.nombre }}</td>
+                    <td>{{ obra.proyecto.presupuesto.fecha_pago_anticipo }}</td>
+                    <td id="fechaInicio-{{ obra.id }}">{{ obra.fecha_inicio }}</td>
+                    <td>{{ obra.plazo }} días</td>
+                    <td id="fechaFin-{{ obra.id }}">{{ obra.fecha_fin }}</td>
+                    <td id="estado-{{ obra.id }}">{{ obra.get_estado_display }}</td>
+                    <td>
+                        <div class="btn-group">
+                            {% if obra.estado == 'NI' and not obra.fecha_inicio %}
+                            <button class="btn btn-primary agendar-inicio-obra" data-id="{{ obra.id }}">Agendar Inicio</button>
+                            <button class="btn btn-primary iniciar-obra" data-id="{{ obra.id }}">Iniciar Obra</button>
+                            {% elif obra.estado == 'NI' %}
+                            <button class="btn btn-secondary iniciar-obra" data-id="{{ obra.id }}">Iniciar Obra hoy</button>
+                            {% elif obra.estado == 'E' %}
+                            <button class="btn btn-primary finalizar-obra" data-id="{{ obra.id }}">Finalizar Obra</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-warning">
+            No se encontraron obras asignadas.
+        </div>
+        {% endif %}
+        <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
+    </div>
+</div>
 
-
-  {% if obras %}
-<table class="table table-bordered">
-  <thead>
-    <tr>
-      <th>Obra</th>
-      <th>Cliente</th>
-      <th>Fecha de pago anticipo</th>
-      <th>Fecha de inicio</th>
-      <th>Plazo</th>
-      <th>Fecha de fin</th>
-      <th>Estado</th>
-      <th>Acciones</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for obra in obras %}
-      <tr>
-        <td>{{ obra.proyecto.nombre }}</td>
-        <td>{{ obra.proyecto.cliente.nombre }}</td>
-        <td>{{ obra.proyecto.presupuesto.fecha_pago_anticipo }}</td>
-        <td id="fechaInicio-{{ obra.id }}">{{ obra.fecha_inicio }}</td>
-        <td>{{ obra.plazo }} días</td>
-        <td id="fechaFin-{{ obra.id }}">{{ obra.fecha_fin }}</td>
-        <td id="estado-{{ obra.id }}">{{ obra.get_estado_display}}</td>
-          <td>
-            {% if obra.estado == 'NI' and not obra.fecha_inicio%}
-            <button class="btn btn-primary agendar-inicio-obra" data-id="{{ obra.id }}">Agendar Inicio</button>
-            <button class="btn btn-primary iniciar-obra" data-id="{{ obra.id }}">Iniciar Obra</button>
-            {%elif obra.estado == 'NI' %}
-            <button class="btn btn-secondary iniciar-obra" data-id="{{ obra.id }}">Iniciar Obra hoy</button>
-            {% elif obra.estado == 'E' %}
-            <button class="btn btn-primary finalizar-obra" data-id="{{ obra.id }}">Finalizar Obra</button>
-            {% endif %}
-          </td>
-          </form>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-  {% else %}
-    <p>No se encontraron obras asignadas.</p>
-  {% endif %}
-<a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
-
-
+<!-- Modal -->
 <div class="modal fade" id="agendaInicioModal" tabindex="-1" aria-labelledby="agendaInicioModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -58,8 +65,8 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <input type="date" id="fechaInicioInput">
-        <span id="errorFecha" class="text-danger" style="display:none;">La fecha seleccionada no puede ser anterior a la fecha actual.</span>
+        <input type="date" class="form-control" id="fechaInicioInput">
+        <span id="errorFecha" class="text-danger mt-2" style="display:none;">La fecha seleccionada no puede ser anterior a la fecha actual.</span>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -68,7 +75,6 @@
     </div>
   </div>
 </div>
-
 {% endblock %}
 {% block extra_js %}
 <script>

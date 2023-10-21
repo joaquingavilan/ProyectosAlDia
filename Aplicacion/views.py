@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import View
+from django.views.generic import View, ListView
 from .models import *
 from .forms import *
 from django.db.models import Q, F, Sum
@@ -14,7 +14,7 @@ from io import BytesIO
 from django.contrib import messages
 from django.forms import formset_factory
 from django.http import JsonResponse, HttpResponse, FileResponse
-from django.core.paginator import Paginator
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 import pandas as pd
@@ -26,6 +26,7 @@ from reportlab.lib.pagesizes import letter, landscape, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from django.core.exceptions import ObjectDoesNotExist
 
 
 def inicio(request):
@@ -1488,34 +1489,76 @@ def actualizar_estado(request, presupuesto_id):
 
 
 def ver_presupuestos_adm(request):
+
+    # Si hay filtros en la petición, úsalos.
+    filtro_campo = request.GET.get('campo', None)
+    filtro_valor = request.GET.get('valor', None)
+
     presupuestos = Presupuesto.objects.all()
-    # Configuración de la paginación
-    paginator = Paginator(presupuestos, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return render(request, 'pantallas_adm/ver_presupuestos_adm.html', {'presupuestos': presupuestos, 'page_obj': page_obj})
+
+    if filtro_campo and filtro_valor:
+        if filtro_campo == 'cliente':
+            presupuestos = presupuestos.filter(proyecto__cliente__nombre=filtro_valor)
+        elif filtro_campo == 'encargadoPresupuesto':
+            ingeniero = User.objects.get(username=filtro_valor)
+            presupuestos = presupuestos.filter(encargado=ingeniero)
+        elif filtro_campo == 'estadoPresupuesto':
+            estado_codigo = {value: key for key, value in dict(Presupuesto.ESTADOS).items()}[filtro_valor]
+            presupuestos = presupuestos.filter(estado=estado_codigo)
+        elif filtro_campo == 'estadoAnticipo':
+            tiene_anticipo = True if filtro_valor == 'Sí' else False
+            presupuestos = presupuestos.filter(anticipo=tiene_anticipo)
+
+    # Lógica de paginación
+    paginator = Paginator(presupuestos, 10)  # 10 presupuestos por página
+    page = request.GET.get('page')
+
+    try:
+        presupuestos_paginados = paginator.page(page)
+    except PageNotAnInteger:
+        # Si la página no es un entero, muestra la primera página.
+        presupuestos_paginados = paginator.page(1)
+    except EmptyPage:
+        # Si la página está fuera de rango, muestra la última página de resultados.
+        presupuestos_paginados = paginator.page(paginator.num_pages)
+
+    context = {
+        'page_obj': presupuestos_paginados,  # Usa 'page_obj' en lugar de 'presupuestos' en el template
+        'campo_seleccionado': filtro_campo,
+        'valor_seleccionado': filtro_valor,
+        'presupuestos': presupuestos
+    }
+
+    return render(request, 'pantallas_adm/ver_presupuestos_adm.html', context)
+
 
 
 @csrf_exempt
 def actualizar_anticipo(request, presupuesto_id):
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
             presupuesto = Presupuesto.objects.get(pk=presupuesto_id)
-            presupuesto.anticipo = data['anticipo']
+            presupuesto.anticipo = request.POST.get('anticipo') == 'true'
+
+            # Si se ha enviado un archivo de comprobante, lo guardamos
+            comprobante = request.FILES.get('comprobante')
+            if comprobante:
+                presupuesto.comprobante_anticipo = comprobante
+
             if presupuesto.estado == 'S' and presupuesto.anticipo is True:
                 presupuesto.estado = 'A'
             if presupuesto.anticipo is True:
                 presupuesto.fecha_pago_anticipo = date.today()
             presupuesto.save()
+
             return JsonResponse({
                 'status': 'success',
                 'nuevo_estado': presupuesto.get_estado_display(),
-                'fecha_pago_anticipo': presupuesto.fecha_pago_anticipo.strftime(
-                    '%d/%m/%Y') if presupuesto.fecha_pago_anticipo else None
+                'fecha_pago_anticipo': presupuesto.fecha_pago_anticipo.strftime('%d/%m/%Y') if presupuesto.fecha_pago_anticipo else None
             })
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
+
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 
@@ -1523,7 +1566,8 @@ def ver_obras_adm(request):
     obras = Obra.objects.filter(encargado__isnull=False)
     presupuestos_con_anticipo = Presupuesto.objects.filter(anticipo=True)
     # Filtramos aquellos presupuestos cuyo proyecto no tiene una obra con encargado asignado
-    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if not presupuesto.proyecto.obra.encargado]
+    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if
+                              not presupuesto.proyecto.obra.encargado]
 
     # Obtenemos los ingenieros disponibles
     group_ingeniero = Group.objects.get(name='INGENIERO')
@@ -1532,15 +1576,17 @@ def ver_obras_adm(request):
     # Obtenemos los meses de las fechas de inicio y fin
     meses_inicio = list(set(obras.values_list('fecha_inicio__month', flat=True)))
     meses_fin = list(set(obras.values_list('fecha_fin__month', flat=True)))
-
+    paginator = Paginator(obras, 10)  # Muestra 10 obras por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     context = {
         'obras': obras,
         'presupuestos': presupuestos_a_asignar,
         'ingenieros': ingenieros,
         'meses_inicio': meses_inicio,
-        'meses_fin': meses_fin
+        'meses_fin': meses_fin,
+        'page_obj': page_obj
     }
-
     return render(request, 'pantallas_adm/ver_obras_adm.html', context)
 
 
@@ -1570,7 +1616,8 @@ def obtener_estados_obra(request):
 
 def obtener_ingenieros_obra(request):
     # Obtener ingenieros de las obras
-    ingenieros = Obra.objects.exclude(encargado=None).values_list('encargado__first_name', 'encargado__last_name').distinct()
+    ingenieros = Obra.objects.exclude(encargado=None).values_list('encargado__first_name',
+                                                                  'encargado__last_name').distinct()
 
     # Convertir la tupla (first_name, last_name) a la cadena "first_name last_name"
     formatted_ingenieros = [f"{ingeniero[0]} {ingeniero[1]}" for ingeniero in ingenieros]
@@ -1635,7 +1682,6 @@ def estado_legible_a_codigo(estado_legible):
 
 
 def ver_obras_filtradas(request):
-
     campo = request.GET.get('campo')
     valor = request.GET.get('valor')
 
@@ -1674,14 +1720,17 @@ def ver_obras_filtradas(request):
         obras = Obra.objects.filter(encargado__isnull=False)
 
     presupuestos_con_anticipo = Presupuesto.objects.filter(anticipo=True)
-    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if not presupuesto.proyecto.obra.encargado]
+    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if
+                              not presupuesto.proyecto.obra.encargado]
 
     group_ingeniero = Group.objects.get(name='INGENIERO')
     ingenieros = group_ingeniero.user_set.all()
 
     meses_inicio = list(set(obras.values_list('fecha_inicio__month', flat=True)))
     meses_fin = list(set(obras.values_list('fecha_fin__month', flat=True)))
-
+    paginator = Paginator(obras, 10)  # Muestra 10 obras por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     context = {
         'obras': obras,
         'presupuestos': presupuestos_a_asignar,
@@ -1689,7 +1738,8 @@ def ver_obras_filtradas(request):
         'meses_inicio': meses_inicio,
         'meses_fin': meses_fin,
         'campo_seleccionado': campo,
-        'valor_seleccionado': valor
+        'valor_seleccionado': valor,
+        'page_obj': page_obj
     }
 
     return render(request, 'pantallas_adm/ver_obras_adm.html', context)
@@ -1699,7 +1749,8 @@ def asignar_obras(request):
     # Buscamos los presupuestos que tienen anticipo pagado
     presupuestos_con_anticipo = Presupuesto.objects.filter(anticipo=True)
     # Filtramos aquellos presupuestos cuyo proyecto no tiene una obra con encargado asignado
-    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if not presupuesto.proyecto.obra.encargado]
+    presupuestos_a_asignar = [presupuesto for presupuesto in presupuestos_con_anticipo if
+                              not presupuesto.proyecto.obra.encargado]
     group_ingeniero = Group.objects.get(name='INGENIERO')
     ingenieros = group_ingeniero.user_set.all()
     context = {'presupuestos': presupuestos_a_asignar,
@@ -1768,7 +1819,22 @@ def buscar_presupuestos_terminados(request):
 
 def ver_presupuesto_adm(request, presupuesto_id):
     presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id)
-    return render(request, 'pantallas_adm/ver_presupuesto_adm.html', {'presupuesto': presupuesto})
+
+    try:
+        # Intenta obtener el ArchivoPresupuesto asociado al presupuesto.
+        archivo_presupuesto = ArchivoPresupuesto.objects.get(presupuesto=presupuesto)
+        # Si existe, obtener las categorías asociadas a dicho archivo.
+        categorias = Categoria.objects.filter(archivo=archivo_presupuesto).order_by('pk')
+    except ObjectDoesNotExist:
+        archivo_presupuesto = None
+        categorias = []
+
+    context = {
+        'presupuesto': presupuesto,
+        'archivo_presupuesto': archivo_presupuesto,
+        'categorias': categorias
+    }
+    return render(request, 'pantallas_adm/ver_presupuesto_adm.html', context)
 
 
 def obtener_estados_anticipo(request):
@@ -1987,3 +2053,12 @@ def obtener_monto_presupuesto(request):
         'monto_total': str(presupuesto.monto_total)  # Convertir a string para que sea serializable
     }
     return JsonResponse(data)
+
+
+def ver_certificados_ing(request):
+    # Asumimos que el usuario que está iniciando sesión es el ingeniero
+    certificados = Certificado.objects.filter(ingeniero=request.user)
+    return render(request, 'pantallas_ing/ver_certificados.html', {
+        'certificados': certificados,
+        'title': 'Mis Certificados'
+    })

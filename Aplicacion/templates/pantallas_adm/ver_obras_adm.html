@@ -11,11 +11,9 @@
         </ul>
         <div class="clearfix"></div>
     </div>
-    <div class="x_content"{% if not presupuestos %}style="display: none;"{% endif %}>
-{% if presupuestos %}
-<!-- Panel desplegable para obras sin asignar -->
-
-        <!-- Tabla para asignar obras -->
+    <div class="x_content" {% if not presupuestos %}style="display: none;"{% endif %}>
+        {% if presupuestos %}
+        <!-- Panel desplegable para obras sin asignar -->
         <!-- Tabla para asignar obras -->
         <table class="table table-bordered">
             <thead>
@@ -37,7 +35,7 @@
                             <select class="form-control ingeniero-select" data-presupuesto-id="{{ presupuesto.id }}" style="width: 60%;">
                                 <option value="" selected>Seleccione Ingeniero</option>
                                 {% for ingeniero in ingenieros %}
-                                    <option value="{{ ingeniero.id }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
+                                <option value="{{ ingeniero.id }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
                                 {% endfor %}
                             </select>
                             <button onclick="asignarIngeniero(this)" class="btn btn-primary btn-sm" style="display: none; width: 30%;">Asignar</button>
@@ -47,61 +45,55 @@
                 {% endfor %}
             </tbody>
         </table>
-
-
-{% else %}
+        {% else %}
         <div class="alert alert-warning" role="alert">
             No hay obras pendientes de asignacion
         </div>
-{% endif %}
-    </div>
-</div>
-<!-- Búsqueda y filtros -->
-<div class="row mb-4">
-    <!-- Buscador -->
-    <div class="col-md-4">
-        <div class="input-group">
-            <input class="form-control" type="text" id="buscadorObras" placeholder="Buscar por nombre de proyecto">
-            <div class="input-group-append">
-                <span class="input-group-text"><i class="fa fa-search"></i></span>
-            </div>
-            <!-- El siguiente input es para ayudarnos a construir URLs, similar a como lo hiciste con presupuestos -->
-            <input type="hidden" id="obraUrl" value="{% url 'ver_obra_adm' 999999 %}">
-        </div>
-        <div id="resultadosBusquedaObras"></div>
-    </div>
-    <!-- Filtro Campo -->
-    <div class="col-md-2">
-        <select id="filtroCampo" class="form-control">
-            <option value="estado" {% if campo_seleccionado == "estado" %}selected{% endif %}>Estado</option>
-            <option value="encargado" {% if campo_seleccionado == "encargado" %}selected{% endif %}>Ingeniero Encargado</option>
-            <option value="fechaInicio" {% if campo_seleccionado == "fechaInicio" %}selected{% endif %}>Fecha de Inicio</option>
-            <option value="fechaFin" {% if campo_seleccionado == "fechaFin" %}selected{% endif %}>Fecha de Fin</option>
-        </select>
-    </div>
-    <!-- Filtro Valor -->
-    <div class="col-md-2">
-        <select id="filtroValor" class="form-control"></select>
-    </div>
-    <!-- Botón de limpiar filtros -->
-    <div class="col-md-2">
-        <a href="{% url 'ver_obras_adm' %}" class="btn btn-secondary btn-block">Limpiar Filtros</a>
+        {% endif %}
     </div>
 </div>
 
-
-{% if obras %}
 <div class="x_panel">
     <div class="x_title">
         <h2>Obras</h2>
-        <ul class="nav navbar-right panel_toolbox">
-            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
-        </ul>
         <div class="clearfix"></div>
     </div>
     <div class="x_content">
+        <!-- Búsqueda y filtros -->
+        <div class="row mb-4">
+            <!-- Buscador -->
+            <div class="col-md-4">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="buscadorObras" placeholder="Buscar por nombre de proyecto">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fa fa-search"></i></span>
+                    </div>
+                    <input type="hidden" id="obraUrl" value="{% url 'ver_obra_adm' 999999 %}">
+                </div>
+                <div id="resultadosBusquedaObras"></div>
+            </div>
+            <!-- Filtro Campo -->
+            <div class="col-md-3">
+                <select id="filtroCampo" class="form-control">
+                    <option value="estado" {% if campo_seleccionado == "estado" %}selected{% endif %}>Estado</option>
+                    <option value="encargado" {% if campo_seleccionado == "encargado" %}selected{% endif %}>Ingeniero Encargado</option>
+                    <option value="fechaInicio" {% if campo_seleccionado == "fechaInicio" %}selected{% endif %}>Fecha de Inicio</option>
+                    <option value="fechaFin" {% if campo_seleccionado == "fechaFin" %}selected{% endif %}>Fecha de Fin</option>
+                </select>
+            </div>
+            <!-- Filtro Valor -->
+            <div class="col-md-3">
+                <select id="filtroValor" class="form-control"></select>
+            </div>
+            <!-- Botón de limpiar filtros -->
+            <div class="col-md-2">
+                <a href="{% url 'ver_obras_adm' %}" class="btn btn-secondary btn-block">Limpiar Filtros</a>
+            </div>
+        </div>
+
         <!-- Tabla con todas las obras -->
-        <table class="table table-bordered">
+        {% if obras %}
+        <table class="table table-striped table-bordered">
             <thead>
                 <tr>
                     <th>Nombre del proyecto</th>
@@ -110,38 +102,58 @@
                     <th>Fecha Fin</th>
                     <th>Plazo</th>
                     <th>Estado</th>
-                    <th></th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                {% for obra in obras %}
+                {% for obra in page_obj %}
                 <tr>
                     <td>{{ obra.proyecto.nombre }}</td>
                     <td>{{ obra.encargado.first_name }} {{ obra.encargado.last_name }} </td>
-                    <td>
-                        {% if obra.fecha_inicio %}
-                            {{ obra.fecha_inicio }}
-                        {% else %}
-                            No iniciada
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if obra.fecha_fin %}
-                            {{ obra.fecha_fin }}
-                        {% else %}
-                            No finalizada
-                        {% endif %}
-                    </td>
+                    <td>{{ obra.fecha_inicio }}</td>
+                    <td>{{ obra.fecha_fin }}</td>
                     <td>{{ obra.plazo }}</td>
                     <td>{{ obra.get_estado_display }}</td>
-                    <td><a href="#" class="btn btn-primary btn-sm" style="font-size: 0.8rem; padding: 4px 10px;">Ver</a></td>
+                    <td><a href="#" class="btn btn-primary btn-sm">Ver</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <div class="alert alert-warning" role="alert">
+            No se encontraron obras.
+        </div>
+        {% endif %}
+        <!-- Paginador -->
+        <nav>
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link">Primera</a></li>
+                <li class="page-item disabled"><a class="page-link">Anterior</a></li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+                <li class="page-item disabled"><a class="page-link">Última</a></li>
+                {% endif %}
+            </ul>
+        </nav>
     </div>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}

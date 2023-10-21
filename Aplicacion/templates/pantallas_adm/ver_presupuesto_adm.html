@@ -25,6 +25,7 @@
                         <th>Monto Presupuesto</th>
                         <th>Monto Anticipo</th>
                         <th>Fecha de pago de Anticipo</th>
+                        <th>Comprobante</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,13 +46,8 @@
                         <td>
                             {% if presupuesto.anticipo %}
                             Sí
-                            {% elif presupuesto.estado == 'E' %}
-                            No
                             {% else %}
-                            <select class="form-select anticipo-select" data-id="{{ presupuesto.id }}" onchange="actualizarAnticipo(this)">
-                                <option value="False" selected>No</option>
-                                <option value="True">Sí</option>
-                            </select>
+                            No
                             {% endif %}
                         </td>
                         <td>
@@ -71,12 +67,82 @@
                         <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
                             {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
                         </td>
+                        <td>
+                            {% if presupuesto.anticipo and presupuesto.comprobante_anticipo %}
+                                <a href="{{ presupuesto.comprobante_anticipo.url }}" target="_blank" class="btn btn-primary btn-sm">Ver Comprobante</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
                     </tr>
                 </tbody>
             </table>
-            <a href="{% url 'ver_presupuestos_adm' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
         </div>
-
+        <br>
+        {% if archivo_presupuesto %}
+        <!-- Tabla del presupuesto en sí -->
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col-md-10">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Rubro</th>
+                                <th>Unidad de Medida</th>
+                                <th>Cantidad</th>
+                                <th>Precio Unitario</th>
+                                <th>Precio Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for categoria in categorias %}
+                                <tr>
+                                    <td colspan="5" style="background-color: #EEE;"><strong>{{ categoria.nombre }}</strong></td>
+                                </tr>
+                                {% for item in categoria.item_set.all %}
+                                    <tr>
+                                        <td colspan="5" style="background-color: #DDD;"><strong>{{ item.nombre }}</strong></td>
+                                    </tr>
+                                    {% for subitem in item.subitem_set.all %}
+                                        <tr data-type="subitem" data-id="{{ subitem.id }}">
+                                            <td>{{ subitem.rubro }}</td>
+                                            <td>{{ subitem.unidad_medida }}</td>
+                                            <td>{{ subitem.cantidad }}</td>
+                                            <td>{{ subitem.precio_unitario|intcomma }}</td>
+                                            <td>{{ subitem.precio_total|intcomma }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-md-4 offset-md-6">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <td>Total</td>
+                                <td>{{ presupuesto.monto_total|intcomma }}</td>
+                            </tr>
+                            <tr>
+                                <td>IVA</td>
+                                <td>{{ presupuesto.monto_total|multiply:0.1|intcomma }}</td>
+                            </tr>
+                            <tr>
+                                <td>Monto Total con IVA</td>
+                                <td>{{ presupuesto.monto_total|multiply:0.1|add:presupuesto.monto_total|intcomma }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+            <p>No hay un archivo de presupuesto asociado a este presupuesto.</p>
+        {% endif %}
+        <a href="{% url 'ver_presupuestos_adm' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
     </div>
 </div>
 

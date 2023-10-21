@@ -1,72 +1,71 @@
 {% extends request.base_template %}
 {% load custom_filters %}
+
 {% block content %}
-  <h1 class="display-4 text-center">Mis Presupuestos</h1>
-<br>
-  {% if presupuestos %}
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Nombre del proyecto</th>
-          <th>Cliente</th>
-          <th>Estado</th>
-          <th>Monto del presupuesto</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for presupuesto in presupuestos %}
-          <tr>
-            <td>{{ presupuesto.proyecto.nombre }}</td>
-            <td>
-              {{ presupuesto.proyecto.cliente.nombre }}
-            </td>
-            <td>
-                <select onchange="cambiarEstado(this)" data-id="{{ presupuesto.id }}">
-                  {% for estado, display_name in presupuesto.ESTADOS %}
-                    <option value="{{ estado }}" {% if presupuesto.estado == estado %}selected{% endif %}>{{ display_name }}</option>
-                  {% endfor %}
-                </select>
-            </td>
-            <td>
-                {% if presupuesto.monto_total %}
-                    {{ presupuesto.monto_total|multiply:0.1|add:presupuesto.monto_total|intcomma }}
-                {% else %}
-                 0
-                {% endif %}
-
-            </td>
-            <td>
-              <div class="d-flex align-items-center">
-                  <!-- Enlace para visualizar el presupuesto -->
-
-                  {% if presupuesto.archivopresupuesto %}
-                  <div>
-                  {% if presupuesto.estado != 'A' %}
-                    <a href="{% url 'modificar_presupuesto' presupuesto.id %}" class="btn btn-info">Modificar Presupuesto</a>
-                  {%endif%}
-                  <a href="{% url 'ver_archivo_presupuesto' presupuesto.id %}" class="btn btn-info">Ver Presupuesto</a>
-                    </div>
-                  {% else %}
-                  <!-- Formulario para cargar el archivo de presupuesto -->
-                  <form method="post" action="{% url 'cargar_presupuesto' presupuesto.id %}" enctype="multipart/form-data" class="d-flex align-items-center">
-                      {% csrf_token %}
-                      <input type="file" name="archivo_presupuesto" required class="me-2">
-                      <button type="submit" class="btn btn-primary me-2">Cargar Presupuesto</button>
-                  </form>
-                  {% endif %}
-
-              </div>
-            </td>
-
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No se encontraron presupuestos asignados.</p>
-  {% endif %}
-  <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
+<div class="x_panel">
+    <div class="x_title">
+        <h2 class="display-4 text-center">Mis Presupuestos</h2>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        {% if presupuestos %}
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre del proyecto</th>
+                    <th>Cliente</th>
+                    <th>Estado</th>
+                    <th>Monto del presupuesto</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for presupuesto in presupuestos %}
+                <tr>
+                    <td>{{ presupuesto.proyecto.nombre }}</td>
+                    <td>{{ presupuesto.proyecto.cliente.nombre }}</td>
+                    <td>
+                        <select class="form-control" onchange="cambiarEstado(this)" data-id="{{ presupuesto.id }}">
+                            {% for estado, display_name in presupuesto.ESTADOS %}
+                            <option value="{{ estado }}" {% if presupuesto.estado == estado %}selected{% endif %}>{{ display_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        {% if presupuesto.monto_total %}
+                        {{ presupuesto.monto_total|multiply:0.1|add:presupuesto.monto_total|intcomma }}
+                        {% else %}
+                        0
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            {% if presupuesto.archivopresupuesto %}
+                            {% if presupuesto.estado != 'A' %}
+                            <a href="{% url 'modificar_presupuesto' presupuesto.id %}" class="btn btn-info">Modificar Presupuesto</a>
+                            {%endif%}
+                            <a href="{% url 'ver_archivo_presupuesto' presupuesto.id %}" class="btn btn-info">Ver Presupuesto</a>
+                            {% else %}
+                            <form method="post" action="{% url 'cargar_presupuesto' presupuesto.id %}" enctype="multipart/form-data" class="form-inline">
+                                {% csrf_token %}
+                                <input type="file" name="archivo_presupuesto" required class="form-control-file me-2">
+                                <button type="submit" class="btn btn-primary">Cargar Presupuesto</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-warning">
+            No se encontraron presupuestos asignados.
+        </div>
+        {% endif %}
+        <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
+    </div>
+</div>
 {% endblock %}
 {% block extra_js %}
 <script>
