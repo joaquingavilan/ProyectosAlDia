@@ -66,7 +66,13 @@
                             -
                         {%endif%}
                     </td>
-                    <td>{{ proveedor.ciudad }}</td>
+                    <td>
+                        {% if proveedor.ciudad %}
+                            {{ proveedor.ciudad }}
+                        {% else %}
+                        -
+                        {%endif%}
+                    </td>
                     <td>{{ proveedor.direccion }}</td>
                     <td>
                         <button type="button" class="btn btn-info btn-sm mostrarContactosBtn" data-proveedor-id="{{ proveedor.id }}">Ver Contactos</button>
@@ -149,8 +155,13 @@
                     </div>
                     <div class="form-group">
                         <label for="ciudadProveedor">Ciudad:</label>
-                        <input type="text" class="form-control" id="ciudadProveedor" name="ciudad">
+                        <select class="form-control" id="ciudadProveedor" name="ciudad">
+                            {% for ciudad in ciudades %}
+                                <option value="{{ ciudad }}">{{ ciudad }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
+
                     <div class="form-group">
                         <label for="paginaWebProveedor">Página Web:</label>
                         <input type="text" class="form-control" id="paginaWebProveedor" name="pagina_web">
@@ -223,10 +234,12 @@
                     document.getElementById("direccionProveedor").value = data.direccion || '';  // Añadido
                     document.getElementById("ciudadProveedor").value = data.ciudad || '';        // Añadido
                     document.getElementById("paginaWebProveedor").value = data.pagina_web || ''; // Añadido
+                    document.getElementById("editarProveedorForm").setAttribute("data-original-ruc", data.ruc);
+                    document.getElementById("editarProveedorForm").setAttribute("data-original-email", data.email);
                     document.getElementById("editarProveedorForm").action = `/editar_proveedor/${proveedorId}/`;
 
-                    let modal = new bootstrap.Modal(document.getElementById('editarProveedorModal'));
-                    modal.show();  // <-- Mostramos el modal
+                    $('#editarProveedorModal').modal('show');
+
 
                 })
                 .catch(error => {
@@ -278,8 +291,7 @@
             })
             .then(data => {
                 if (data.status === 'success') {
-                    let modal = bootstrap.Modal.getInstance(document.getElementById('editarProveedorModal'));
-                    modal.hide();
+                    $('#editarProveedorModal').modal('hide');
                     location.reload();
                 } else if (data.status === "error") {
                     // Mostramos los errores en el modal
@@ -334,8 +346,8 @@
                         contactosBody.appendChild(div);
                     });
 
-                    let modal = new bootstrap.Modal(document.getElementById('mostrarContactosModal'));
-                    modal.show();
+                    $('#mostrarContactosModal').modal('show');
+
                 })
                 .catch(error => {
                     console.log('There was a problem with the fetch operation:', error.message);

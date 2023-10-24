@@ -57,9 +57,17 @@ def cargar_distritos():
         file_path = settings.BASE_DIR / "Aplicacion/static/distritos.geojson"
         with open(file_path, 'r') as file:
             data = json.load(file)
-            for feature in data['features']:
-                nombre_distrito = feature['properties']['DIST_DESC_']
-                Ciudad.objects.get_or_create(nombre=nombre_distrito)
+
+            # Obtener una lista de nombres de ciudades y ordenarla alfabéticamente
+            nombres_ciudades = [feature['properties']['DIST_DESC_'] for feature in data['features']]
+
+            # Reemplazar "Ñ" por "N" en cada nombre de ciudad
+            nombres_ciudades = [nombre.replace('Ñ', 'N') for nombre in nombres_ciudades]
+            nombres_ciudades_ordenados = sorted(nombres_ciudades)
+
+            for nombre in nombres_ciudades_ordenados:
+                Ciudad.objects.get_or_create(nombre=nombre)
+
 
 def loguear_usuario(request):
     if request.method == 'POST':
@@ -118,34 +126,43 @@ def salir_usuario(request):
 
 def registrar_cliente(request):
     if request.method == 'POST':
-        cliente_form = ClienteForm(request.POST)
+        # Extraer datos directamente del POST
+        nombre = request.POST.get('nombre')
+        ruc = request.POST.get('ruc')
+        email = request.POST.get('email')
+        tipo_persona = request.POST.get('tipo_persona')
+        direccion = request.POST.get('direccion')
+        nombre_ciudad = request.POST.get('ciudad')
+        ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
 
-        # Extraemos la data de los contactos desde el request.
-        # La estructura de contactos_data será una lista de diccionarios, donde cada diccionario tiene la información de un contacto.
+        # Crear el objeto cliente
+        cliente = Cliente(
+            nombre=nombre,
+            ciudad=ciudad,
+            ruc=ruc,
+            email=email,
+            tipo_persona=tipo_persona,
+            direccion=direccion
+        )
+        cliente.save()
+
+        # Extraer contactos y guardarlos
         contactos_data = request.POST.getlist('contactos[]')
         contactos_list = [(contactos_data[i], contactos_data[i + 1]) for i in range(0, len(contactos_data), 2)]
+        for nombre_contacto, numero_contacto in contactos_list:
+            Contacto.objects.create(nombre=nombre_contacto, numero=numero_contacto, cliente=cliente)
 
-        if cliente_form.is_valid():
-            cliente = cliente_form.save()
+        return redirect('ver_clientes')
 
-            # Ahora, para cada contacto en contactos_data, lo creamos y asociamos con el cliente.
-            for nombre_contacto, numero_contacto in contactos_list:
-                Contacto.objects.create(nombre=nombre_contacto, numero=numero_contacto, cliente=cliente)
+    rucs_actuales = list(Cliente.objects.values_list('ruc', flat=True))
+    rucs_json = json.dumps(rucs_actuales)
+    emails = list(Cliente.objects.values_list('email', flat=True))
+    emails_json = json.dumps(emails)
 
-            return redirect('ver_clientes')
-        else:
-            # Si hay un error en el formulario, lo retornamos como una respuesta JSON.
-            # Esto es útil para manejar errores de validación en el frontend si decides implementar una respuesta AJAX en el futuro.
-            return JsonResponse({'error': 'Datos inválidos'}, status=400)
+    ciudades = list(Ciudad.objects.values_list('nombre', flat=True))
+    ciudades_json = json.dumps(ciudades)
 
-    else:
-        form = ClienteForm()
-        rucs_actuales = list(Cliente.objects.values_list('ruc', flat=True))
-        rucs_json = json.dumps(rucs_actuales)
-        emails = list(Cliente.objects.values_list('email', flat=True))
-        emails_json = json.dumps(emails)
-
-    return render(request, 'ABM/clientes/registro_cliente.html', {'form': form, 'rucs_json': rucs_json, 'emails_json': emails_json})
+    return render(request, 'ABM/clientes/registro_cliente.html', {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades_json': ciudades_json})
 
 
 def get_cliente_data(request, cliente_id):
@@ -155,10 +172,11 @@ def get_cliente_data(request, cliente_id):
         "ruc": cliente.ruc,
         "email": cliente.email,
         'tipo_persona': cliente.tipo_persona,
-        'ciudad': cliente.ciudad,
+        'ciudad': cliente.ciudad.nombre,
         'direccion': cliente.direccion
         # ... otros campos ...
     }
+
     return JsonResponse(data)
 
 
@@ -172,17 +190,41 @@ def get_contactos_cliente(request, cliente_id):
 
 def editar_cliente(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
-    form = ClienteForm(instance=cliente)
+
     if request.method == 'POST':
-        form = ClienteForm(request.POST, instance=cliente)
-        if form.is_valid():
-            form.save()
+        nombre = request.POST.get('nombre')
+        tipo_persona = request.POST.get('tipo_persona')
+        ruc = request.POST.get('ruc')
+        email = request.POST.get('email')
+        direccion = request.POST.get('direccion', '')
+        nombre_ciudad = request.POST.get('ciudad', '')
+
+        # Si deseas realizar algunas validaciones básicas, puedes hacerlo aquí
+        # Por ejemplo:
+        if not nombre or not tipo_persona or not ruc or not email:
+            return JsonResponse({"status": "error", "message": "Faltan campos requeridos."}, status=400)
+
+        try:
+            if nombre_ciudad:
+                ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
+                cliente.ciudad = ciudad
+            cliente.nombre = nombre
+            cliente.tipo_persona = tipo_persona
+            cliente.ruc = ruc
+            cliente.email = email
+            if direccion:
+                cliente.direccion = direccion
+            cliente.save()
+
             return JsonResponse({"status": "success"})
-        else:
-            # En caso de que el formulario no sea válido, devolvemos los errores en formato JSON
-            print(form.errors)
-            return JsonResponse({"status": "error", "errors": form.errors}, status=400)
-    return render(request, 'ABM/clientes/editar_cliente.html', {'form': form})
+
+        except Ciudad.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "La ciudad proporcionada no existe."}, status=400)
+        except Exception as e:
+            # En caso de cualquier otro error
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return render(request, 'ABM/clientes/editar_cliente.html')
 
 
 def ver_clientes(request):
@@ -192,6 +234,8 @@ def ver_clientes(request):
     rucs_json = json.dumps(rucs_actuales)
     emails_actuales = list(Cliente.objects.values_list('email', flat=True))
     emails_json = json.dumps(emails_actuales)
+    ciudades = list(Ciudad.objects.values_list('nombre', flat=True))
+    ciudades_json = json.dumps(ciudades)
     # Configuración de la paginación
     paginator = Paginator(clientes, 10)  # Muestra 10 clientes por página
     page_number = request.GET.get('page')
@@ -217,7 +261,7 @@ def ver_clientes(request):
             if termino_busqueda:
                 clientes = clientes.filter(Q(ruc__icontains=termino_busqueda) | Q(nombre__icontains=termino_busqueda))
 
-    return render(request, 'ABM/clientes/ver_clientes.html', {'clientes': clientes, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json, 'emails_json': emails_json})
+    return render(request, 'ABM/clientes/ver_clientes.html', {'clientes': clientes, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades_json': ciudades_json})
 
 
 def buscar_clientes(request):
@@ -452,7 +496,8 @@ def registrar_proveedor(request):
         rucs_json = json.dumps(rucs_actuales)
         emails = list(Proveedor.objects.values_list('email', flat=True))
         emails_json = json.dumps(emails)
-    return render(request, 'ABM/proveedores/registrar_proveedor.html', {'form': form, 'rucs_json': rucs_json, 'emails_json': emails_json})
+        campos_con_asterisco = ["nombre", "ruc", "email"]
+    return render(request, 'ABM/proveedores/registrar_proveedor.html', {'form': form, 'rucs_json': rucs_json, 'emails_json': emails_json, 'obligatorios': campos_con_asterisco})
 
 
 def ver_proveedores(request):
@@ -462,6 +507,7 @@ def ver_proveedores(request):
     rucs_json = json.dumps(rucs_actuales)
     emails_actuales = list(Proveedor.objects.values_list('email', flat=True))
     emails_json = json.dumps(emails_actuales)
+    ciudades = list(Ciudad.objects.values_list('nombre', flat=True))
     # Configuración de la paginación
     paginator = Paginator(proveedores, 10)  # Muestra 10 ingenieros por página
     page_number = request.GET.get('page')
@@ -477,7 +523,7 @@ def ver_proveedores(request):
                 else:
                     proveedores = proveedores.filter(nombre__icontains=termino_busqueda)
 
-    return render(request, 'ABM/proveedores/ver_proveedores.html', {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json, 'emails_json': emails_json})
+    return render(request, 'ABM/proveedores/ver_proveedores.html', {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
 
 
 def get_proveedor_data(request, proveedor_id):
@@ -486,7 +532,7 @@ def get_proveedor_data(request, proveedor_id):
         "nombre": proveedor.nombre,
         "ruc": proveedor.ruc,
         "email": proveedor.email,
-        'ciudad': proveedor.ciudad,
+        'ciudad': proveedor.ciudad.nombre,
         'direccion': proveedor.direccion,
         'pagina_web': proveedor.pagina_web
         # ... otros campos ...
@@ -541,7 +587,7 @@ def get_proveedor_data(request, proveedor_id):
         "nombre": proveedor.nombre,
         "ruc": proveedor.ruc,
         "email": proveedor.email,
-        "ciudad": proveedor.ciudad,
+        "ciudad": str(proveedor.ciudad),
         "pagina_web": proveedor.pagina_web,
         "direccion": proveedor.direccion
         # ... otros campos ...
@@ -559,16 +605,27 @@ def get_contactos_proveedor(request, proveedor_id):
 
 def editar_proveedor(request, pk):
     proveedor = get_object_or_404(Proveedor, pk=pk)
-    form = ProveedorForm(instance=proveedor)
+
     if request.method == 'POST':
-        form = ProveedorForm(request.POST, instance=proveedor)
-        if form.is_valid():
-            form.save()
+        # Actualizamos los atributos del proveedor con los datos recibidos
+        proveedor.nombre = request.POST.get('nombre', proveedor.nombre)
+        proveedor.ruc = request.POST.get('ruc', proveedor.ruc)
+        proveedor.email = request.POST.get('email', proveedor.email)
+        proveedor.direccion = request.POST.get('direccion', proveedor.direccion)
+        nombre_ciudad = request.POST.get('ciudad')
+        proveedor.ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
+        proveedor.pagina_web = request.POST.get('pagina_web', proveedor.pagina_web)
+
+        # Guardamos el objeto proveedor
+        try:
+            proveedor.full_clean()  # Valida el objeto antes de guardarlo
+            proveedor.save()
             return JsonResponse({"status": "success", "message": "Proveedor actualizado con éxito"})
-        else:
-            # En caso de que el formulario no sea válido, devolvemos los errores en formato JSON
-            return JsonResponse({"status": "error", "errors": form.errors}, status=400)
-    return render(request, 'ABM/proveedores/editar_proveedor.html', {'form': form})
+        except ValidationError as e:
+            # En caso de que el objeto no sea válido, devolvemos los errores en formato JSON
+            return JsonResponse({"status": "error", "errors": e.message_dict}, status=400)
+
+    return render(request, 'ABM/proveedores/editar_proveedor.html')
 
 
 def buscar_proveedores(request):

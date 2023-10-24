@@ -71,7 +71,14 @@ class CustomUserChangeForm(UserChangeForm):
 
 class ClienteForm(forms.ModelForm):
     direccion = forms.CharField(required=False, max_length=200)
-    ciudad = forms.ModelChoiceField(queryset=Ciudad.objects.all(), required=False)
+    ciudad = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'id': 'autocomplete-ciudad'}), required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ciudades = list(Ciudad.objects.values_list('nombre', flat=True))
+        self.fields['ciudad'].widget.attrs.update({
+            'data-list': ','.join(ciudades)
+        })
 
     class Meta:
         model = Cliente

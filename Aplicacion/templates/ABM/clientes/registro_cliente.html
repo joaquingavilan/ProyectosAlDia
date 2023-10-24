@@ -10,17 +10,37 @@
     <div class="x_content">
         <form method="post" id="mainForm">
             {% csrf_token %}
-            {% for field in form %}
-                <div class="form-group">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field|add_class:"form-control" }}
-                    {% if field.errors %}
-                        {% for error in field.errors %}
-                            <p class="text-danger">{{ error }}</p>
-                        {% endfor %}
-                    {% endif %}
-                </div>
-            {% endfor %}
+            <div class="form-group">
+                <label for="nombre">Nombre: (*)</label>
+                <input type="text" class="form-control" id="nombre" name="nombre">
+                <span class="text-danger" id="nombreError"></span> <!-- Mensaje de error -->
+            </div>
+            <div class="form-group">
+                <label for="ruc">RUC: (*)</label>
+                <input type="text" class="form-control" id="ruc" name="ruc">
+                <span class="text-danger" id="rucError"></span>
+            </div>
+            <div class="form-group">
+                <label for="email">Email: (*)</label>
+                <input type="email" class="form-control" id="email" name="email">
+                <span class="text-danger" id="emailError"></span>
+            </div>
+            <div class="form-group">
+                <label for="tipo_persona">Tipo de Persona:</label>
+                <select class="form-control" id="tipo_persona" name="tipo_persona">
+                    <option value="Fisica">Física</option>
+                    <option value="Juridica">Jurídica</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="direccion">Dirección:</label>
+                <input type="text" class="form-control" id="direccion" name="direccion">
+            </div>
+            <div class="form-group">
+                <label for="autocomplete-ciudad">Ciudad:</label>
+                <input type="text" class="form-control" id="autocomplete-ciudad" name="ciudad" data-list="{{ ciudades_json|safe }}">
+                <span class="text-danger" id="ciudadError"></span>
+            </div>
             <!-- Botón para abrir el modal de agregar contacto -->
             <button type="button" class="btn btn-primary" id="abrirModalBtn">
                 Agregar Contacto
@@ -68,17 +88,66 @@
         let contactos = [];
         let rucsActuales = {{ rucs_json|safe }};
         let emailsActuales = {{ emails_json|safe }};
+        var ciudades = {{ ciudades_json|safe }};
 
         document.getElementById("guardarBtn").addEventListener("click", function(event) {
-            let rucField = document.getElementById("id_ruc");
+            isValid = true;
+
+            // Validación Nombre
+            let nombreField = document.getElementById("nombre");
+            let nombre = nombreField.value;
+            let regexNombre = /^[\w\s]*$/;
+            if (!regexNombre.test(nombre)) {
+                document.getElementById("nombreError").innerText = "El nombre solo debe contener letras, números y espacios en blanco.";
+                nombreField.focus();
+                isValid = false;
+                return;
+            } else {
+                document.getElementById("nombreError").innerText = ""; // Limpia el mensaje de error si el input es válido
+            }
+
+            // Validación Ciudad
+            let ciudadField = document.getElementById("autocomplete-ciudad");
+            let ciudad = ciudadField.value;
+
+            if (!ciudad || !ciudades.includes(ciudad)) {
+                document.getElementById("ciudadError").innerText = "Seleccione la ciudad de las opciones posibles.";
+                ciudadField.focus();
+                isValid = false;
+            } else {
+                document.getElementById("ciudadError").innerText = "";
+            }
+
+            // Validación RUC
+            let rucField = document.getElementById("ruc");
             let rucIngresado = rucField.value;
-            let emailField = document.getElementById("id_email");
+            let regexRUC = /^[\d\-]*$/;
+
+            if (!rucIngresado) {
+                document.getElementById("rucError").innerText = "El RUC no puede estar vacío.";
+                rucField.focus();
+                isValid = false;
+            } else if (!regexRUC.test(rucIngresado)) {
+                document.getElementById("rucError").innerText = "El RUC solo debe contener números y un guión, sin puntos.";
+                rucField.focus();
+                isValid = false;
+            } else if (rucsActuales.includes(rucIngresado)) {
+                document.getElementById("rucError").innerText = "El RUC ingresado ya está registrado en el sistema.";
+                rucField.focus();
+                isValid = false;
+            } else {
+                document.getElementById("rucError").innerText = "";
+            }
+
+            // Validación Email
+            let emailField = document.getElementById("email");
             let emailIngresado = emailField.value;
-            if (rucsActuales.includes(rucIngresado)) {
-                event.preventDefault();  // Evitar que el formulario se envíe
-                alert("El RUC ingresado ya está registrado en el sistema.");
-                rucField.value = "";  // Limpiar el campo RUC
-                rucField.focus();     // Colocar el foco en el campo RUC
+            if (!emailField.value) {
+                document.getElementById("emailError").innerText = "El email es requerido.";
+                emailField.focus();
+                isValid = false;
+            } else {
+                document.getElementById("emailError").innerText = "";
             }
             if (emailsActuales.includes(emailIngresado)) {
                 event.preventDefault();  // Evitar que el formulario se envíe
@@ -86,6 +155,11 @@
                 emailField.value = "";  // Limpiar el campo RUC
                 emailField.focus();     // Colocar el foco en el campo RUC
             }
+
+
+            if (!isValid) {
+            event.preventDefault();
+        }
         });
 
         document.getElementById("agregarContactoBtn").addEventListener("click", function() {
@@ -149,6 +223,12 @@
             modalContacto.show();
         });
 
+        $(document).ready(function() {
+            $("#autocomplete-ciudad").autocomplete({
+                source: ciudades,
+                minLength: 2  // puedes ajustar esto si lo deseas
+            });
+        });
     </script>
 
 {% endblock %}

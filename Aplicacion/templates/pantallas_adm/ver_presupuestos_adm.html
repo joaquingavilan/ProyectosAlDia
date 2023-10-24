@@ -80,13 +80,8 @@
                     <td>
                         {% if presupuesto.anticipo %}
                         Sí
-                        {% elif presupuesto.estado == 'E' %}
-                        No
                         {% else %}
-                        <select class="form-select anticipo-select" data-id="{{ presupuesto.id }}" onchange="actualizarAnticipo(this)">
-                            <option value="False" selected>No</option>
-                            <option value="True">Sí</option>
-                        </select>
+                        No
                         {% endif %}
                     </td>
                     <td>
