@@ -7,6 +7,13 @@ from django.utils.translation import gettext_lazy as _
 from django.db.models import Q
 
 
+class Ciudad(models.Model):
+    nombre = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.nombre
+
+
 class Contacto(models.Model):
     nombre = models.CharField(
         max_length=50,
@@ -36,7 +43,7 @@ class Cliente(models.Model):
     email = models.EmailField()
     tipo_persona = models.CharField(max_length=8, choices=TIPO_PERSONA_CHOICES, default='Fisica')
     direccion = models.CharField(max_length=200, default='', blank=True)
-    ciudad = models.CharField(max_length=20, default='', blank=True)
+    ciudad = models.ForeignKey(Ciudad, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return self.nombre
@@ -54,7 +61,7 @@ class Proveedor(models.Model):
         RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
     email = models.EmailField(max_length=254, validators=[EmailValidator()])
     direccion = models.CharField(max_length=200, default='', blank=True)
-    ciudad = models.CharField(max_length=20, default='', blank=True)
+    ciudad = models.ForeignKey(Ciudad, on_delete=models.CASCADE, blank=True, null=True)
     pagina_web = models.CharField(max_length=255, validators=[
         RegexValidator(r'^[\w\-]+\.[\w\-]+(\.[\w\-]+)?$',
                        message='La URL debe tener el formato "texto.texto" o "texto.texto.texto"')
@@ -121,7 +128,7 @@ class Presupuesto(models.Model):
 class Proyecto(models.Model):
     nombre = models.CharField(_('nombre'), max_length=100)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, verbose_name=_('cliente'))
-    ciudad = models.CharField(max_length=100)
+    ciudad = models.ForeignKey(Ciudad, on_delete=models.CASCADE, blank=True, null=True)
 
     class Meta:
         verbose_name = _('proyecto')

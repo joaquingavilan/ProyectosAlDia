@@ -31,6 +31,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 def inicio(request):
     verificar_obras_agendadas()
+    cargar_distritos()
     if request.user.groups.filter(name='GERENTE').exists():
         return render(request, 'inicios/inicio.html')
     elif request.user.groups.filter(name='ADMINISTRADOR').exists():
@@ -49,6 +50,16 @@ def inicio_adm(request):
     return render(request, 'inicios/inicio_adm.html', {'nombre': nombre})
 # VISTAS PARA USUARIOS
 
+
+def cargar_distritos():
+    # Verificar si ya hay 262 registros en el modelo Ciudad
+    if Ciudad.objects.count() != 262:
+        file_path = settings.BASE_DIR / "Aplicacion/static/distritos.geojson"
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            for feature in data['features']:
+                nombre_distrito = feature['properties']['DIST_DESC_']
+                Ciudad.objects.get_or_create(nombre=nombre_distrito)
 
 def loguear_usuario(request):
     if request.method == 'POST':
@@ -661,6 +672,7 @@ def registrar_proyecto(request):
     group_ingeniero = Group.objects.get(name='INGENIERO')
     ingenieros = group_ingeniero.user_set.all()
     clientes = Cliente.objects.all()
+    ciudades = Ciudad.objects.all()  # Obtiene todas las ciudades
 
     if request.method == 'POST':
         form = ProyectoForm(request.POST)
@@ -669,7 +681,9 @@ def registrar_proyecto(request):
             presupuesto = Presupuesto(encargado=form.cleaned_data['encargado'])
             proyecto.cliente = form.cleaned_data['cliente']
             proyecto.nombre = request.POST.get('nombre')
-            proyecto.ciudad = request.POST.get('ciudad')
+            ciudad_id = request.POST.get('ciudad')
+            ciudad = Ciudad.objects.get(id=ciudad_id)
+            proyecto.ciudad = ciudad
             obra = Obra()
 
             # Primero guardamos el proyecto para obtener su ID
@@ -690,7 +704,7 @@ def registrar_proyecto(request):
     else:
         form = ProyectoForm()
     return render(request, 'ABM/proyectos/registrar_proyecto.html',
-                  {'form': form, 'ingenieros': ingenieros, 'clientes': clientes})
+                  {'form': form, 'ingenieros': ingenieros, 'clientes': clientes, 'ciudades': ciudades})
 
 
 def ver_proyectos(request):
@@ -2062,3 +2076,25 @@ def ver_certificados_ing(request):
         'certificados': certificados,
         'title': 'Mis Certificados'
     })
+
+
+def buscar_presupuestos_ingeniero(request):
+    query = request.GET.get('q', '')
+    # Filtra los presupuestos basándose en el nombre del proyecto y el ingeniero asignado
+    presupuestos = Presupuesto.objects.filter(
+        Q(proyecto__nombre__icontains=query) & Q(encargado=request.user)
+    )
+    data = [
+        {
+            'id': presupuesto.id,
+            'proyecto_nombre': presupuesto.proyecto.nombre,
+            'cliente_nombre': presupuesto.proyecto.cliente.nombre
+        }
+        for presupuesto in presupuestos
+    ]
+    return JsonResponse(data, safe=False)
+
+
+def obtener_clientes_presupuestos_ing(request):
+    clientes = Proyecto.objects.values_list('cliente__nombre', flat=True).distinct()
+    return JsonResponse(list(clientes), safe=False)

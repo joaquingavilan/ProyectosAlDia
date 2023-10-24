@@ -1,10 +1,53 @@
 {% extends request.base_template %}
 {% load custom_filters %}
 {% block content %}
-<h1 class="display-4 text-center">Presupuesto: {{ archivo_presupuesto.presupuesto.proyecto.nombre }} - Cliente: {{ archivo_presupuesto.presupuesto.proyecto.cliente.nombre }}</h1>
+<h1 class="display-4 text-center">Proyecto: {{ archivo_presupuesto.presupuesto.proyecto.nombre }}</h1>
+<h1 class="display-4 text-center">Cliente: {{ archivo_presupuesto.presupuesto.proyecto.cliente.nombre }}</h1>
 
 <br>
 <div class="container-fluid">
+    <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre del proyecto</th>
+                    <th>Cliente</th>
+                    <th>Estado</th>
+                    <th>Monto del presupuesto</th>
+                    <th>Archivo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ archivo_presupuesto.presupuesto.proyecto.nombre }}</td>
+                    <td>{{ archivo_presupuesto.presupuesto.proyecto.cliente.nombre }}</td>
+                    <td>
+                        {% if presupuesto.estado != 'A' %}
+                        <select class="form-control" onchange="cambiarEstado(this)" data-id="{{ presupuesto.id }}">
+                            {% for estado, display_name in archivo_presupuesto.presupuesto.ESTADOS %}
+                            <option value="{{ estado }}" {% if presupuesto.estado == estado %}selected{% endif %}>{{ display_name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        {{archivo_presupuesto.presupuesto.get_estado_display}}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if archivo_presupuesto.presupuesto.monto_total %}
+                        {{ archivo_presupuesto.presupuesto.monto_total|multiply:0.1|add:archivo_presupuesto.presupuesto.monto_total|intcomma }}
+                        {% else %}
+                        0
+                        {% endif %}
+                    </td>
+                    <td>
+                        {%if archivo_presupuesto.archivo%}
+                            <a href="{{ archivo_presupuesto.archivo.url }}" class="btn btn-primary" download>{{ archivo_presupuesto.archivo.name|split:"/"|last }}</a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     <div class="row justify-content-center">
         <div class="col-md-10"> <!-- Ajusta el tamaño de la columna a md-8 para la tabla principal -->
             <table class="table table-bordered table-hover"> <!-- Se añaden clases de Bootstrap -->
@@ -64,7 +107,6 @@
     </div>
 </div>
 
-<a href="{% url 'ver_presupuestos' %}" class="btn btn-primary">Volver a Presupuestos</a>
-<a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Volver a Inicio</a>
+<a href="{% url 'ver_presupuestos' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
 
 {% endblock %}

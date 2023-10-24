@@ -1,5 +1,5 @@
 from django import forms
-from .models import Cliente, Proveedor, Material, Proyecto, User, Contacto
+from .models import Cliente, Proveedor, Material, Proyecto, User, Contacto, Ciudad
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.core.exceptions import ValidationError
@@ -71,7 +71,7 @@ class CustomUserChangeForm(UserChangeForm):
 
 class ClienteForm(forms.ModelForm):
     direccion = forms.CharField(required=False, max_length=200)
-    ciudad = forms.CharField(required=False, max_length=20)
+    ciudad = forms.ModelChoiceField(queryset=Ciudad.objects.all(), required=False)
 
     class Meta:
         model = Cliente

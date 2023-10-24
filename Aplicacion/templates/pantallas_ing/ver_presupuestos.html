@@ -8,6 +8,37 @@
         <div class="clearfix"></div>
     </div>
     <div class="x_content">
+        <div class="col-md-4 pull-right">
+            <div class="input-group">
+                <input class="form-control" type="text" id="buscadorPresupuestos" placeholder="Buscar por nombre de proyecto">
+                <div class="input-group-append">
+                    <span class="input-group-text"><i class="fa fa-search"></i></span>
+                </div>
+                <input type="hidden" id="presupuestoUrl" value="{% url 'ver_archivo_presupuesto' 999999 %}">
+            </div>
+            <div id="resultadosBusquedaPresupuestos"></div>
+        </div>
+        <div class="row">
+            <div class="col-md-3">
+                <!-- Dropdown para seleccionar el campo de filtro -->
+                <select id="filtroCampo" class="form-control">
+                    <option value="cliente">Cliente</option>
+                    <option value="estadoPresupuesto">Estado del Presupuesto</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <!-- Dropdown para seleccionar el valor específico del filtro -->
+                <select id="filtroValor" class="form-control">
+                    <!-- El resto se llenará dinámicamente usando JS -->
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button onclick="window.location.href='{% url 'ver_presupuestos' %}'" class="btn btn-secondary btn-block">Borrar Filtros</button>
+            </div>
+        </div>
+
+        <div class="clearfix"></div>
+
         {% if presupuestos %}
         <table class="table table-striped table-bordered">
             <thead>
@@ -25,11 +56,15 @@
                     <td>{{ presupuesto.proyecto.nombre }}</td>
                     <td>{{ presupuesto.proyecto.cliente.nombre }}</td>
                     <td>
+                        {% if presupuesto.estado != 'A' %}
                         <select class="form-control" onchange="cambiarEstado(this)" data-id="{{ presupuesto.id }}">
                             {% for estado, display_name in presupuesto.ESTADOS %}
                             <option value="{{ estado }}" {% if presupuesto.estado == estado %}selected{% endif %}>{{ display_name }}</option>
                             {% endfor %}
                         </select>
+                        {% else %}
+                        {{presupuesto.get_estado_display}}
+                        {% endif %}
                     </td>
                     <td>
                         {% if presupuesto.monto_total %}
@@ -63,12 +98,35 @@
             No se encontraron presupuestos asignados.
         </div>
         {% endif %}
-        <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
     </div>
 </div>
 {% endblock %}
 {% block extra_js %}
 <script>
+
+// Función para la búsqueda de presupuestos
+document.getElementById('buscadorPresupuestos').addEventListener('input', function() {
+    let query = this.value;
+    let resultadosDiv = document.getElementById('resultadosBusquedaPresupuestos');
+    let baseUrl = document.getElementById('presupuestoUrl').value;
+
+    if (query.length >= 3) {
+        fetch(`/buscar_presupuestos_ingeniero/?q=${query}`)
+        .then(response => response.json())
+        .then(data => {
+            resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+            data.forEach(presupuesto => {
+                let div = document.createElement('div');
+                let presupuestoUrl = baseUrl.replace('999999', presupuesto.id);
+                div.innerHTML = `<a href="${presupuestoUrl}"><strong>Proyecto:</strong> ${presupuesto.proyecto_nombre}</a>`;
+                resultadosDiv.appendChild(div);
+            });
+        });
+    } else {
+        resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+    }
+});
+
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -107,5 +165,70 @@ function cambiarEstado(selectElement) {
         }
     });
 }
+// Función de inicialización para el dropdown filtroValor
+function inicializarFiltroValorPresupuestos() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let dropdownValor = document.getElementById('filtroValor');
+
+    // Limpiar opciones previas
+    while (dropdownValor.firstChild) {
+        dropdownValor.removeChild(dropdownValor.firstChild);
+    }
+
+    let defaultOption = document.createElement('option');
+    defaultOption.value = "";
+    defaultOption.text = "-- Seleccione --";
+    dropdownValor.appendChild(defaultOption);
+
+    let url = '';  // URL de donde obtener los datos
+
+    switch (campoSeleccionado) {
+        case 'cliente':
+            url = '/obtener_clientes_con_proyectos/';
+            break;
+        case 'estadoPresupuesto':
+            url = '/obtener_estados_presupuesto/';
+            break;
+    }
+
+    // Si hay una URL válida, hacer la solicitud AJAX
+    if (url) {
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(item => {
+                let option = document.createElement('option');
+                option.value = item;
+                option.text = item;
+                dropdownValor.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error al obtener datos:', error);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    inicializarFiltroValorPresupuestos();  // Llamar a la función al cargar la página
+});
+
+// Inicializar el dropdown al cambiar el valor del primer dropdown
+document.getElementById('filtroCampo').addEventListener('change', function() {
+    inicializarFiltroValorPresupuestos();
+});
+
+// Función para filtrar proyectos basado en la selección del usuario
+function filtrarPresupuestos() {
+    let campoSeleccionado = document.getElementById('filtroCampo').value;
+    let valorSeleccionado = document.getElementById('filtroValor').value;
+
+    if (valorSeleccionado !== "") {
+        window.location.href = `?campo=${campoSeleccionado}&valor=${valorSeleccionado}`;
+    }
+}
+
+document.getElementById('filtroValor').addEventListener('change', filtrarPresupuestos);
+
 </script>
 {% endblock %}
