@@ -11,8 +11,3 @@ admin.site.register(Presupuesto)
 admin.site.register(Pedido)
 admin.site.register(MaterialPedido)
 admin.site.register(Contacto)
-admin.site.register(ArchivoPresupuesto)
-admin.site.register(Categoria)
-admin.site.register(SubItem)
-admin.site.register(Item)
-

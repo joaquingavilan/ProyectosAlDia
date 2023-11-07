@@ -37,17 +37,21 @@
                 <input type="text" class="form-control" id="direccion" name="direccion">
             </div>
             <div class="form-group">
-                <label for="autocomplete-ciudad">Ciudad:</label>
-                <input type="text" class="form-control" id="autocomplete-ciudad" name="ciudad" data-list="{{ ciudades_json|safe }}">
-                <span class="text-danger" id="ciudadError"></span>
+                <label for="ciudad">Ciudad:</label>
+                <select id="ciudad" name="ciudad" class="form-control">
+                    {% for ciudad in ciudades %}
+                        <option value="{{ ciudad.id }}">{{ ciudad.nombre }}</option>
+                    {% endfor %}
+                </select>
             </div>
-            <!-- Botón para abrir el modal de agregar contacto -->
-            <button type="button" class="btn btn-primary" id="abrirModalBtn">
-                Agregar Contacto
-            </button>
-            <!-- Sección donde se mostrarán los contactos agregados -->
-            <div id="contactosAgregados" class="mb-3">
-                <!-- Los contactos agregados se mostrarán aquí -->
+            <div class="form-group">
+                <label for="ruc">Telefono: </label>
+                <input type="text" class="form-control" id="telefono" name="telefono">
+                <span class="text-danger" id="telefonoError"></span>
+            </div>
+            <div class="form-group">
+                <label for="observaciones">Observaciones:</label>
+                <textarea class="form-control" id="observaciones" name="observaciones" rows="4"></textarea>
             </div>
             <button type="submit" class="btn btn-success" id="guardarBtn">Registrar</button>
         </form>
@@ -55,67 +59,31 @@
     </div>
 </div>
 
-<!-- Modal para agregar contacto -->
-<div class="modal fade" id="contactoModal" tabindex="-1" aria-labelledby="contactoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="contactoModalLabel">Agregar Contacto</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            </div>
-            <div class="modal-body">
-                <!-- Formulario de Contacto -->
-                <div class="mb-3">
-                    <label for="contactoNombre" class="form-label">Nombre:</label>
-                    <input type="text" class="form-control" id="contactoNombre">
-                </div>
-                <div class="mb-3">
-                    <label for="contactoNumero" class="form-label">Número:</label>
-                    <input type="text" class="form-control" id="contactoNumero">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary" id="agregarContactoBtn">Agregar</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
     <script>
-        let contactos = [];
         let rucsActuales = {{ rucs_json|safe }};
         let emailsActuales = {{ emails_json|safe }};
-        var ciudades = {{ ciudades_json|safe }};
 
-        document.getElementById("guardarBtn").addEventListener("click", function(event) {
+        document.getElementById("mainForm").addEventListener("submit", function(event) {
             isValid = true;
 
             // Validación Nombre
             let nombreField = document.getElementById("nombre");
             let nombre = nombreField.value;
             let regexNombre = /^[\w\s]*$/;
-            if (!regexNombre.test(nombre)) {
+            if (!nombre) {
+                document.getElementById("nombreError").innerText = "El campo nombre no puede estar vacío.";
+                nombreField.focus();
+                isValid = false;
+            }
+            else if (!regexNombre.test(nombre)) {
                 document.getElementById("nombreError").innerText = "El nombre solo debe contener letras, números y espacios en blanco.";
                 nombreField.focus();
                 isValid = false;
-                return;
             } else {
                 document.getElementById("nombreError").innerText = ""; // Limpia el mensaje de error si el input es válido
-            }
-
-            // Validación Ciudad
-            let ciudadField = document.getElementById("autocomplete-ciudad");
-            let ciudad = ciudadField.value;
-
-            if (!ciudad || !ciudades.includes(ciudad)) {
-                document.getElementById("ciudadError").innerText = "Seleccione la ciudad de las opciones posibles.";
-                ciudadField.focus();
-                isValid = false;
-            } else {
-                document.getElementById("ciudadError").innerText = "";
             }
 
             // Validación RUC
@@ -139,6 +107,19 @@
                 document.getElementById("rucError").innerText = "";
             }
 
+            // Validación Teléfono
+            let telefonoField = document.getElementById("telefono");
+            let telefonoIngresado = telefonoField.value;
+            let regexTelefono = /^\d{6,20}$/;
+
+            if (telefonoIngresado && !regexTelefono.test(telefonoIngresado)) {
+                document.getElementById("telefonoError").innerText = "Ingrese un teléfono válido (solo números)";
+                telefonoField.focus();
+                isValid = false;
+            } else {
+                document.getElementById("telefonoError").innerText = "";
+            }
+
             // Validación Email
             let emailField = document.getElementById("email");
             let emailIngresado = emailField.value;
@@ -159,69 +140,9 @@
 
             if (!isValid) {
             event.preventDefault();
-        }
+            }
         });
 
-        document.getElementById("agregarContactoBtn").addEventListener("click", function() {
-            let nombre = document.getElementById("contactoNombre").value;
-            let numero = document.getElementById("contactoNumero").value;
-
-            let regexNombre = /^[a-zA-Z\s]+$/;  // Solo letras y espacios
-            let regexNumero = /^[0-9]+$/;       // Solo números
-
-            if (!regexNombre.test(nombre)) {
-                alert("El nombre del contacto solo debe contener letras y espacios.");
-                return;
-            }
-
-            if (!regexNumero.test(numero)) {
-                alert("El número del contacto solo debe contener números.");
-                return;
-            }
-
-            if (nombre && numero) {
-                contactos.push({nombre: nombre, numero: numero});
-
-                let contenedorContactos = document.getElementById("contactosAgregados");
-                let nuevoContacto = document.createElement("p");
-                nuevoContacto.innerText = `Nombre: ${nombre}, Número: ${numero}`;
-                contenedorContactos.appendChild(nuevoContacto);
-
-                // Limpiar los campos del modal
-                document.getElementById("contactoNombre").value = "";
-                document.getElementById("contactoNumero").value = "";
-
-                // Cerrar el modal usando la API de Bootstrap 5
-                let modalContacto = new bootstrap.Modal(document.getElementById('contactoModal'));
-                modalContacto.hide();
-            } else {
-                alert("Por favor, rellena ambos campos.");
-            }
-       });
-
-        document.getElementById("mainForm").addEventListener("submit", function(event) {
-            // Antes de enviar el formulario, agregamos los contactos como campos ocultos
-            let form = event.target;
-
-            contactos.forEach(contacto => {
-                let inputNombre = document.createElement("input");
-                inputNombre.type = "hidden";
-                inputNombre.name = "contactos[]";
-                inputNombre.value = contacto.nombre;
-                form.appendChild(inputNombre);
-
-                let inputNumero = document.createElement("input");
-                inputNumero.type = "hidden";
-                inputNumero.name = "contactos[]";
-                inputNumero.value = contacto.numero;
-                form.appendChild(inputNumero);
-            });
-        });
-
-        document.getElementById("abrirModalBtn").addEventListener("click", function() {
-            let modalContacto = new bootstrap.Modal(document.getElementById('contactoModal'));
-            modalContacto.show();
-        });
 
         $(document).ready(function() {
             $("#autocomplete-ciudad").autocomplete({

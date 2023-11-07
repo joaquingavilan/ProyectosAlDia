@@ -6,50 +6,27 @@ from django.core.exceptions import ValidationError
 
 
 class CustomUserCreationForm(UserCreationForm):
-    first_name = forms.CharField(label=_('Nombre'), max_length=150)
-    last_name = forms.CharField(label=_('Apellido'), max_length=150)
+    first_name = forms.CharField(label=_('Nombres'), max_length=150)
+    last_name = forms.CharField(label=_('Apellidos'), max_length=150)
     email = forms.EmailField(label=_('Correo electrónico'), max_length=254)
-
+    telefono = forms.CharField(label=_("Teléfono"), max_length=20, required=False)  # Campo teléfono
+    direccion = forms.CharField(label=_("Dirección"), max_length=255, required=False)  # Campo dirección
     username = forms.CharField(
         label=_('Nombre de usuario'),
         max_length=150,
         help_text='',
         error_messages={'required': ''},
-        widget=forms.TextInput(attrs={'autocomplete': 'username'})
-    )
-    password1 = forms.CharField(
-        label=_('Contraseña'),
-        strip=False,
-        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
-        help_text='',
-        error_messages={
-            'required': '',
-            'password_mismatch': _('Las dos contraseñas no coinciden.'),
-            'password_too_short': _('La contraseña es muy corta.'),
-            'password_common': _('La contraseña es muy común.'),
-            'password_entirely_numeric': _('La contraseña no puede ser totalmente numérica.'),
-        }
-    )
-    password2 = forms.CharField(
-        label=_("Confirmar contraseña"),
-        strip=False,
-        widget=forms.PasswordInput,
-        error_messages={
-            'required': '',
-            'password_mismatch': _('Las dos contraseñas no coinciden.'),
-            'password_too_short': _('La contraseña es muy corta.'),
-            'password_common': _('La contraseña es muy común.'),
-            'password_entirely_numeric': _('La contraseña no puede ser totalmente numérica.'),
-        }
     )
 
+    def __init__(self, *args, **kwargs):
+        super(CustomUserCreationForm, self).__init__(*args, **kwargs)
+        # Excluir campos de contraseña
+        del self.fields['password1']
+        del self.fields['password2']
+
     class Meta(UserCreationForm.Meta):
-        fields = UserCreationForm.Meta.fields + ('first_name', 'last_name', 'email')
-        labels = {
-            'username': _('Nombre de usuario'),
-            'password1': _('Contraseña'),
-            'password2': _('Confirmar contraseña'),
-        }
+        model = User
+        fields = ('username', 'first_name', 'last_name', 'email', 'telefono', 'direccion')
 
     def clean_email(self):
         email = self.cleaned_data['email']
@@ -63,6 +40,8 @@ class CustomUserChangeForm(UserChangeForm):
     first_name = forms.CharField(label=_("Nombre"), max_length=150)
     last_name = forms.CharField(label=_("Apellido"), max_length=150)
     email = forms.EmailField(label=_("Email"), max_length=254)
+    telefono = forms.CharField(label=_("Teléfono"), max_length=20, required=False)
+    direccion = forms.CharField(label=_("Dirección"), max_length=255, required=False, widget=forms.Textarea())
 
     class Meta:
         model = User

@@ -12,7 +12,8 @@
             {% csrf_token %}
             {% for field in form %}
                 <div class="form-group">
-                    <label for="{{ field.id_for_label }}">{{ field.label }} (*)</label>
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {% if field.label not in no_obligatorios %} (*) {% endif %}
                     {{ field|add_class:"form-control" }}
                     {% if field.errors %}
                         {% for error in field.errors %}

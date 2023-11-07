@@ -42,6 +42,7 @@
                 <tr>
                     <th scope="col">Nombre</th>
                     <th scope="col">RUC</th>
+                    <th scope="col">Telefono</th>
                     <th scope="col">Email</th>
                     <th scope="col">Pagina web</th>
                     <th scope="col">Ciudad</th>
@@ -54,6 +55,12 @@
                 <tr>
                     <td>{{ proveedor.nombre }}</td>
                     <td>{{ proveedor.ruc }}</td>
+                    <td>{% if proveedor.telefono %}
+                            {{ proveedor.telefono }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                     <td>{{ proveedor.email }}</td>
                     <td>
                         {% if proveedor.pagina_web %}
@@ -73,9 +80,13 @@
                         -
                         {%endif%}
                     </td>
-                    <td>{{ proveedor.direccion }}</td>
+                    <td>{% if proveedor.direccion %}
+                            {{ proveedor.direccion }}
+                        {% else %}
+                        -
+                        {%endif%}
+                    </td>
                     <td>
-                        <button type="button" class="btn btn-info btn-sm mostrarContactosBtn" data-proveedor-id="{{ proveedor.id }}">Ver Contactos</button>
                         <button type="button" class="btn btn-primary btn-sm editarProveedorBtn" data-proveedor-id="{{ proveedor.id }}"><i class="fa fa-pencil"></i></button>
                         <!-- Formulario para eliminar proveedor -->
                         <form method="POST" action="{% url 'eliminar_proveedor' proveedor.id %}"  class="d-inline">
@@ -88,35 +99,6 @@
                 {% endfor %}
             </tbody>
         </table>
-
-        <!-- Paginador -->
-        <nav>
-            <ul class="pagination">
-                {% if page_obj.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
-                {% else %}
-                    <li class="page-item disabled"><a class="page-link">Primera</a></li>
-                    <li class="page-item disabled"><a class="page-link">Anterior</a></li>
-                {% endif %}
-
-                {% for num in page_obj.paginator.page_range %}
-                    {% if page_obj.number == num %}
-                        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
-                    {% else %}
-                        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if page_obj.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
-                {% else %}
-                    <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
-                    <li class="page-item disabled"><a class="page-link">Última</a></li>
-                {% endif %}
-            </ul>
-        </nav>
     </div>
 </div>
 
@@ -145,6 +127,13 @@
                         <div id="errorRucProveedor" class="text-danger"></div>
                         <input type="text" class="form-control" id="rucProveedor" name="ruc">
                     </div>
+                    <!-- Campo para el Teléfono -->
+                    <div class="form-group">
+                        <label for="telefonoProveedor">Teléfono:</label>
+                        <input type="text" class="form-control" id="telefonoProveedor" name="telefono">
+                        <span class="text-danger" id="telefonoError"></span>
+                    </div>
+
                     <div class="form-group">
                         <label for="emailProveedor">Email:</label>
                         <input type="email" class="form-control" id="emailProveedor" name="email">
@@ -166,6 +155,11 @@
                         <label for="paginaWebProveedor">Página Web:</label>
                         <input type="text" class="form-control" id="paginaWebProveedor" name="pagina_web">
                     </div>
+                    <!-- Campo para las Observaciones -->
+                    <div class="form-group">
+                        <label for="observacionesProveedor">Observaciones:</label>
+                        <textarea class="form-control" id="observacionesProveedor" name="observaciones" rows="4"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
@@ -175,37 +169,34 @@
         </div>
     </div>
 </div>
+<!-- Paginador -->
+<nav>
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+        {% else %}
+            <li class="page-item disabled"><a class="page-link">Primera</a></li>
+            <li class="page-item disabled"><a class="page-link">Anterior</a></li>
+        {% endif %}
 
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+        {% endfor %}
 
-<!-- Modal para mostrar contactos -->
-<div class="modal fade" id="mostrarContactosModal" tabindex="-1" aria-labelledby="mostrarContactosModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="mostrarContactosModalLabel">Contactos</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            </div>
-            <div class="modal-body">
-                <div id="contactosBody"></div>
-
-                <h6>Agregar nuevo contacto</h6>
-                <div class="mb-3">
-                    <label for="nombreContacto" class="form-label">Nombre</label>
-                    <input type="text" class="form-control" id="nombreContacto">
-                </div>
-                <div class="mb-3">
-                    <label for="numeroContacto" class="form-label">Número</label>
-                    <input type="text" class="form-control" id="numeroContacto">
-                </div>
-                <button type="button" class="btn btn-primary" id="agregarContactoBtn">Agregar Contacto</button>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+        {% else %}
+            <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+            <li class="page-item disabled"><a class="page-link">Última</a></li>
+        {% endif %}
+    </ul>
+</nav>
 {% endblock %}
 
 {% block extra_js %}
@@ -230,6 +221,8 @@
                     document.getElementById("proveedorId").value = proveedorId;
                     document.getElementById("nombreProveedor").value = data.nombre;
                     document.getElementById("rucProveedor").value = data.ruc;
+                    document.getElementById("telefonoProveedor").value = data.telefono;
+                    document.getElementById("observacionesProveedor").value = data.observaciones;
                     document.getElementById("emailProveedor").value = data.email;
                     document.getElementById("direccionProveedor").value = data.direccion || '';  // Añadido
                     document.getElementById("ciudadProveedor").value = data.ciudad || '';        // Añadido
@@ -303,105 +296,6 @@
                     errorContainer.style.display = "block";
                 }
             })
-        });
-    });
-
-
-
-    // Botones para mostrar contactos de los proveedores
-    document.addEventListener('DOMContentLoaded', (event) => {
-
-        let mostrarContactosBtns = document.querySelectorAll(".mostrarContactosBtn");
-        mostrarContactosBtns.forEach(btn => {
-            btn.addEventListener("click", function() {
-                currentProveedorId = this.getAttribute("data-proveedor-id");
-                let proveedorId = this.getAttribute("data-proveedor-id");
-
-                fetch(`/get_contactos_proveedor/${proveedorId}/`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    let contactosBody = document.getElementById("contactosBody");
-                    contactosBody.innerHTML = ""; // Limpia el contenido previo
-
-                    data.contactos.forEach(contacto => {
-                        let div = document.createElement("div");
-                        div.className = "d-flex justify-content-between align-items-center mb-2";
-
-                        let p = document.createElement("p");
-                        p.innerText = `Nombre: ${contacto.nombre}, Número: ${contacto.numero}`;
-                        div.appendChild(p);
-
-                        let eliminarBtn = document.createElement("button");
-                        eliminarBtn.className = "btn btn-danger btn-sm eliminarContactoBtn";
-                        eliminarBtn.setAttribute("data-contacto-id", contacto.id);
-                        console.log(contacto.id)
-                        eliminarBtn.innerText = "Eliminar";
-                        div.appendChild(eliminarBtn);
-
-                        contactosBody.appendChild(div);
-                    });
-
-                    $('#mostrarContactosModal').modal('show');
-
-                })
-                .catch(error => {
-                    console.log('There was a problem with the fetch operation:', error.message);
-                });
-            });
-        });
-
-
-
-        // Funcionalidad para agregar contactos
-        document.getElementById("agregarContactoBtn").addEventListener("click", function() {
-            let proveedorId = currentProveedorId
-            console.log(proveedorId);
-
-            let nombre = document.getElementById("nombreContacto").value;
-            let numero = document.getElementById("numeroContacto").value;
-
-            fetch(`/agregar_contacto/proveedor/${proveedorId}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ nombre: nombre, numero: numero })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Actualizar la lista de contactos o recargar el modal
-                    location.reload();
-                }
-            });
-        });
-
-
-        // Funcionalidad para eliminar contactos
-        document.addEventListener("click", function(event) {
-            if (event.target.classList.contains("eliminarContactoBtn")) {
-                let contactoId = event.target.getAttribute("data-contacto-id");
-                fetch(`/eliminar_contacto/${contactoId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Eliminar el contacto de la lista o recargar el modal
-                        location.reload();
-                    }
-                });
-            }
         });
     });
 

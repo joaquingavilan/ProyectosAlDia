@@ -44,6 +44,7 @@
                     <th>Nombre</th>
                     <th>Tipo de persona</th>
                     <th>RUC</th>
+                    <th>Telefono</th>
                     <th>Email</th>
                     <th>Ciudad</th>
                     <th>Acciones</th>
@@ -55,10 +56,16 @@
                     <td>{{ cliente.nombre }}</td>
                     <td>{{ cliente.tipo_persona }}</td>
                     <td>{{ cliente.ruc }}</td>
+                    <td>
+                        {% if cliente.telefono %}
+                            {{ cliente.telefono }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                     <td>{{ cliente.email }}</td>
                     <td>{{ cliente.ciudad|default:"-" }}</td>
                     <td>
-                        <button type="button" class="btn btn-info btn-sm mostrarContactosBtn" data-cliente-id="{{ cliente.id }}">Ver Contactos</button>
                         <button type="button" class="btn btn-primary btn-sm editarClienteBtn" data-cliente-id="{{ cliente.id }}"><i class="fa fa-pencil"></i></button>
                         <form method="POST" class="d-inline">
                             {% csrf_token %}
@@ -149,7 +156,18 @@
                         <input type="text" class="form-control autocomplete-ciudad" id="autocomplete-ciudad" name="ciudad">
                         <span class="text-danger" id="ciudadError"></span>
                     </div>
-                    <!-- ... otros campos ... -->
+                    <!-- Campo para el Teléfono -->
+                    <div class="form-group">
+                        <label for="telefono">Teléfono:</label>
+                        <input type="text" class="form-control" id="telefono" name="telefono">
+                        <span class="text-danger" id="telefonoError"></span>
+                    </div>
+
+                    <!-- Campo para las Observaciones -->
+                    <div class="form-group">
+                        <label for="observaciones">Observaciones:</label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" rows="4"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
@@ -160,36 +178,6 @@
     </div>
 </div>
 
-<!-- Modal para mostrar contactos -->
-<div class="modal fade" id="mostrarContactosModal" tabindex="-1" role="dialog" aria-labelledby="mostrarContactosModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="mostrarContactosModalLabel">Contactos</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            </div>
-            <div class="modal-body">
-                <div id="contactosBody"></div>
-
-                <h6>Agregar nuevo contacto</h6>
-                <div class="mb-3">
-                    <label for="nombreContacto" class="form-label">Nombre</label>
-                    <input type="text" class="form-control" id="nombreContacto">
-                </div>
-                <div class="mb-3">
-                    <label for="numeroContacto" class="form-label">Número</label>
-                    <input type="text" class="form-control" id="numeroContacto">
-                </div>
-                <button type="button" class="btn btn-primary" id="agregarContactoBtn">Agregar Contacto</button>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
 {% endblock %}
 {% block extra_js %}
 <script>
@@ -199,13 +187,6 @@
         let editarClienteBtns = document.querySelectorAll(".editarClienteBtn");
         let rucsActuales = {{ rucs_json|safe }};
         let emailsActuales = {{ emails_json|safe }};
-        var ciudades = {{ ciudades_json|safe }};
-        $(document).ready(function() {
-            $("#editarClienteModal .autocomplete-ciudad").autocomplete({
-                source: ciudades,
-                minLength: 2  // Puedes ajustar esto si lo deseas
-            });
-        });
         editarClienteBtns.forEach(btn => {
             btn.addEventListener("click", function() {
                 let clienteId = this.getAttribute("data-cliente-id");
@@ -221,7 +202,9 @@
                     document.getElementById("ruc").value = data.ruc;
                     document.getElementById("email").value = data.email;
                     document.getElementById("direccion").value = data.direccion;
-                    document.getElementById("autocomplete-ciudad").value = data.ciudad;
+                    document.getElementById("ciudad").value = data.ciudad;
+                    document.getElementById("telefono").value = data.telefono;
+                    document.getElementById("observaciones").value = data.observaciones;
                     let tipoPersonaSelect = document.getElementById("tipo_persona");
                     tipoPersonaSelect.value = data.tipo_persona;
                     document.getElementById("editarClienteForm").setAttribute('data-original-ruc', data.ruc);
@@ -238,9 +221,7 @@
 
         document.getElementById("editarClienteForm").addEventListener("submit", function(event) {
         event.preventDefault();
-
             let isValid = true;
-
             // Validación Nombre
             let nombreField = document.getElementById("nombre");
             let nombre = nombreField.value;
@@ -267,6 +248,19 @@
 
             let rucOriginal = this.getAttribute('data-original-ruc'); // Asumiendo que ya tienes esto definido antes
             let rucsSinActual = rucsActuales.filter(ruc => ruc !== rucOriginal);
+
+            // Validación Teléfono
+            let telefonoField = document.getElementById("telefono");
+            let telefonoIngresado = telefonoField.value;
+            let regexTelefono = /^\d{6,20}$/;
+
+            if (telefonoIngresado && !regexTelefono.test(telefonoIngresado)) {
+                document.getElementById("telefonoError").innerText = "Ingrese un teléfono válido (solo números)";
+                telefonoField.focus();
+                isValid = false;
+            } else {
+                document.getElementById("telefonoError").innerText = "";
+            }
 
             // Validación RUC
             let rucField = document.getElementById("ruc");
@@ -331,96 +325,6 @@
                 });
             }
         });
-
-
-
-        let mostrarContactosBtns = document.querySelectorAll(".mostrarContactosBtn");
-        mostrarContactosBtns.forEach(btn => {
-            btn.addEventListener("click", function() {
-
-                currentClienteId = this.getAttribute("data-cliente-id");
-                let clienteId = this.getAttribute("data-cliente-id");
-                fetch(`/get_contactos_cliente/${clienteId}/`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    let contactosBody = document.getElementById("contactosBody");
-                    contactosBody.innerHTML = ""; // Limpia el contenido previo
-
-                    data.contactos.forEach(contacto => {
-                        let div = document.createElement("div");
-                        div.className = "d-flex justify-content-between align-items-center mb-2";
-
-                        let p = document.createElement("p");
-                        p.innerText = `Nombre: ${contacto.nombre}, Número: ${contacto.numero}`;
-                        div.appendChild(p);
-
-                        let eliminarBtn = document.createElement("button");
-                        eliminarBtn.className = "btn btn-danger btn-sm eliminarContactoBtn";
-                        eliminarBtn.setAttribute("data-contacto-id", contacto.id);
-                        console.log(contacto.id)
-                        eliminarBtn.innerText = "Eliminar";
-                        div.appendChild(eliminarBtn);
-
-                        contactosBody.appendChild(div);
-                    });
-
-                    let modal = new bootstrap.Modal(document.getElementById('mostrarContactosModal'));
-                    modal.show();
-                })
-                .catch(error => {
-                    console.log('There was a problem with the fetch operation:', error.message);
-                });
-            });
-
-    // Funcionalidad para agregar contactos
-    document.getElementById("agregarContactoBtn").addEventListener("click", function() {
-        let clienteId = currentClienteId
-
-        let nombre = document.getElementById("nombreContacto").value;
-        let numero = document.getElementById("numeroContacto").value;
-
-        fetch(`/agregar_contacto/cliente/${clienteId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({ nombre: nombre, numero: numero })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                // Actualizar la lista de contactos o recargar el modal
-                location.reload();
-            }
-        });
-    });
-     // Funcionalidad para eliminar contactos
-        document.addEventListener("click", function(event) {
-            if (event.target.classList.contains("eliminarContactoBtn")) {
-                let contactoId = event.target.getAttribute("data-contacto-id");
-                fetch(`/eliminar_contacto/${contactoId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Eliminar el contacto de la lista o recargar el modal
-                        location.reload();
-                    }
-                });
-            }
-        });
-    });
 
     //buscador
         document.getElementById('buscador').addEventListener('input', function() {

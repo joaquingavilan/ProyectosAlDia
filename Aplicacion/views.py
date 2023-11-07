@@ -27,6 +27,8 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.forms import PasswordChangeForm
+
 
 
 def inicio(request):
@@ -76,7 +78,14 @@ def loguear_usuario(request):
         user = authenticate(username=username, password=password)
         if user is not None:
             login(request, user)
-            return redirect('inicio')
+            try:
+                perfil = Personal.objects.get(user=user)
+            except:
+                return redirect('inicio')
+            if perfil.must_change_password:
+                return redirect('cambiar_password')
+            else:
+                return redirect('inicio')
         else:
             error = 'Nombre de usuario o contraseña incorrectos.'
     else:
@@ -84,37 +93,19 @@ def loguear_usuario(request):
     return render(request, 'ABM/usuarios/login.html', {'error': error})
 
 
-def registrar_usuario(request):
+def cambiar_password(request):
     if request.method == 'POST':
-        username = request.POST['username']
-        email = request.POST['email']
-        password1 = request.POST['password1']
-        password2 = request.POST['password2']
-        first_name = request.POST['first_name']  # nombre
-        last_name = request.POST['last_name']  # apellido
-        if password1 != password2:
-            error = 'Las contraseñas no coinciden.'
-        elif User.objects.filter(username=username).exists():
-            error = 'El nombre de usuario ya está en uso.'
-        elif User.objects.filter(email=email).exists():
-            error = 'El email ya está registrado.'
-        elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            error = "Email inválido."
-        elif not re.search(r'[A-Za-z]', username):
-            error = "Nombre de usuario inválido."
-            return render(request, 'usuarios/registro.html', {'error': error})
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # Importante para mantener la sesión del usuario
+            messages.success(request, 'Tu contraseña ha sido actualizada exitosamente.')
+            return redirect('inicio')  # Redirige a la URL donde el usuario vea un mensaje de éxito
         else:
-            user = User.objects.create_user(username=username, email=email, password=password1, first_name=first_name, last_name=last_name)
-            group = Group.objects.get(name='INGENIERO')
-            user.groups.add(group)
-            user = authenticate(username=username, password=password1)
-            login(request, user)
-            return redirect('inicio')
-
-        return render(request, 'ABM/usuarios/registro.html', {'error': error})
+            messages.error(request, 'Por favor corrige los errores.')
     else:
-        error = ''
-    return render(request, 'ABM/usuarios/registro.html')
+        form = PasswordChangeForm(user=request.user)
+    return render(request, 'ABM/usuarios/cambiar_password.html', {'form': form})
 
 
 def salir_usuario(request):
@@ -134,6 +125,8 @@ def registrar_cliente(request):
         direccion = request.POST.get('direccion')
         nombre_ciudad = request.POST.get('ciudad')
         ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
+        telefono = request.POST.get('telefono')
+        observaciones = request.POST.get('observaciones')
 
         # Crear el objeto cliente
         cliente = Cliente(
@@ -145,13 +138,6 @@ def registrar_cliente(request):
             direccion=direccion
         )
         cliente.save()
-
-        # Extraer contactos y guardarlos
-        contactos_data = request.POST.getlist('contactos[]')
-        contactos_list = [(contactos_data[i], contactos_data[i + 1]) for i in range(0, len(contactos_data), 2)]
-        for nombre_contacto, numero_contacto in contactos_list:
-            Contacto.objects.create(nombre=nombre_contacto, numero=numero_contacto, cliente=cliente)
-
         return redirect('ver_clientes')
 
     rucs_actuales = list(Cliente.objects.values_list('ruc', flat=True))
@@ -159,10 +145,9 @@ def registrar_cliente(request):
     emails = list(Cliente.objects.values_list('email', flat=True))
     emails_json = json.dumps(emails)
 
-    ciudades = list(Ciudad.objects.values_list('nombre', flat=True))
-    ciudades_json = json.dumps(ciudades)
+    ciudades = Ciudad.objects.all()  # Obtiene todas las ciudades
 
-    return render(request, 'ABM/clientes/registro_cliente.html', {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades_json': ciudades_json})
+    return render(request, 'ABM/clientes/registro_cliente.html', {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
 
 
 def get_cliente_data(request, cliente_id):
@@ -173,8 +158,9 @@ def get_cliente_data(request, cliente_id):
         "email": cliente.email,
         'tipo_persona': cliente.tipo_persona,
         'ciudad': cliente.ciudad.nombre,
-        'direccion': cliente.direccion
-        # ... otros campos ...
+        'direccion': cliente.direccion,
+        'telefono': cliente.telefono,
+        'observaciones': cliente.observaciones
     }
 
     return JsonResponse(data)
@@ -323,23 +309,28 @@ def registrar_ingeniero(request):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']
-            password = form.cleaned_data['password1']
             email = form.cleaned_data['email']
             nombre = form.cleaned_data['first_name']
             apellido = form.cleaned_data['last_name']
-
+            telefono = form.cleaned_data['telefono']
+            direccion = form.cleaned_data['direccion']
             # Verificamos que el nombre y apellido solo contienen letras
-            if not re.match(r'^[A-Za-z]+$', nombre):
-                form.add_error('first_name', "Nombre inválido. Solo se permiten letras.")
-            if not re.match(r'^[A-Za-z]+$', apellido):
-                form.add_error('last_name', "Apellido inválido. Solo se permiten letras.")
+            if not re.match(r'^[A-Za-záéíóúÁÉÍÓÚñÑ ]+$', nombre):
+                form.add_error('first_name', "Nombre inválido. Solo se permiten letras, acentos y espacios.")
+            if not re.match(r'^[A-Za-záéíóúÁÉÍÓÚñÑ ]+$', apellido):
+                form.add_error('last_name', "Apellido inválido. Solo se permiten letras, acentos y espacios.")
             if not re.search(r'[A-Za-z]', username):
                 form.add_error('username', "Nombre de usuario inválido.")
-
+            if form.errors:
+                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form})
             # Si no hay errores adicionales, creamos el usuario
             if not form.errors:
                 usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido,
-                                                   password=password, email=email)
+                                       email=email)
+                usuario.set_password('12345')  # Establece la contraseña predeterminada
+                usuario.save()
+                personal = Personal(user=usuario, telefono=telefono, direccion=direccion, must_change_password=True)
+                personal.save()
                 group = Group.objects.get(name='INGENIERO')
                 usuario.groups.add(group)
                 return redirect('ver_ingenieros')
@@ -348,7 +339,8 @@ def registrar_ingeniero(request):
             return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form})
     else:
         form = CustomUserCreationForm()
-        return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form})
+        no_obligatorios = ['Teléfono', 'Dirección']
+        return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'no_obligatorios': no_obligatorios})
 
 
 def ver_ingenieros(request):
@@ -478,26 +470,37 @@ def ver_ingeniero(request, id_ingeniero):
 
 def registrar_proveedor(request):
     if request.method == 'POST':
-        form = ProveedorForm(request.POST)
-        # Extraemos la data de los contactos desde el request.
-        # La estructura de contactos_data será una lista de diccionarios, donde cada diccionario tiene la información de un contacto.
-        contactos_data = request.POST.getlist('contactos[]')
-        contactos_list = [(contactos_data[i], contactos_data[i + 1]) for i in range(0, len(contactos_data), 2)]
+        # Extraer datos directamente del POST
+        nombre = request.POST.get('nombre')
+        ruc = request.POST.get('ruc')
+        email = request.POST.get('email')
+        direccion = request.POST.get('direccion')
+        nombre_ciudad = request.POST.get('ciudad')
+        ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
+        telefono = request.POST.get('telefono')
+        observaciones = request.POST.get('observaciones')
+        pagina_web = request.POST.get('pagina_web')
 
-        if form.is_valid():
-            proveedor = form.save()
-            # Ahora, para cada contacto en contactos_data, lo creamos y asociamos con el cliente.
-            for nombre_contacto, numero_contacto in contactos_list:
-                Contacto.objects.create(nombre=nombre_contacto, numero=numero_contacto, proveedor=proveedor)
-            return redirect('ver_proveedores')
+        # Crear el objeto cliente
+        proveedor = Proveedor(
+            nombre=nombre,
+            ciudad=ciudad,
+            ruc=ruc,
+            email=email,
+            telefono=telefono,
+            direccion=direccion,
+            observaciones=observaciones,
+            pagina_web=pagina_web
+        )
+        proveedor.save()
+        return redirect(ver_proveedores)
     else:
-        form = ProveedorForm()
         rucs_actuales = list(Proveedor.objects.values_list('ruc', flat=True))
         rucs_json = json.dumps(rucs_actuales)
         emails = list(Proveedor.objects.values_list('email', flat=True))
         emails_json = json.dumps(emails)
-        campos_con_asterisco = ["nombre", "ruc", "email"]
-    return render(request, 'ABM/proveedores/registrar_proveedor.html', {'form': form, 'rucs_json': rucs_json, 'emails_json': emails_json, 'obligatorios': campos_con_asterisco})
+        ciudades = Ciudad.objects.all()  # Obtiene todas las ciudades
+        return render(request, 'ABM/proveedores/registrar_proveedor.html', {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
 
 
 def ver_proveedores(request):
@@ -534,7 +537,9 @@ def get_proveedor_data(request, proveedor_id):
         "email": proveedor.email,
         'ciudad': proveedor.ciudad.nombre,
         'direccion': proveedor.direccion,
-        'pagina_web': proveedor.pagina_web
+        'pagina_web': proveedor.pagina_web,
+        'telefono': proveedor.telefono,
+        'observaciones': proveedor.observaciones
         # ... otros campos ...
     }
     return JsonResponse(data)
@@ -581,18 +586,7 @@ def eliminar_proveedor(request, pk):
     return render(request, 'ABM/proveedores/eliminar_proveedor.html', context)
 
 
-def get_proveedor_data(request, proveedor_id):
-    proveedor = Proveedor.objects.get(pk=proveedor_id)
-    data = {
-        "nombre": proveedor.nombre,
-        "ruc": proveedor.ruc,
-        "email": proveedor.email,
-        "ciudad": str(proveedor.ciudad),
-        "pagina_web": proveedor.pagina_web,
-        "direccion": proveedor.direccion
-        # ... otros campos ...
-    }
-    return JsonResponse(data)
+
 
 
 def get_contactos_proveedor(request, proveedor_id):
@@ -614,8 +608,9 @@ def editar_proveedor(request, pk):
         proveedor.direccion = request.POST.get('direccion', proveedor.direccion)
         nombre_ciudad = request.POST.get('ciudad')
         proveedor.ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
+        proveedor.telefono = request.POST.get('telefono', proveedor.telefono)
         proveedor.pagina_web = request.POST.get('pagina_web', proveedor.pagina_web)
-
+        proveedor.observaciones = request.POST.get('observaciones', proveedor.observaciones)
         # Guardamos el objeto proveedor
         try:
             proveedor.full_clean()  # Valida el objeto antes de guardarlo
@@ -1103,7 +1098,7 @@ def exportar_excel(request):
     elif tipo_dato == 'Clientes':
         ws.title = "Clientes"
         # Añadir encabezados a la hoja
-        encabezados = ['ID', 'Tipo_persona', 'Nombre', 'RUC', 'Email', 'Ciudad', 'Direccion']
+        encabezados = ['ID', 'Tipo_persona', 'Nombre', 'RUC', 'Telefono', 'Email', 'Ciudad', 'Direccion','Observaciones']
         for col_num, encabezado in enumerate(encabezados, 1):
             col_letter = get_column_letter(col_num)
             ws['{}1'.format(col_letter)] = encabezado
@@ -1114,7 +1109,7 @@ def exportar_excel(request):
 
         # Añadir datos a la hoja
         for cliente in clientes:
-            ws.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.email, cliente.ciudad, cliente.direccion])
+            ws.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.telefono, cliente.email, cliente.ciudad.nombre, cliente.direccion, cliente.observaciones])
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=Clientes.xlsx'
         wb.save(response)
@@ -1122,14 +1117,14 @@ def exportar_excel(request):
     elif tipo_dato == 'Proveedores':
 
         ws.title = "Proveedores"
-        encabezados = ['ID', 'Nombre', 'RUC', 'Email', 'Pagina web', 'Ciudad', 'Direccion']
+        encabezados = ['ID', 'Nombre', 'RUC', 'Telefono', 'Email', 'Pagina web', 'Ciudad', 'Direccion', 'Observaciones']
         for col_num, encabezado in enumerate(encabezados, 1):
             col_letter = get_column_letter(col_num)
             ws['{}1'.format(col_letter)] = encabezado
             ws.column_dimensions[col_letter].width = 15
         proveedores = Proveedor.objects.all()
         for proveedor in proveedores:
-            ws.append([proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.email, proveedor.pagina_web, proveedor.ciudad, proveedor.direccion])
+            ws.append([proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.telefono, proveedor.email, proveedor.pagina_web, proveedor.ciudad.nombre, proveedor.direccion, proveedor.observaciones])
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=Proveedores.xlsx'
         wb.save(response)
@@ -1193,13 +1188,13 @@ def exportar_pdf(request):
         response['Content-Disposition'] = 'attachment; filename="Clientes.pdf"'
         doc = SimpleDocTemplate(response, pagesize=landscape(A4))
         # Datos para la tabla
-        data = [['ID', 'Tipo de Persona', 'Nombre', 'RUC', 'Email', 'Ciudad', 'Direccion']]
+        encabezados = ['ID', 'Tipo_persona', 'Nombre', 'RUC', 'Telefono', 'Email', 'Ciudad', 'Direccion','Observaciones']
 
         # Obtener datos de los clientes
         clientes = Cliente.objects.all()
         for cliente in clientes:
-            data.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.email, cliente.ciudad,
-                         cliente.direccion])
+            data.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.telefono, cliente.email, cliente.ciudad.nombre,
+                         cliente.direccion, cliente.observaciones])
 
         # Crear tabla
         table = Table(data)
@@ -1237,14 +1232,14 @@ def exportar_pdf(request):
         response['Content-Disposition'] = 'attachment; filename="Proveedores.pdf"'
         doc = SimpleDocTemplate(response, pagesize=landscape(A4))
         # Datos para la tabla
-        data = [['ID', 'Nombre', 'RUC', 'Email', 'Ciudad', 'Direccion', 'Página Web']]
+        data = [['ID', 'Nombre', 'RUC', 'Telefono', 'Email', 'Ciudad', 'Direccion', 'Página Web', 'Observaciones']]
 
         # Obtener datos de los proveedores
         proveedores = Proveedor.objects.all()
         for proveedor in proveedores:
             data.append(
-                [proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.email, proveedor.ciudad, proveedor.direccion,
-                 proveedor.pagina_web or ""])
+                [proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.telefono, proveedor.email, proveedor.ciudad.nombre, proveedor.direccion,
+                 proveedor.pagina_web, proveedor.observaciones])
 
         # Crear tabla
         table = Table(data)
@@ -2155,3 +2150,24 @@ def buscar_presupuestos_ingeniero(request):
 def obtener_clientes_presupuestos_ing(request):
     clientes = Proyecto.objects.values_list('cliente__nombre', flat=True).distinct()
     return JsonResponse(list(clientes), safe=False)
+
+
+def crear_presupuesto(request):
+    presupuesto = Presupuesto.objects.get(id=52)
+    secciones = Seccion.objects.all()
+    subsecciones = SubSeccion.objects.all()
+    detalles = Detalle.objects.all()
+
+    secciones_json = json.loads(serialize('json', secciones))
+    subsecciones_json = json.loads(serialize('json', subsecciones))
+    detalles_json = json.loads(serialize('json', detalles))
+
+    contexto = {
+        'presupuesto': presupuesto,
+        'secciones_json': json.dumps([s['fields']['nombre'] for s in secciones_json]),
+        'subsecciones_json': json.dumps([ss['fields']['nombre'] for ss in subsecciones_json]),
+        'detalles_json': json.dumps([d['fields']['rubro'] for d in detalles_json]),
+    }
+
+    return render(request, 'pantallas_ing/crear_presupuesto.html', contexto)
+

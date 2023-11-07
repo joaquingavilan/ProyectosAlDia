@@ -14,6 +14,13 @@ class Ciudad(models.Model):
         return self.nombre
 
 
+class Personal(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    direccion = models.CharField(max_length=255, blank=True, null=True)
+    must_change_password = models.BooleanField(default=True)
+
+
 class Contacto(models.Model):
     nombre = models.CharField(
         max_length=50,
@@ -37,13 +44,14 @@ class Cliente(models.Model):
         ('Fisica', 'Física'),
     ]
 
-    nombre = models.CharField(max_length=50, validators=[
-        RegexValidator(r'^[\w\s]*$', message='Introduzca solo letras, números y espacios en blanco')])
-    ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo numeros y un guion, sin puntos')])
+    nombre = models.CharField(max_length=50, validators=[RegexValidator(r'^[\w\s]*$', message='Introduzca solo letras, números y espacios en blanco')])
+    ruc = models.CharField(max_length=20, validators=[RegexValidator(r'^[\d\-]*$', message='Introduzca solo números y un guion, sin puntos')])
     email = models.EmailField()
     tipo_persona = models.CharField(max_length=8, choices=TIPO_PERSONA_CHOICES, default='Fisica')
     direccion = models.CharField(max_length=200, default='', blank=True)
     ciudad = models.ForeignKey(Ciudad, on_delete=models.CASCADE, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, validators=[RegexValidator(r'^\d{6,20}$', message='Introduzca un teléfono válido (solo números entre 6 a 20 dígitos)')])  # Añadido
+    observaciones = models.TextField(blank=True)
 
     def __str__(self):
         return self.nombre
@@ -66,6 +74,9 @@ class Proveedor(models.Model):
         RegexValidator(r'^[\w\-]+\.[\w\-]+(\.[\w\-]+)?$',
                        message='La URL debe tener el formato "texto.texto" o "texto.texto.texto"')
     ], blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, validators=[RegexValidator(r'^\d{6,20}$',
+                                                                                      message='Introduzca un teléfono válido (solo números entre 6 a 20 dígitos)')])  # Añadido
+    observaciones = models.TextField(blank=True)
 
     def __str__(self):
         return f"{self.id} - {self.nombre}"
@@ -170,43 +181,6 @@ class MaterialPedido(models.Model):
         return f'{self.material} - {self.pedido}'
 
 
-class ArchivoPresupuesto(models.Model):
-    presupuesto = models.OneToOneField('Presupuesto', on_delete=models.CASCADE)
-    nombre = models.CharField(max_length=255)
-    fecha_carga = models.DateTimeField(auto_now_add=True)
-    archivo = models.FileField(upload_to='presupuestos/')  # campo para almacenar el archivo
-    # Otros campos que quieras agregar...
-
-
-class Categoria(models.Model):
-    archivo = models.ForeignKey(ArchivoPresupuesto, on_delete=models.CASCADE)
-    nombre = models.CharField(max_length=255)
-
-    def __str__(self):
-        return f'{self.nombre}'
-
-
-class Item(models.Model):
-    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, null=True, blank=True)
-    archivo = models.ForeignKey(ArchivoPresupuesto, on_delete=models.CASCADE, null=True, blank=True)
-    nombre = models.CharField(max_length=255)
-
-    def __str__(self):
-        return f'{self.nombre}'
-
-
-class SubItem(models.Model):
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    rubro = models.CharField(max_length=255)
-    unidad_medida = models.CharField(max_length=50)
-    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
-    precio_unitario = models.DecimalField(max_digits=10, decimal_places=0)
-    precio_total = models.DecimalField(max_digits=10, decimal_places=0)
-
-    def __str__(self):
-        return f'{self.rubro}'
-
-
 class Certificado(models.Model):
     presupuesto = models.ForeignKey(Presupuesto, on_delete=models.CASCADE)
     ingeniero = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -218,28 +192,43 @@ class Certificado(models.Model):
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
 
 
-class CategoriaCertificado(models.Model):
-    certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE)
+class Seccion(models.Model):
     nombre = models.CharField(max_length=255)
+
     def __str__(self):
-        return f'{self.nombre}'
+        return self.nombre
 
 
-class ItemCertificado(models.Model):
-    categoria = models.ForeignKey(CategoriaCertificado, on_delete=models.CASCADE, null=True, blank=True)
-    certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE)
+class SubSeccion(models.Model):
+    seccion = models.ForeignKey(Seccion, on_delete=models.SET_NULL, null=True, blank=True)  # Nota el SET_NULL en caso de que la sección asociada se elimine
     nombre = models.CharField(max_length=255)
+
     def __str__(self):
-        return f'{self.nombre}'
+        return self.nombre
 
 
-class SubItemCertificado(models.Model):
-    item = models.ForeignKey(ItemCertificado, on_delete=models.CASCADE)
-    certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE)
-    subitem = models.ForeignKey(SubItem, on_delete=models.CASCADE)
+class UnidadMedida(models.Model):
+    descripcion = models.CharField(max_length=50)
+    nombre = models.CharField(max_length=10)
+
+    def __str__(self):
+        return self.nombre
+
+
+class Detalle(models.Model):
+    subseccion = models.ForeignKey(SubSeccion, on_delete=models.CASCADE)
+    rubro = models.CharField(max_length=255)
+    unidad_medida = models.ForeignKey(UnidadMedida, on_delete=models.CASCADE)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=0)
-    unidad_medida = models.CharField(max_length=50)
     precio_total = models.DecimalField(max_digits=10, decimal_places=0)
+
     def __str__(self):
-        return f'{self.nombre}'
+        return self.rubro
+
+
+class ArchivoPresupuesto(models.Model):
+    presupuesto = models.OneToOneField(Presupuesto, on_delete=models.CASCADE)
+    secciones = models.ManyToManyField(Seccion)
+    subsecciones = models.ManyToManyField(SubSeccion)
+    detalles = models.ManyToManyField(Detalle)
