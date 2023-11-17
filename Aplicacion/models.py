@@ -200,7 +200,7 @@ class Seccion(models.Model):
 
 
 class SubSeccion(models.Model):
-    seccion = models.ForeignKey(Seccion, on_delete=models.SET_NULL, null=True, blank=True)  # Nota el SET_NULL en caso de que la sección asociada se elimine
+    secciones = models.ManyToManyField('Seccion', blank=True)  # 'Seccion' es el nombre de tu modelo de sección
     nombre = models.CharField(max_length=255)
 
     def __str__(self):

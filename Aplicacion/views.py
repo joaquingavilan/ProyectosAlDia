@@ -2153,7 +2153,7 @@ def obtener_clientes_presupuestos_ing(request):
 
 
 def crear_presupuesto(request):
-    presupuesto = Presupuesto.objects.get(id=52)
+    presupuesto = Presupuesto.objects.get(id=54)
     secciones = Seccion.objects.all()
     subsecciones = SubSeccion.objects.all()
     detalles = Detalle.objects.all()
@@ -2170,4 +2170,10 @@ def crear_presupuesto(request):
     }
 
     return render(request, 'pantallas_ing/crear_presupuesto.html', contexto)
+
+
+def obtener_subsecciones(request):
+    subsecciones = SubSeccion.objects.all()
+    data = [{'id': subseccion.id, 'nombre': subseccion.nombre} for subseccion in subsecciones]
+    return JsonResponse(data, safe=False)  # 'safe=False' es necesario para serial
 

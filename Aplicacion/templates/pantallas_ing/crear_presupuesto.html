@@ -1,80 +1,63 @@
 {% extends request.base_template %}
 
 {% block content %}
-<div class="x_panel">
-    <div class="x_title">
-        <h2>Crear Presupuesto</h2>
-        <div class="clearfix"></div>
-    </div>
-    <div class="x_content">
-        <!-- Botones para agregar Seccion, SubSeccion y Detalle -->
-        <div class="mb-4">
-            <button type="button" class="btn btn-primary" id="nuevaSeccion">Añadir Sección</button>
-            <button type="button" class="btn btn-primary" id="nuevaSubSeccion">Añadir SubSección</button>
-            <button type="button" class="btn btn-primary" id="nuevoDetalle">Añadir Detalle</button>
+<div class="right_col" role="main">
+    <div class="">
+        <div class="page-title">
+            <div class="title_left">
+                <h3>Crear/Editar Presupuesto</h3>
+            </div>
         </div>
 
-        <!-- Formulario principal -->
-        <form id="crearPresupuestoForm" method="post">
-            {% csrf_token %}
-            <!-- Seccion -->
-            <div class="form-group">
-                <label>Sección:</label>
-                <input type="text" class="form-control" id="autocomplete-seccion" name="seccion" data-list="{{ secciones_json|safe }}">
-            </div>
-            <!-- SubSeccion -->
-            <div class="form-group">
-                <label>SubSección:</label>
-                <input type="text" class="form-control" id="autocomplete-subseccion" name="subseccion" data-list="{{ subsecciones_json|safe }}">
-            </div>
+        <div class="clearfix"></div>
 
-            <!-- Detalle -->
-            <div class="form-group">
-                <label>Rubro:</label>
-                <input type="text" class="form-control" id="autocomplete-detalle" name="detalle" data-list="{{ detalle_json|safe }}">
+        <div class="row">
+            <div class="col-md-12 col-sm-12 ">
+                <div class="x_panel">
+                    <div class="x_title">
+                        <h2>Detalles del Presupuesto</h2>
+                        <ul class="nav navbar-right panel_toolbox">
+                            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                            </li>
+                        </ul>
+                        <div class="clearfix"></div>
+                    </div>
+                    <div class="x_content">
+                        <!-- Botones para añadir secciones, subsecciones y detalles -->
+                        <div class='button-group'>
+                            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalAddSeccion"><i class="fa fa-plus-circle"></i> Añadir Sección</button>
+                            <button type="button" class="btn btn-info" data-toggle="modal" data-target="#modalAddSubseccion"><i class="fa fa-plus-circle"></i> Añadir Subsección</button>
+                            <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#modalAddDetalle"><i class="fa fa-plus-circle"></i> Añadir Detalle</button>
+                        </div>
+
+                        <!-- Aquí iría la visualización del presupuesto -->
+                        <div id="presupuesto-content" class="table-responsive">
+                            <!-- Contenido del presupuesto como tabla o listado -->
+                            <table class="table table-hover">
+                                <!-- Cabecera de la tabla -->
+                                <thead>
+                                    <tr>
+                                        <th>Sección</th>
+                                        <th>Subsección</th>
+                                        <th>Detalle</th>
+                                        <!-- Más columnas según sea necesario -->
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Los elementos del presupuesto se añadirán aquí dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <!-- Tabla del Presupuesto -->
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Rubros</th>
-                        <th>Un</th>
-                        <th>Cant.</th>
-                        <th>P. Unitario</th>
-                        <th>P. Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Aquí vendrían las filas de la tabla con los datos del presupuesto -->
-                </tbody>
-            </table>
-
-            <button type="submit" class="btn btn-success">Guardar Presupuesto</button>
-        </form>
+        </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-    $(document).ready(function() {
-        var secciones = $("#autocomplete-seccion").data('list');
-        var subsecciones = $("#autocomplete-subseccion").data('list');
-        var detalles = $("#autocomplete-detalle").data('list');
+<!-- Modales para añadir secciones, subsecciones y detalles -->
+{% include 'modals/modal_add_seccion.html' %}
+{% include 'modals/modal_add_subseccion.html' %}
+{% include 'modals/modal_add_detalle.html' %}
 
-        $("#autocomplete-seccion").autocomplete({
-            source: secciones,
-            minLength: 2
-        });
-
-        $("#autocomplete-subseccion").autocomplete({
-            source: subsecciones,
-            minLength: 2
-        });
-
-        $("#autocomplete-detalle").autocomplete({
-            source: detalles,
-            minLength: 2
-        });
-    });
 {% endblock %}

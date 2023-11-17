@@ -11,3 +11,7 @@ admin.site.register(Presupuesto)
 admin.site.register(Pedido)
 admin.site.register(MaterialPedido)
 admin.site.register(Contacto)
+admin.site.register(Seccion)
+admin.site.register(SubSeccion)
+admin.site.register(Detalle)
+

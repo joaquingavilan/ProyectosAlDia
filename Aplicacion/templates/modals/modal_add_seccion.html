@@ -1,0 +1,103 @@
+{% load static %}
+
+<!-- Primero, incluir jQuery -->
+<script src="{% static 'vendors/jquery/dist/jquery.min.js' %}"></script>
+
+
+
+<!-- Incluir CSS de Select2 -->
+<link href="{% static 'vendors/select2/dist/css/select2.min.css' %}" rel="stylesheet" />
+
+<!-- Incluir JS de Select2 -->
+<script src="{% static 'vendors/select2/dist/js/select2.min.js' %}"></script>
+
+<div class="modal fade" id="modalAddSeccion" tabindex="-1" role="dialog" aria-labelledby="modalAddSeccionLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAddSeccionLabel">Añadir Sección</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Lista desplegable con buscador para seleccionar secciones existentes -->
+                <div class="form-group">
+                    <label for="seccionExistente">Seleccionar Sección Existente</label>
+                    <select class="form-control select2" id="seccionExistente">
+                        <!-- Opciones cargadas dinámicamente -->
+                    </select>
+                </div>
+
+                <!-- Botón para añadir nueva sección -->
+                <button type="button" class="btn btn-secondary" id="btnNuevaSeccion">Nueva Sección</button>
+
+                <!-- Formulario oculto para añadir nueva sección -->
+                <div id="formNuevaSeccion">
+                    <!-- ... otros campos del formulario ... -->
+
+                    <div class="form-group">
+                        <label for="subseccionExistente">Seleccionar Subsecciones asociadas</label>
+                        <select class="form-control select2" id="subseccionExistente" multiple="multiple">
+                            <!-- Opciones cargadas dinámicamente -->
+                        </select>
+                    </div>
+                    <div id="subseccionesSeleccionadas">
+                        <h5>Subsecciones Seleccionadas:</h5>
+                        <ul id="listaSubsecciones"></ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    $(document).ready(function() {
+        // Inicializar Select2
+        $('.select2').select2();
+
+        // Función para obtener subsecciones mediante AJAX
+        function obtenerSubsecciones() {
+            $.ajax({
+                url: '/obtener_subsecciones', // Reemplaza con la URL adecuada
+                method: 'GET',
+                success: function(data) {
+                    // Suponiendo que 'data' es una lista de subsecciones
+                    data.forEach(function(subseccion) {
+                        $('#subseccionExistente').append(new Option(subseccion.nombre, subseccion.id));
+                    });
+                },
+                error: function(error) {
+                    console.log('Error al obtener subsecciones:', error);
+                }
+            });
+        }
+
+        // Llamar a obtenerSubsecciones al cargar la página
+        obtenerSubsecciones();
+
+        // Delegación de eventos para el botón de 'Nueva Sección'
+        $(document).on('click', '#btnNuevaSeccion', function() {
+            // Mostrar el formulario para la nueva sección
+            $('#formNuevaSeccion').show();
+
+            // Ocultar el campo y botón para la sección existente
+            $('#btnNuevaSeccion').hide(); // Ocultar botón 'Nueva Sección'
+            $('#seccionExistente').parent().hide(); // Ocultar el select de sección existente
+        });
+
+        // Lógica para manejar selecciones de subsecciones
+        $('#subseccionExistente').on('change', function() {
+            var seleccionadas = $(this).val();
+            $('#listaSubsecciones').empty();
+            seleccionadas.forEach(function(subseccion) {
+                $('#listaSubsecciones').append('<li>' + subseccion + '</li>');
+            });
+        });
+    });
+</script>
+
