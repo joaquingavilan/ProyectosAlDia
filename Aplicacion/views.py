@@ -28,7 +28,9 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.forms import PasswordChangeForm
+import logging
 
+logger = logging.getLogger(__name__)
 
 
 def inicio(request):
@@ -1444,14 +1446,26 @@ def cargar_presupuesto(request, pk):
 
 def ver_archivo_presupuesto(request, pk):
     archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=pk)
-    categorias = Categoria.objects.filter(archivo=archivo_presupuesto).order_by('pk')
-    presupuesto = archivo_presupuesto.presupuesto
-    # Pasamos el archivo_presupuesto y las categorías al template
+
+    # Estructura para mantener la jerarquía
+    estructura_presupuesto = []
+
+    # Iterar sobre las secciones asociadas con el archivo de presupuesto
+    for seccion in archivo_presupuesto.secciones.all():
+        subsecciones_data = []
+        # Buscar subsecciones asociadas a esta sección y que estén en ArchivoPresupuesto
+        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        for subseccion in subsecciones:
+            # Filtrar detalles asociados a esta subsección y que estén en ArchivoPresupuesto
+            detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
+            subsecciones_data.append((subseccion, detalles))
+
+        estructura_presupuesto.append((seccion, subsecciones_data))
+
     context = {
-        'archivo_presupuesto': archivo_presupuesto,
-        'categorias': categorias,
-        'presupuesto': presupuesto
+        'estructura_presupuesto': estructura_presupuesto
     }
+
     return render(request, 'pantallas_ing/ver_presupuesto.html', context)
 
 
@@ -2152,8 +2166,8 @@ def obtener_clientes_presupuestos_ing(request):
     return JsonResponse(list(clientes), safe=False)
 
 
-def crear_presupuesto(request):
-    presupuesto = Presupuesto.objects.get(id=54)
+def crear_presupuesto(request, presupuesto_id):
+    presupuesto = Presupuesto.objects.get(id=presupuesto_id)
     secciones = Seccion.objects.all()
     subsecciones = SubSeccion.objects.all()
     detalles = Detalle.objects.all()
@@ -2173,7 +2187,233 @@ def crear_presupuesto(request):
 
 
 def obtener_subsecciones(request):
-    subsecciones = SubSeccion.objects.all()
+    # Sorted by 'nombre' field in ascending order
+    subsecciones = SubSeccion.objects.all().order_by('nombre')
     data = [{'id': subseccion.id, 'nombre': subseccion.nombre} for subseccion in subsecciones]
-    return JsonResponse(data, safe=False)  # 'safe=False' es necesario para serial
+    return JsonResponse(data, safe=False)  # 'safe=False' is necessary for serializing non-dict objects
 
+
+def obtener_secciones(request):
+    # Sorted by 'nombre' field in ascending order
+    secciones = Seccion.objects.all().order_by('nombre')
+    data = [{'id': seccion.id, 'nombre': seccion.nombre} for seccion in secciones]
+    return JsonResponse(data, safe=False)  # 'safe=False' is necessary for serializing non-dict objects
+
+
+def obtener_detalles(request):
+    # Sorted by 'nombre' field in ascending order
+    detalles = Detalle.objects.all().order_by('rubro')
+    data = [{'id': detalle.id, 'rubro': detalle.rubro} for detalle in detalles]
+    return JsonResponse(data, safe=False)  # 'safe=False' is necessary for serializing non-dict objects
+
+
+def get_subsecciones_detalles(request):
+    seccion_id = request.GET.get('seccion_id')
+    seccion = Seccion.objects.get(id=seccion_id)
+    subsecciones = seccion.subseccion_set.all()
+
+    data = {
+        'subsecciones': [{
+            'id': sub.id,
+            'nombre': sub.nombre,
+            'detalles': [{
+                'id': det.id,
+                'rubro': det.rubro,
+                'unidad_medida': det.unidad_medida.nombre,
+                'cantidad': 0,
+                'precio_unitario': det.precio_unitario,
+                'precio_total': 0
+            } for det in sub.detalle_set.all()]
+        } for sub in subsecciones]
+    }
+
+    return JsonResponse(data)
+
+
+def get_detalles(request):
+    try:
+        subseccion_id = request.GET.get('subseccion_id')
+        subseccion = SubSeccion.objects.get(id=subseccion_id)
+        detalles = subseccion.detalle_set.all()
+        data = {
+            'detalles': [{
+                'id': det.id,
+                'rubro': det.rubro,
+                'unidad_medida': det.unidad_medida.nombre,
+                'cantidad': 0,
+                'precio_unitario': det.precio_unitario,
+                'precio_total': 0
+            } for det in detalles]
+        }
+
+        return JsonResponse(data)
+    except ObjectDoesNotExist:
+        return JsonResponse({'error': 'SubSeccion not found'}, status=404)
+    except Exception as e:
+        # Log the exception for debugging
+        print(f"Error in get_detalles: {str(e)}")
+        return JsonResponse({'error': 'Internal Server Error'}, status=500)
+
+
+def get_subseccion_name(request):
+    subseccion_id = request.GET.get('subseccion_id')
+    try:
+        subseccion = SubSeccion.objects.get(id=subseccion_id)
+        return JsonResponse({'nombre': subseccion.nombre})
+    except SubSeccion.DoesNotExist:
+        return JsonResponse({'nombre': ''}, status=404)
+
+
+def get_detalle_data(request):
+    det_id = request.GET.get('detalle_id')
+    try:
+        detalle = Detalle.objects.get(id=det_id)
+        data = {
+                'id': detalle.id,
+                'rubro': detalle.rubro,
+                'unidad_medida': detalle.unidad_medida.nombre,
+                'cantidad': 0,
+                'precio_unitario': detalle.precio_unitario,
+                'precio_total': 0
+        }
+        return JsonResponse(data)
+    except ObjectDoesNotExist:
+        return JsonResponse({'error': 'Detalle not found'}, status=404)
+
+
+@csrf_exempt
+def crear_seccion(request):
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre')
+        subsecciones_ids = request.POST.getlist('subsecciones[]')
+
+        # Create the new Seccion
+        new_seccion = Seccion.objects.create(nombre=nombre)
+
+        # Associate the SubSecciones with the new Seccion
+        for sub_id in subsecciones_ids:
+            subseccion = SubSeccion.objects.get(id=sub_id)
+            subseccion.secciones.add(new_seccion)
+
+        return JsonResponse({'seccionId': new_seccion.id, 'status': 'success', 'message': 'Sección creada correctamente.'})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def crear_subseccion(request):
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre')
+        detalles_ids = request.POST.getlist('detalles[]')
+        seccion_id = request.POST.get('id_seccion')
+        seccion = Seccion.objects.get(id=seccion_id)
+        # Create the new Seccion
+        new_subseccion = SubSeccion.objects.create(nombre=nombre, seccion=seccion)
+
+        # Associate the SubSecciones with the new Seccion
+        for det_id in detalles_ids:
+            detalle = Detalle.objects.get(id=det_id)
+            detalle.subsecciones.add(new_subseccion)
+
+        return JsonResponse({'subseccionId': new_subseccion.id, 'status': 'success', 'message': 'Subsección creada correctamente.'})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def crear_detalle(request):
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre')
+        unidadMedida = request.POST.get('unidadMedida')
+        cantidad = request.POST.get('cantidad')
+        precioUnitario = request.POST.get('precioUnitario')
+        precioTotal = request.POST.get('precioTotal')
+        subseccion_id = request.POST.get('subseccion')
+        print(subseccion_id)
+        subseccion = SubSeccion.objects.get(id=subseccion_id)
+        unidad = UnidadMedida.objects.get(id=unidadMedida)
+        # Create the new Seccion
+        detalle = Detalle.objects.create(subseccion=subseccion, rubro=nombre, unidad_medida=unidad, cantidad=cantidad, precio_unitario=precioUnitario, precio_total=precioTotal)
+        data = {
+            'id': detalle.id,
+            'rubro': detalle.rubro,
+            'unidad_medida': detalle.unidad_medida.nombre,
+            'cantidad': detalle.cantidad,
+            'precio_unitario': detalle.precio_unitario,
+            'precio_total': detalle.precio_total
+        }
+        return JsonResponse(data)
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def associate_subseccion(request):
+    if request.method == 'POST':
+        seccion_id = request.POST.get('seccion_id')
+        subseccion_id = request.POST.get('subseccion_id')
+        try:
+            seccion = Seccion.objects.get(id=seccion_id)
+            subseccion = SubSeccion.objects.get(id=subseccion_id)
+            subseccion.secciones.add(seccion)
+            return JsonResponse({'status': 'success', 'message': 'Subsección asociada correctamente'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+
+def get_unidad_medida(request):
+    unidad_medidas = UnidadMedida.objects.all().values('id', 'descripcion')
+    return JsonResponse(list(unidad_medidas), safe=False)
+
+
+def guardar_presupuesto(request):
+    if request.method == 'POST':
+        try:
+            # Carga los datos recibidos en JSON
+            data = json.loads(request.body)
+            presupuesto_id = data.get('presupuestoId')
+            presupuesto = Presupuesto.objects.get(id=presupuesto_id)
+
+            # Crea un nuevo objeto Presupuesto, modifica según sea necesario
+
+            # Crea o recupera las secciones
+            secciones = [Seccion.objects.get_or_create(id=s_id)[0] for s_id in data['secciones']]
+
+            # Crea o recupera las subsecciones
+            subsecciones = []
+            for sub in data['subsecciones']:
+                obj, created = SubSeccion.objects.get_or_create(id=sub['subseccionId'])
+                subsecciones.append(obj)
+
+            # Crea o recupera los detalles
+            detalles = []
+            for det in data['detalles']:
+                obj, created = Detalle.objects.get_or_create(
+                    id=det['detalleId'],
+                    defaults={
+                        'rubro': det['rubro'],
+                        'unidad': det['unidad'],
+                        'cantidad': det['cantidad'],
+                        'precio_unitario': det['precioUnitario'],
+                        'precio_total': det['precioTotal'],
+                    })
+                detalles.append(obj)
+
+            # Crea el ArchivoPresupuesto y asocia las secciones, subsecciones y detalles
+
+            archivo_presupuesto = ArchivoPresupuesto(presupuesto=presupuesto)
+            archivo_presupuesto.save()
+            archivo_presupuesto.secciones.set(secciones)
+            archivo_presupuesto.subsecciones.set(subsecciones)
+            archivo_presupuesto.detalles.set(detalles)
+
+            return JsonResponse({'status': 'success', 'message': 'Presupuesto guardado correctamente.'})
+
+        except Exception as e:
+            # En caso de error, envía una respuesta con el error
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+    # Si no es un POST, redirige o envía un error
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)

@@ -1,20 +1,329 @@
+ {% load static %}
+<!-- Primero, incluir jQuery -->
+<script src="{% static 'vendors/jquery/dist/jquery.min.js' %}"></script>
+<!-- Incluir CSS de Select2 -->
+<link href="{% static 'vendors/select2/dist/css/select2.min.css' %}" rel="stylesheet" />
+
+<!-- Incluir JS de Select2 -->
+<script src="{% static 'vendors/select2/dist/js/select2.min.js' %}"></script>
+
 <div class="modal fade" id="modalAddDetalle" tabindex="-1" role="dialog" aria-labelledby="modalAddDetalleLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalAddDetalleLabel">Añadir Detalle</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close btn-affecting-prices" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <!-- Formulario para añadir detalle -->
-                <form id="formAddDetalle">
-                    <!-- Campos para detalle (e.g., rubro, cantidad, precio) -->
-                    <!-- ... -->
-                    <button type="submit" class="btn btn-primary">Añadir Detalle</button>
-                </form>
+                <div class="form-group row">
+                    <label for="detalleExistente" class="col-md-4 col-form-label btn-affecting-prices" style="font-size: 1rem; white-space: nowrap;">Rubro Existente:</label>
+                    <div class="col-md-8">
+                        <select class="form-control select2" id="detalleExistente" style="width: 100%;">
+                            <!-- Dynamically loaded options -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <div class="col-md-12 d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary btn-affecting-prices" id="btnNuevoDetalle">Nuevo Rubro</button>
+                        <button type="button" class="btn btn-primary btn-affecting-prices" id="btnAñadirDetalle">Añadir Rubro</button>
+                    </div>
+                </div>
+
+                <div id="formNuevoDetalle">
+                    <div class="form-group">
+                        <label for="nombreDetalle">Rubro</label>
+                        <input type="text" class="form-control" id="nombreDetalle" placeholder="Ingrese el Rubro">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="unidadMedida">Unidad de Medida</label>
+                        <!-- Assuming you will populate this with options dynamically -->
+                        <select class="form-control" id="unidadMedida"></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cantidad">Cantidad</label>
+                        <input type="number" class="form-control" id="cantidad" placeholder="Ingrese la cantidad">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="precioUnitario">Precio Unitario</label>
+                        <input type="number" class="form-control" id="precioUnitario" placeholder="Ingrese el precio unitario">
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-affecting-prices" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary btn-affecting-prices" id="saveDetalle">Guardar Rubro</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    $(document).ready(function() {
+         $('.select2').select2({
+                // other options as needed
+        });
+
+        $('#detalleExistente').select2({
+            placeholder: "Seleccione un rubro",
+            allowClear: true,
+            width: '100%',
+            minimumResultsForSearch: Infinity // set to 0 or remove for search box
+        });
+
+        // Load the sections when the modal is fully shown
+        $('#modalAddDetalle').on('shown.bs.modal', function() {
+            // Clear previous selections
+            $('#detalleExistente').empty().append(new Option('Seleccione un rubro', '')).trigger('change');
+
+            // Load secciones
+            obtenerDetalles();
+        });
+
+        $('#modalAddDetalle').on('show.bs.modal', function() {
+            // Clear previous selections
+            $('#detalleExistente').empty().append(new Option('Seleccione un rubro', '')).trigger('change');
+
+            // Load secciones and subsecciones
+            obtenerDetalles();
+            cargarUnidadesMedida();
+        });
+        // Ocultar el formulario para añadir subsecciones por defecto
+        $('#formNuevoDetalle').hide();
+
+        function obtenerDetalles() {
+            $.ajax({
+                url: '/obtener_detalles', // Replace with the correct URL
+                method: 'GET',
+                success: function(data) {
+                    var $detalleExistente = $('#detalleExistente');
+                    // evitar duplicados
+                    $detalleExistente.empty().append(new Option('Seleccione un rubro', ''));
+
+                    data.forEach(function(detalle) {
+                        $detalleExistente.append(new Option(detalle.rubro, detalle.id));
+                    });
+
+                    // Re-initialize select2 for the updated options and enable search
+                    $detalleExistente.select2({
+                        minimumResultsForSearch: 0 // This enables the search box without restriction. Set to -1 to disable search box.
+                    });
+                },
+                error: function(error) {
+                    console.log('Error al obtener detalles:', error);
+                }
+            });
+        }
+
+        // Evento para el botón de 'Nueva Subsección' que muestra el formulario para añadir una nueva subsección
+        $('#btnNuevoDetalle').on('click', function() {
+            $('#formNuevoDetalle').show();
+
+            $('#detalleExistente').closest('.row').hide();
+
+            $(this).hide();
+            $('#btnAñadirDetalle').hide();
+        });
+
+        $('#btnAñadirDetalle').on('click', function() {
+            var detalleId = $('#detalleExistente').val();
+            var detalleText = $('#detalleExistente option:selected').text();
+            var subseccionId = $('#modalAddDetalle').data('subseccion-id');
+            var lastRow = $('.detalle-row[data-subseccion-id="' + subseccionId + '"]').last();
+            if (lastRow.length === 0) {
+                // No details, find the seccion row
+                lastRow = $('.subseccion-row[data-id="' + subseccionId + '"]');
+            }
+            if (detalleId) {
+                $.ajax({
+                    url: '/get_detalle_data/', // Make sure this URL is correct
+                    method: 'GET',
+                    data: { 'detalle_id': detalleId },
+                    success: function(detalleResponse) {
+                        var detalleRow = $('<tr class="detalle-row" data-tipo="detalle" data-id="' + detalleResponse.id + '" data-subseccion-id="' + subseccionId + '"></tr>');
+                        var precioUnitario = Number(detalleResponse.precio_unitario);
+                        if (!isNaN(precioUnitario)) {
+                            detalleRow.append('<td>' + detalleResponse.rubro + '</td>');
+                            detalleRow.append('<td>' + detalleResponse.unidad_medida + '</td>');
+                            detalleRow.append('<td>' + detalleResponse.cantidad + '</td>');
+                            detalleRow.append('<td>' + precioUnitario.toFixed(2) + '</td>');
+                            var totalPrice = Number(calculateTotalPrice(detalleResponse.cantidad, precioUnitario));
+                            detalleRow.append('<td>' + totalPrice.toFixed(2) + '</td>'); // Ensure to format to two decimal places
+                            addActionsButtons(detalleRow, 'detalle', detalleId);
+                            lastRow.after(detalleRow); // Insert after the last detalle row or the subseccion row
+                        } else {
+                            console.error('Invalid number for precio_unitario or precio_total', detalle);
+                        }
+                        // Reset the select2 element to its default unselected state
+                        $('#detalleExistente').val(null).trigger('change');
+
+                        // Close the modal
+                        $('#modalAddDetalle').modal('hide');
+                    },
+                    error: function(error) {
+                        console.log('Error al obtener detalles:', error);
+                    }
+                });
+            } else {
+                alert("Por favor, seleccione un detalle.");
+            }
+        });
+
+        function associateDetalleToSubSeccion(detalleId, subseccionId) {
+            $.ajax({
+                url: '/associate_detalle/', // URL to your new Django view
+                method: 'POST',
+                data: {
+                    'detalle_id': detalleId,
+                    'subseccion_id': subseccionId,
+                    'csrfmiddlewaretoken': $('input[name="csrfmiddlewaretoken"]').val() // CSRF token for Django
+                },
+                success: function(response) {
+                    console.log('Detalle asociado correctamente:', response);
+                },
+                error: function(error) {
+                    console.error('Error al asociar detalle:', error);
+                }
+            });
+        }
+
+        $('#saveDetalle').on('click', function() {
+            var nombreDetalle = document.getElementById('nombreDetalle').value;
+            var unidadMedida = document.getElementById('unidadMedida').value;
+            var cantidad = document.getElementById('cantidad').value;
+            var precioUnitario = document.getElementById('precioUnitario').value;
+            var subseccionId = $('#modalAddDetalle').data('subseccion-id');
+            var lastRow = $('.detalle-row[data-subseccion-id="' + subseccionId + '"]').last();
+            if (lastRow.length === 0) {
+                // No details, find the seccion row
+                lastRow = $('.subseccion-row[data-id="' + subseccionId + '"]');
+            }
+            // Verificar si el nombre de la sección está vacío
+            if (nombreDetalle === '') {
+                alert('El rubro no puede estar vacío.');
+                $('#nombreDetalle').focus(); // Enfoca el campo del nombre de la sección
+                return; // Detiene la ejecución de la función
+            }
+            // Validar unidad de medida
+            if (unidadMedida === '') {
+                alert('Debe seleccionar una unidad de medida.');
+                $('#unidadMedida').focus();
+                return;
+            }
+
+            // Validar precio unitario
+            if (precioUnitario === '' || parseFloat(precioUnitario) <= 0) {
+                alert('Ingrese el precio unitario');
+                $('#precioUnitario').focus();
+                return;
+            }
+
+            // Asignar valor a cantidad si está vacío
+            if (cantidad === '') {
+                cantidad = 0;
+            }
+            var precioTotal = calculateTotalPrice(cantidad,precioUnitario)
+
+            console.log(subseccionId)
+            $.ajax({
+                url: '/crear_detalle/',
+                method: 'POST',
+                data: {
+                    'nombre': nombreDetalle,
+                    'unidadMedida': unidadMedida,
+                    'cantidad': cantidad,
+                    'precioUnitario': precioUnitario,
+                    'precioTotal': precioTotal,
+                    'subseccion': subseccionId
+                },
+                success: function(response) {
+                    console.log('Detalle created with ID:', response.id);
+                    var detalleId = response.detalleId;
+                    var detalleRow = $('<tr class="detalle-row" data-tipo="detalle" data-id="' + detalleId + '"></tr>');
+                    var precioUnitario = Number(response.precio_unitario);
+                    if (!isNaN(precioUnitario)) {
+                        detalleRow.append('<td>' + response.rubro + '</td>');
+                        detalleRow.append('<td>' + response.unidad_medida + '</td>');
+                        detalleRow.append('<td>' + response.cantidad + '</td>');
+                        detalleRow.append('<td>' + precioUnitario + '</td>');
+                        var totalPrice = Number(calculateTotalPrice(response.cantidad, precioUnitario));
+                        detalleRow.append('<td>' + totalPrice.toFixed(2) + '</td>'); // Ensure to format to two decimal places
+                        addActionsButtons(detalleRow, 'detalle', detalleId);
+                        lastRow.after(detalleRow); // Insert after the last detalle row or the subseccion row
+                    } else {
+                        console.error('Invalid number for precio_unitario or precio_total', detalle);
+                    }
+                    // Reset the select2 element to its default unselected state
+                    $('#detalleExistente').val(null).trigger('change');
+
+                    // Close the modal
+                    $('#modalAddDetalle').modal('hide');
+                },
+                error: function(error) {
+                    console.error('Error creating new subseccion:', error);
+                }
+            });
+        });
+
+        //calcular el precio total
+        function calculateTotalPrice(cantidad, precioUnitario) {
+          return (Number(cantidad) * Number(precioUnitario)).toFixed(2);
+        }
+
+        // añadir boton de editar y eliminar al detalle
+        function addActionsButtons(row, tipo, id) {
+          var editButton = '<button class="btn btn-primary btn-xs edit-button btn-affecting-prices" data-tipo="' + tipo + '" data-id="' + id + '"><i class="fa fa-pencil"></i></button>';
+          var deleteButton = '<button class="btn btn-danger btn-xs delete-button btn-affecting-prices" data-tipo="' + tipo + '" data-id="' + id + '"><i class="fa fa-trash"></i></button>';
+          row.append('<td>' + editButton + ' ' + deleteButton + '</td>');
+        }
+
+        // resetear el modal cuando se cierra
+        $('#modalAddDetalle').on('hidden.bs.modal', function () {
+            // Restablece los campos de entrada normales
+            $('#nombreDetalle').val('');
+            $('#cantidad').val('');
+            $('#precioUnitario').val('');
+
+            // Restablece los campos Select2
+            $('#detalleExistente').val(null).trigger('change');
+            $('#unidadMedida').val(null).trigger('change');
+
+            // Muestra elementos que pueden haber estado ocultos
+            $('#detalleExistente').closest('.row').show();
+            $('#btnNuevoDetalle').show();
+            $('#btnAñadirDetalle').show();
+
+            // Oculta el formulario para añadir una nueva sección
+            $('#formNuevoDetalle').hide();
+        });
+        function cargarUnidadesMedida() {
+            fetch('/get_unidad_medida/')  // Asegúrate de usar la ruta correcta a tu vista
+            .then(response => response.json())
+            .then(data => {
+                populateUnidadMedida(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function populateUnidadMedida(data) {
+            var select = document.getElementById('unidadMedida');
+            select.innerHTML = '<option value="">Seleccione una opción</option>'; // Opción por defecto
+            data.forEach(function(unidad) {
+                var option = document.createElement('option');
+                option.value = unidad.id;
+                option.textContent = unidad.descripcion;
+                select.appendChild(option);
+            });
+        }
+
+    });
+</script>

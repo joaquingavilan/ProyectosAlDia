@@ -14,4 +14,6 @@ admin.site.register(Contacto)
 admin.site.register(Seccion)
 admin.site.register(SubSeccion)
 admin.site.register(Detalle)
+admin.site.register(UnidadMedida)
+admin.site.register(ArchivoPresupuesto)
 

@@ -81,14 +81,9 @@
                                 {% endif %}
                                 <a href="{% url 'ver_archivo_presupuesto' presupuesto.id %}" class="btn btn-info ml-2">Ver Presupuesto</a>
                             {% else %}
-                                <form method="post" action="{% url 'cargar_presupuesto' presupuesto.id %}" enctype="multipart/form-data" class="form-inline">
+                                <form method="post" action="{% url 'crear_presupuesto' presupuesto.id %}" enctype="multipart/form-data" class="form-inline">
                                     {% csrf_token %}
-                                    <div class="input-group">
-                                        <input type="file" name="archivo_presupuesto" required class="form-control">
-                                        <div class="input-group-append">
-                                            <button type="submit" class="btn btn-primary">Cargar</button>
-                                        </div>
-                                    </div>
+                                    <button type="submit" class="btn btn-primary">Crear Presupuesto</button>
                                 </form>
                             {% endif %}
                         </div>

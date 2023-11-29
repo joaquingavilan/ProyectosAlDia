@@ -1,10 +1,6 @@
-{% load static %}
-
+ {% load static %}
 <!-- Primero, incluir jQuery -->
 <script src="{% static 'vendors/jquery/dist/jquery.min.js' %}"></script>
-
-
-
 <!-- Incluir CSS de Select2 -->
 <link href="{% static 'vendors/select2/dist/css/select2.min.css' %}" rel="stylesheet" />
 
@@ -16,38 +12,49 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalAddSeccionLabel">Añadir Sección</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close btn-affecting-prices" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
                 <!-- Lista desplegable con buscador para seleccionar secciones existentes -->
-                <div class="form-group">
-                    <label for="seccionExistente">Seleccionar Sección Existente</label>
-                    <select class="form-control select2" id="seccionExistente">
-                        <!-- Opciones cargadas dinámicamente -->
-                    </select>
+                <div class="form-group row">
+                    <label for="seccionExistente" class="col-md-4 col-form-label" style="font-size: 1rem; white-space: nowrap;">Sección Existente:</label>
+                    <div class="col-md-8">
+                        <select class="form-control select2" id="seccionExistente" style="width: 100%;">
+                            <!-- Dynamically loaded options -->
+                        </select>
+                    </div>
                 </div>
 
-                <!-- Botón para añadir nueva sección -->
-                <button type="button" class="btn btn-secondary" id="btnNuevaSeccion">Nueva Sección</button>
+                <!-- Botones para Nueva seccion y Añadir -->
+                <div class="form-group row">
+                    <div class="col-md-12 d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary btn-affecting-prices" id="btnNuevaSeccion">Nueva Sección</button>
+                        <button type="button" class="btn btn-primary btn-affecting-prices" id="btnAñadirSeccion">Añadir Sección</button>
+                    </div>
+                </div>
 
                 <!-- Formulario oculto para añadir nueva sección -->
                 <div id="formNuevaSeccion">
-                    <!-- ... otros campos del formulario ... -->
-
                     <div class="form-group">
-                        <label for="subseccionExistente">Seleccionar Subsecciones asociadas</label>
-                        <select class="form-control select2" id="subseccionExistente" multiple="multiple">
+                        <label for="nombreSeccion">Nombre de la Sección</label>
+                        <input type="text" class="form-control" id="nombreSeccion" placeholder="Ingrese el nombre de la sección">
+                    </div>
+
+                    <!-- Select for multiple subsecciones -->
+                    <div class="form-group">
+                        <label for="subseccionesAsociadas">Seleccionar Subsecciones asociadas</label>
+                        <select class="form-control select2-multiple" id="subseccionesAsociadas" multiple="multiple">
                             <!-- Opciones cargadas dinámicamente -->
                         </select>
                     </div>
-                    <div id="subseccionesSeleccionadas">
-                        <h5>Subsecciones Seleccionadas:</h5>
-                        <ul id="listaSubsecciones"></ul>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-affecting-prices" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary btn-affecting-prices" id="saveSeccion">Guardar Sección</button>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -57,19 +64,105 @@
 
 <script>
     $(document).ready(function() {
-        // Inicializar Select2
-        $('.select2').select2();
+        $('.select2').select2({
+                // other options as needed
+        });
+        // Initialize Select2 on the seccionExistente select with search enabled
+        $('#seccionExistente').select2({
+            placeholder: "Seleccione una sección",
+            allowClear: true,
+            width: '100%',
+            minimumResultsForSearch: Infinity // set to 0 or remove for search box
+        });
 
-        // Función para obtener subsecciones mediante AJAX
-        function obtenerSubsecciones() {
+        // Load the sections when the modal is fully shown
+        $('#modalAddSeccion').on('shown.bs.modal', function() {
+            // Clear previous selections
+            $('#seccionExistente').empty().append(new Option('Seleccione una sección', '')).trigger('change');
+
+            // Load secciones and subsecciones
+            obtenerSecciones();
+        });
+
+        // Initialize Select2 on the subseccionesAsociadas select
+        $('#subseccionesAsociadas').select2({
+            placeholder: "Seleccione subsecciones",
+            allowClear: true,
+            width: '100%'
+        })
+
+        // Call obtenerSubsecciones when the modal is about to be shown
+        $('#modalAddSeccion').on('show.bs.modal', function() {
+            // Clear previous selections
+            $('#seccionExistente').empty().append(new Option('Seleccione una sección', '')).trigger('change');
+            $('#subseccionesAsociadas').val(null).trigger('change');
+
+            // Load secciones and subsecciones
+            obtenerSecciones();
+        });
+
+        // Ocultar el formulario para añadir subsecciones por defecto
+        $('#formNuevaSeccion').hide();
+
+         // Function to obtain existing sections (secciones) via AJAX
+        function obtenerSecciones() {
             $.ajax({
-                url: '/obtener_subsecciones', // Reemplaza con la URL adecuada
+                url: '/obtener_secciones', // Replace with the correct URL
                 method: 'GET',
                 success: function(data) {
-                    // Suponiendo que 'data' es una lista de subsecciones
-                    data.forEach(function(subseccion) {
-                        $('#subseccionExistente').append(new Option(subseccion.nombre, subseccion.id));
+                    var $seccionExistente = $('#seccionExistente');
+                    // Clear out any existing options to avoid duplicates
+                    $seccionExistente.empty().append(new Option('Seleccione una sección', ''));
+
+                    // Assuming that 'data' is a list of sections
+                    data.forEach(function(seccion) {
+                        $seccionExistente.append(new Option(seccion.nombre, seccion.id));
                     });
+
+                    // Re-initialize select2 for the updated options and enable search
+                    $seccionExistente.select2({
+                        minimumResultsForSearch: 0 // This enables the search box without restriction. Set to -1 to disable search box.
+                    });
+                },
+                error: function(error) {
+                    console.log('Error al obtener secciones:', error);
+                }
+            });
+        }
+
+        // Evento para el botón de 'Nueva Sección' que muestra el formulario para añadir una nueva sección
+        $('#btnNuevaSeccion').on('click', function() {
+            // Show the form for a new section
+            $('#formNuevaSeccion').show();
+
+            // Hide the existing section select row
+            $('#seccionExistente').closest('.row').hide();
+
+            // Hide the 'Nueva Sección' and 'Añadir Sección' buttons
+            $(this).hide();
+            $('#btnAñadirSeccion').hide();
+
+            // Load the subsecciones into the select element
+            cargarSubseccionesParaNuevaSeccion();
+        });
+
+        // Function to obtain subsecciones via AJAX and load them into the new section select
+        function cargarSubseccionesParaNuevaSeccion() {
+            $.ajax({
+                url: '/obtener_subsecciones', // Replace with the correct URL
+                method: 'GET',
+                success: function(data) {
+                    var $subseccionesSelect = $('#subseccionesAsociadas');
+                    $subseccionesSelect.empty(); // Destroy and clear the select
+
+                    // Assuming 'data' is a list of subsecciones
+                    data.forEach(function(subseccion) {
+                        // Append each subseccion as an option
+                        $subseccionesSelect.append(new Option(subseccion.nombre, subseccion.id));
+                    });
+
+                    // Re-initialize select2 for the updated options
+                    $subseccionesSelect.select2();
                 },
                 error: function(error) {
                     console.log('Error al obtener subsecciones:', error);
@@ -77,27 +170,234 @@
             });
         }
 
-        // Llamar a obtenerSubsecciones al cargar la página
-        obtenerSubsecciones();
+        // añadir seccion a la tabla html cuando se oprime Añadir Seccion (para seccion Existente)
+        $('#btnAñadirSeccion').on('click', function() {
+            var seccionId = $('#seccionExistente').val();
+            var seccionText = $('#seccionExistente option:selected').text();
 
-        // Delegación de eventos para el botón de 'Nueva Sección'
-        $(document).on('click', '#btnNuevaSeccion', function() {
-            // Mostrar el formulario para la nueva sección
-            $('#formNuevaSeccion').show();
+            if (seccionId) {
+                $.ajax({
+                    url: '/get_subsecciones_detalles/', // Make sure this URL is correct
+                    method: 'GET',
+                    data: { 'seccion_id': seccionId },
+                    success: function(response) {
+                        // Add the seccion row first
+                        var seccionRow = $('<tr class="seccion-row" data-tipo="seccion" data-id="' + seccionId + '"></tr>');
+                        seccionRow.append('<td>' + seccionText + '</td><td></td><td></td><td></td><td></td>');
+                        addActionButtons(seccionRow, 'seccion', seccionId);
+                        $('#presupuesto-content tbody').append(seccionRow);
 
-            // Ocultar el campo y botón para la sección existente
-            $('#btnNuevaSeccion').hide(); // Ocultar botón 'Nueva Sección'
-            $('#seccionExistente').parent().hide(); // Ocultar el select de sección existente
+                        // Iterate over subsecciones
+                        response.subsecciones.forEach(function(subseccion) {
+                            var subseccionId = subseccion.id;
+
+                            var subseccionRow = $('<tr class="subseccion-row" data-tipo="subseccion" data-id="' + subseccionId + '" data-seccion-id="' + seccionId + '"></tr>');
+
+                            subseccionRow.append('<td>' + subseccion.nombre + '</td><td></td><td></td><td></td><td></td>');
+                            addActionButtons(subseccionRow, 'subseccion', subseccionId);
+                            $('#presupuesto-content tbody').append(subseccionRow);
+
+                            // Iterate over detalles for the subseccion
+                            subseccion.detalles.forEach(function(detalle) {
+                                var detalleId = detalle.id;
+                                var detalleRow = $('<tr class="detalle-row" data-tipo="detalle" data-id="' + detalleId + '" data-subseccion-id="' + subseccionId + '"></tr>');
+                                var precioUnitario = Number(detalle.precio_unitario);
+                                if (!isNaN(precioUnitario)) {
+                                    detalleRow.append('<td>' + detalle.rubro + '</td>');
+                                    detalleRow.append('<td>' + detalle.unidad_medida + '</td>');
+                                    detalleRow.append('<td>' + detalle.cantidad + '</td>');
+                                    detalleRow.append('<td>' + precioUnitario.toFixed(2) + '</td>');
+                                    var totalPrice = Number(calculateTotalPrice(detalle.cantidad, precioUnitario));
+                                    detalleRow.append('<td>' + totalPrice + '</td>');
+                                    addActionsButtons(detalleRow, 'detalle', detalleId);
+                                    $('#presupuesto-content tbody').append(detalleRow);
+                                } else {
+                                    console.error('Invalid number for precio_unitario or precio_total', detalle);
+                                }
+                            });
+                        });
+
+                        // Reset the select2 element to its default unselected state
+                        $('#seccionExistente').val(null).trigger('change');
+
+                        // Close the modal
+                        $('#modalAddSeccion').modal('hide');
+                    },
+                    error: function(error) {
+                        console.log('Error al obtener subsecciones y detalles:', error);
+                    }
+                });
+            } else {
+                alert("Por favor, seleccione una sección.");
+            }
         });
 
-        // Lógica para manejar selecciones de subsecciones
-        $('#subseccionExistente').on('change', function() {
-            var seleccionadas = $(this).val();
-            $('#listaSubsecciones').empty();
-            seleccionadas.forEach(function(subseccion) {
-                $('#listaSubsecciones').append('<li>' + subseccion + '</li>');
+        $('#saveSeccion').on('click', function() {
+            var nombreSeccion = $('#nombreSeccion').val().trim();
+            var subseccionesIds = $('#subseccionesAsociadas').val() || [];
+
+            // Verificar si el nombre de la sección está vacío
+            if (nombreSeccion === '') {
+                alert('El nombre de la sección no puede estar vacío.');
+                $('#nombreSeccion').focus(); // Enfoca el campo del nombre de la sección
+                return; // Detiene la ejecución de la función
+            }
+
+            // Verificar si no se ha seleccionado al menos una subsección
+            if (subseccionesIds.length === 0) {
+                alert('Debe seleccionar al menos una subsección.');
+                $('#subseccionesAsociadas').focus(); // Enfoca el campo de subsecciones
+                return; // Detiene la ejecución de la función
+            }
+
+
+            $.ajax({
+                url: '/crear_seccion/',
+                method: 'POST',
+                data: {
+                    'nombre': nombreSeccion,
+                    'subsecciones': subseccionesIds
+                },
+                success: function(response) {
+                    console.log('Seccion created with ID:', response.seccionId);
+                    var seccionId = response.seccionId;
+                    var seccionRow = $('<tr class="seccion-row" data-tipo="seccion" data-id="' + seccionId + '"></tr>');
+                    seccionRow.append('<td>' + nombreSeccion + '</td><td></td><td></td><td></td><td></td>');
+                    addActionButtons(seccionRow, 'seccion', seccionId);
+                    $('#presupuesto-content tbody').append(seccionRow);
+
+                    if (subseccionesIds.length > 0) {
+                        addSubseccionAndDetalles(subseccionesIds[0], 0, subseccionesIds, nombreSeccion, seccionId);
+                    } else {
+                        console.log('No subsecciones to add, closing modal.');
+                        $('#modalAddSeccion').modal('hide');
+                    }
+                },
+                error: function(error) {
+                    console.error('Error creating new seccion:', error);
+                }
             });
         });
+
+        function addSubseccionAndDetalles(subseccionId, index, array, nombreSeccion, seccionId) {
+            // First, get the name of the subseccion
+            $.ajax({
+                url: '/get_subseccion_name/',
+                method: 'GET',
+                data: { 'subseccion_id': subseccionId },
+                success: function(subseccionResponse) {
+                    // Create the subseccion row
+                    var subseccionName = subseccionResponse.nombre;
+                    var subseccionRow = $('<tr class="subseccion-row" data-tipo="subseccion" data-id="' + subseccionId + '"></tr>');
+                    subseccionRow.append('<td>' + subseccionName + '</td><td></td><td></td><td></td><td></td>');
+                    addActionButtons(subseccionRow, 'subseccion', subseccionId);
+                    $('#presupuesto-content tbody').append(subseccionRow);
+
+                    // Then, get the detalles for the subseccion
+                    $.ajax({
+                        url: '/get_detalles/',
+                        method: 'GET',
+                        data: { 'subseccion_id': subseccionId },
+                        success: function(detallesResponse) {
+                            // Add each detalle row
+                            detallesResponse.detalles.forEach(function(detalle) {
+                                var detalleRow = $('<tr class="detalle-row" data-tipo="detalle" data-id="' + detalle.id + '" data-subseccion-id="' + subseccionId + '"></tr>');
+                                var precioUnitario = Number(detalle.precio_unitario);
+                                if (!isNaN(precioUnitario)) {
+                                    detalleRow.append('<td>' + detalle.rubro + '</td>');
+                                    detalleRow.append('<td>' + detalle.unidad_medida + '</td>');
+                                    detalleRow.append('<td>' + detalle.cantidad + '</td>');
+                                    detalleRow.append('<td>' + precioUnitario.toFixed(2) + '</td>');
+                                    var totalPrice = Number(calculateTotalPrice(detalle.cantidad, precioUnitario));
+                                    detalleRow.append('<td>' + totalPrice + '</td>');
+                                    addActionsButtons(detalleRow, 'detalle', detalle.id);
+                                } else {
+                                    console.error('Invalid number for precio_unitario or precio_total', detalle);
+                                }
+                                $('#presupuesto-content tbody').append(detalleRow);
+                            });
+                            console.log("Completed processing subseccionId:", subseccionId);
+
+                            // If this is the last subseccion, close the modal
+                            if (index === array.length - 1) {
+                                console.log("Last subseccion processed, closing modal");
+                                $('#modalAddSeccion').modal('hide');
+                            } else {
+                                console.log("Proceeding to the next subseccion");
+                                // Otherwise, proceed to the next subseccion
+                                addSubseccionAndDetalles(array[index + 1], index + 1, array, nombreSeccion, seccionId);
+                            }
+                        },
+                        error: function(error) {
+                            console.error('Error getting detalles:', error);
+                        }
+                    });
+                },
+                error: function(error) {
+                    console.error('Error getting subseccion name:', error);
+                }
+            });
+        }
+
+        // calcular el tamaño de la tabla
+        function calculateRowSpan(subsecciones) {
+            // Calculate the total rowspan needed for a seccion cell
+            var total = 0;
+            subsecciones.forEach(function(subseccion) {
+                total += subseccion.detalles.length || 1; // Add 1 even if there are no detalles
+            });
+            return total;
+        }
+
+         //calcular el precio total
+        function calculateTotalPrice(cantidad, precioUnitario) {
+          return (Number(cantidad) * Number(precioUnitario)).toFixed(2);
+        }
+
+        // añadir boton de eliminar y añadir detalle/subseccion dependiendo el tipo
+        function addActionButtons(row, tipo, id) {
+            var addButton, deleteButton;
+
+            // Configure the Add and Delete buttons depending on the type of row
+            if (tipo === 'seccion') {
+                addButton = '<button class="btn btn-info btn-xs add-subseccion-button btn-affecting-prices" data-toggle="modal" data-target="#modalAddSubseccion" data-seccion-id="' + id + '"><i class="fa fa-plus"></i> Subsección</button>';
+            } else if (tipo === 'subseccion') {
+                addButton = '<button class="btn btn-info btn-xs add-detalle-button btn-affecting-prices" data-id="' + id + '"><i class="fa fa-plus"></i> Detalle</button>';
+            }
+
+            deleteButton = '<button class="btn btn-danger btn-xs delete-button btn-affecting-prices" data-tipo="' + tipo + '" data-id="' + id + '"><i class="fa fa-trash"></i></button>';
+
+            // Append the buttons to the row
+            row.append('<td>' + deleteButton + (addButton ? addButton + ' ' : '') +  '</td>');
+        }
+
+        // añadir boton de editar y eliminar al detalle
+        function addActionsButtons(row, tipo, id) {
+          var editButton = '<button class="btn btn-primary btn-xs edit-button btn-affecting-prices" data-tipo="' + tipo + '" data-id="' + id + '"><i class="fa fa-pencil"></i></button>';
+          var deleteButton = '<button class="btn btn-danger btn-xs delete-button btn-affecting-prices" data-tipo="' + tipo + '" data-id="' + id + '"><i class="fa fa-trash"></i></button>';
+          row.append('<td>' + editButton + ' ' + deleteButton + '</td>');
+        }
+
+        // resetear el modal cuando se cierra
+        $('#modalAddSeccion').on('hidden.bs.modal', function () {
+            // Show the elements that may have been hidden
+            $('#seccionExistente').closest('.row').show();
+            $('#btnNuevaSeccion').show();
+            $('#btnAñadirSeccion').show();
+
+            // Hide the form for adding a new section
+            $('#formNuevaSeccion').hide();
+
+            // Reset the text input for the section name
+            $('#nombreSeccion').val('');
+
+            // Reset the Select2 multiple select for subsecciones
+            $('#subseccionesAsociadas').val(null).trigger('change');
+
+            // Any other reset operations can go here
+        });
+
+
     });
 </script>
 

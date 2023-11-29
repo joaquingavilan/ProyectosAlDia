@@ -1,6 +1,44 @@
 {% extends request.base_template %}
 
 {% block content %}
+<style>
+  .table-hover .seccion-row {
+    background-color: #f5f5f5 !important; /* Gray background for section rows */
+    /* ... */
+  }
+  .table-hover .subseccion-row {
+    background-color: #fafafa !important; /* Lighter gray background for subsection rows */
+    /* ... */
+  }
+  .table-hover .detalle-row {
+    background-color: #ffffff !important; /* White background for detail rows */
+    /* ... */
+  }
+  #modal_add_seccion .select2-container--open .select2-search--dropdown .select2-search__field {
+    pointer-events: auto;  /* Ensures the input is interactable */
+    z-index: 10000;       /* Ensures it's above other elements */
+  }
+  #presupuesto-summary {
+    max-width: 300px; /* O el ancho que prefieras */
+    margin-left: auto; /* Alinea la tabla a la derecha */
+    font-size: 0.9rem; /* Ajusta el tamaño de la fuente al deseado */
+  }
+
+    .table-summary th {
+        width: 50%; /* Ajusta el ancho de la celda del título al deseado */
+        font-weight: bold; /* Si deseas que el título sea en negrita */
+        background-color: #f7f7f7; /* Fondo gris para las filas de resumen */
+        border-bottom: 1px solid #ddd; /* Borde para separar las filas */
+    }
+
+    .table-summary td {
+        background-color: #f7f7f7; /* Fondo gris para las filas de resumen */
+        border-bottom: 1px solid #ddd; /* Borde para separar las filas */
+    }
+</style>
+
+
+
 <div class="right_col" role="main">
     <div class="">
         <div class="page-title">
@@ -25,29 +63,55 @@
                     <div class="x_content">
                         <!-- Botones para añadir secciones, subsecciones y detalles -->
                         <div class='button-group'>
-                            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalAddSeccion"><i class="fa fa-plus-circle"></i> Añadir Sección</button>
-                            <button type="button" class="btn btn-info" data-toggle="modal" data-target="#modalAddSubseccion"><i class="fa fa-plus-circle"></i> Añadir Subsección</button>
-                            <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#modalAddDetalle"><i class="fa fa-plus-circle"></i> Añadir Detalle</button>
+                            <button type="button" class="btn btn-success btn-affecting-prices" data-toggle="modal" data-target="#modalAddSeccion"><i class="fa fa-plus-circle"></i> Añadir Sección</button>
                         </div>
 
                         <!-- Aquí iría la visualización del presupuesto -->
                         <div id="presupuesto-content" class="table-responsive">
-                            <!-- Contenido del presupuesto como tabla o listado -->
+                            <!-- Budget content as a table or listing -->
                             <table class="table table-hover">
-                                <!-- Cabecera de la tabla -->
+                                <!-- Table header -->
                                 <thead>
                                     <tr>
-                                        <th>Sección</th>
-                                        <th>Subsección</th>
-                                        <th>Detalle</th>
-                                        <!-- Más columnas según sea necesario -->
+                                        <th>Rubro</th>
+                                        <th>Un</th>
+                                        <th>Cant.</th>
+                                        <th>P. Unitario</th>
+                                        <th>P. Total</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <!-- Los elementos del presupuesto se añadirán aquí dinámicamente -->
+                                <tbody id="presupuesto-content-body">
+                                    <!-- Budget items will be added here dynamically -->
                                 </tbody>
                             </table>
                         </div>
+                        <!-- Después de tu tabla principal -->
+                        <!-- Contenedor de la tabla de resumen -->
+                        <div id="presupuesto-summary" class="table-responsive">
+                            <table class="table">
+                                <tbody>
+                                    <tr class="table-summary">
+                                        <th>Subtotal</th>
+                                        <td id="sumatoriaPrecioTotal" class="text-right">0</td>
+                                    </tr>
+                                    <tr class="table-summary">
+                                        <th>IVA</th>
+                                        <td id="iva" class="text-right">0</td>
+                                    </tr>
+                                    <tr class="table-summary">
+                                        <th>Total</th>
+                                        <td id="sumatoriaConIva" class="text-right">0</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Botón de Guardar Presupuesto -->
+                        <form id="miFormulario" method="POST" action="/guardar_presupuesto/">
+                            {% csrf_token %}
+                            <button type="button" class="btn btn-primary" id="guardarPresupuesto" data-presupuesto-id="{{ presupuesto.id }}"><i class="fa fa-save"></i> Guardar Presupuesto</button>
+                        </form>
+                        <a href="{% url 'ver_presupuestos' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
                     </div>
                 </div>
             </div>
@@ -60,4 +124,247 @@
 {% include 'modals/modal_add_subseccion.html' %}
 {% include 'modals/modal_add_detalle.html' %}
 
+{% endblock %}
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#presupuesto-content').on('click', '.delete-button', function() {
+            var tipo = $(this).data('tipo');
+            var row = $(this).closest('tr');
+            var id = row.data('id');
+
+            if (tipo === 'detalle') {
+                var subseccionId = row.data('subseccion-id');
+                row.remove(); // Remove the detalle row
+
+                // Check if the subseccion row has no more detalles
+                if ($('tr[data-subseccion-id="' + subseccionId + '"]').length === 0) {
+                    // If no more detalles, remove the subseccion row
+                    var subseccionRow = $('tr[data-id="' + subseccionId + '"][data-tipo="subseccion"]');
+                    var seccionId = subseccionRow.data('seccion-id');
+                    subseccionRow.remove();
+
+                    // Check if the seccion row has no more subsecciones
+                    if ($('tr[data-seccion-id="' + seccionId + '"]').not('[data-tipo="seccion"]').length === 0) {
+                        $('tr[data-id="' + seccionId + '"][data-tipo="seccion"]').remove();
+                    }
+                }
+            } else if (tipo === 'subseccion') {
+                var seccionId = row.data('seccion-id');
+                $('tr[data-subseccion-id="' + id + '"]').remove(); // Remove all detalles under the subseccion
+                row.remove(); // Remove the subseccion row
+
+                // Check if the seccion row has no more subsecciones
+                if ($('tr[data-seccion-id="' + seccionId + '"]').not('[data-tipo="seccion"]').length === 0) {
+                    // If no more subsecciones, remove the seccion row
+                    $('tr[data-id="' + seccionId + '"][data-tipo="seccion"]').remove();
+                }
+            }   else if (tipo === 'seccion') {
+                    // Remove all detalles of the subsecciones that are associated with this seccion
+                    $('tr[data-seccion-id="' + id + '"][data-tipo="subseccion"]').each(function() {
+                        var subseccionId = $(this).data('id');
+                        $('tr[data-subseccion-id="' + subseccionId + '"]').remove(); // This will remove the detalle rows
+                    });
+
+                    // Remove all subsecciones of this seccion
+                    $('tr[data-seccion-id="' + id + '"][data-tipo="subseccion"]').remove();
+
+                    // Finally, remove the seccion row itself
+                    row.remove();
+                }
+        });
+
+
+
+
+        // Event handler for the edit button
+        $('#presupuesto-content').on('click', '.edit-button', function() {
+          // Retrieve the row for editing
+          var row = $(this).closest('tr');
+          // Retrieve the current values
+          var cantidad = row.find('td:eq(2)').text();
+          var precioUnitario = row.find('td:eq(3)').text();
+          // Replace text with input fields
+          row.find('td:eq(2)').html('<input type="number" value="' + cantidad + '" class="form-control input-cantidad">');
+          row.find('td:eq(3)').html('<input type="number" value="' + precioUnitario + '" class="form-control input-precio-unitario">');
+          // Change edit button to save button
+          $(this).replaceWith('<button class="btn btn-success btn-xs save-button btn-affecting-prices"><i class="fa fa-save"></i></button>');
+        });
+
+        // Event handler for the save button after editing
+        $('#presupuesto-content').on('click', '.save-button', function() {
+          var row = $(this).closest('tr');
+          var inputCantidad = row.find('.input-cantidad').val();
+          var inputPrecioUnitario = row.find('.input-precio-unitario').val();
+          // Calculate new total price
+          var newTotalPrice = calculateTotalPrice(inputCantidad, inputPrecioUnitario);
+          // Update the row with new values
+          row.find('td:eq(2)').text(inputCantidad);
+          row.find('td:eq(3)').text(inputPrecioUnitario);
+          row.find('td:eq(4)').text(newTotalPrice);
+          // Replace save button with edit button
+          $(this).replaceWith('<button class="btn btn-primary btn-xs edit-button btn-affecting-prices"><i class="fa fa-pencil"></i></button>');
+        });
+        function calculateTotalPrice(cantidad, precioUnitario) {
+          return (Number(cantidad) * Number(precioUnitario)).toFixed(2);
+        }
+
+        // When an "Añadir Subsección" button is clicked
+        $('#presupuesto-content').on('click', '.add-subseccion-button', function() {
+            var $seccionRow = $(this).closest('tr.seccion-row');
+            var seccionId = $seccionRow.data('id');
+            // Open the modal for adding a new subsección
+            $('#modalAddSubseccion').modal('show');
+            // Store the seccionId on the modal element itself for later use
+            $('#modalAddSubseccion').data('seccion-id', seccionId);
+        });
+
+        $('#presupuesto-content').on('click', '.add-detalle-button', function() {
+            var $subseccionRow = $(this).closest('tr.subseccion-row');
+            var subseccionId = $subseccionRow.data('id');
+            $('#modalAddDetalle').modal('show');
+            $('#modalAddDetalle').data('subseccion-id', subseccionId);
+            console.log(subseccionId)
+        });
+
+        function actualizarSumatoriaPrecioTotal() {
+            var sumatoria = 0;
+            // Obtén todos los elementos de la columna de precios totales de la tabla principal
+            var preciosTotales = document.querySelectorAll('#presupuesto-content-body .detalle-row td:nth-child(5)');
+            preciosTotales.forEach(function(precio) {
+                sumatoria += parseFloat(precio.textContent) || 0;
+            });
+            // Actualiza la suma en la tabla de resumen
+             // Calcula el IVA como el 10% del precio total
+            var iva = sumatoria * 0.10;  // Asumiendo que el IVA es del 10%
+
+            // Calcula el total con IVA
+            var totalConIva = sumatoria + iva;
+
+            // Actualiza la suma en la tabla de resumen
+            document.getElementById('sumatoriaPrecioTotal').textContent = sumatoria.toFixed();
+            document.getElementById('iva').textContent = iva.toFixed();
+            document.getElementById('sumatoriaConIva').textContent = totalConIva.toFixed();
+        }
+
+        $(document).on('click', '.btn-affecting-prices', function() {
+            // Después de cualquier cambio, actualiza la sumatoria
+            actualizarSumatoriaPrecioTotal();
+        });
+
+        // Esta función se llamará cada vez que ocurran mutaciones (cambios) en la tabla
+        function handleMutations(mutationsList, observer) {
+            for (let mutation of mutationsList) {
+                if (mutation.type === 'childList') {
+                    // Si se añaden o eliminan elementos hijos (como filas de la tabla), actualiza la suma total
+                    actualizarSumatoriaPrecioTotal();
+                }
+            }
+        }
+
+        // Crea una instancia de MutationObserver y pasa la función callback
+        const observer = new MutationObserver(handleMutations);
+
+        // Selecciona el elemento de la tabla que deseas observar
+        const targetNode = document.getElementById('presupuesto-content-body');
+
+        // Opciones de configuración para el observador (qué cambios observar)
+        const config = { attributes: false, childList: true, subtree: false };
+
+        // Inicia la observación del elemento seleccionado con las opciones configuradas
+        observer.observe(targetNode, config);
+
+        $('#guardarPresupuesto').on('click', function() {
+            if (comprobarRequisitos()){
+                var presupuestoId = $(this).data('presupuesto-id'); // Obtiene el ID del atributo data- del botón
+                // Crear un array para almacenar los datos de cada fila
+                var presupuestoData = {
+                    'presupuestoId': presupuestoId,
+                    'secciones': [],
+                    'subsecciones': [],
+                    'detalles': []
+                };
+
+                // Recorrer cada fila de sección
+                $('#presupuesto-content-body .seccion-row').each(function() {
+                    var seccionId = $(this).data('id');
+                    // Añadir la sección al array
+                    presupuestoData.secciones.push(seccionId);
+                });
+
+                // Recorrer cada fila de subsección
+                $('#presupuesto-content-body .subseccion-row').each(function() {
+                    var subseccionId = $(this).data('id');
+                    // Añadir la subsección al array
+                    presupuestoData.subsecciones.push({ 'subseccionId': subseccionId});
+                });
+
+                // Recorrer cada fila de detalle
+                $('#presupuesto-content-body .detalle-row').each(function() {
+                    var detalleId = $(this).data('id');
+                    var subseccionId = $(this).data('subseccion-id');
+
+                    // Recoger los datos de las celdas
+                    var detalle = {
+                        'detalleId': detalleId,
+                        'subseccionId': subseccionId,
+                        'rubro': $(this).find('td').eq(0).text(),
+                        'unidad': $(this).find('td').eq(1).text(),
+                        'cantidad': $(this).find('td').eq(2).text(),
+                        'precioUnitario': $(this).find('td').eq(3).text(),
+                        'precioTotal': $(this).find('td').eq(4).text()
+                    };
+                    // Añadir el detalle al array
+                    presupuestoData.detalles.push(detalle);
+                });
+                var csrftoken = $('input[name=csrfmiddlewaretoken]').val();
+                // Enviar los datos al servidor con AJAX
+                $.ajax({
+                    url: '/guardar_presupuesto/', // La URL de tu vista de Django que maneja este guardado
+                    method: 'POST',
+                    data: JSON.stringify(presupuestoData),
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    headers: {
+                        'X-CSRFToken': csrftoken // Agrega el token CSRF como encabezado
+                    },
+                    success: function(response) {
+                        // Aquí manejas una respuesta exitosa
+                        alert('Presupuesto guardado exitosamente.');
+                    },
+                    error: function(xhr, status, error) {
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            alert('Hubo un error al guardar el presupuesto: ' + xhr.responseJSON.message);
+                        } else {
+                            alert('Hubo un error al guardar el presupuesto.');
+                        }
+                    }
+                });
+            }
+        });
+        function comprobarRequisitos() {
+            // Comprobación: Debe haber al menos una sección
+            var seccionRowCount = $('#presupuesto-content-body .seccion-row').length;
+            if (seccionRowCount === 0) {
+                alert('Debe haber al menos una sección.');
+                return false; // No cumplió los requisitos, no continuar
+            }
+
+            // Comprobación: No debe haber detalles con cantidad 0
+            var detallesConCantidadCero = $('#presupuesto-content-body .detalle-row').filter(function() {
+                var cantidad = parseFloat($(this).find('td').eq(2).text());
+                return cantidad === 0;
+            });
+
+            if (detallesConCantidadCero.length > 0) {
+                alert('No debe haber detalles con cantidad igual a 0.');
+                detallesConCantidadCero.first().focus(); // Pone el foco en el primer detalle con cantidad 0
+                return false; // No cumplió los requisitos, no continuar
+            }
+
+            return true; // Cumplió todos los requisitos
+        }
+
+    });
+</script>
 {% endblock %}
