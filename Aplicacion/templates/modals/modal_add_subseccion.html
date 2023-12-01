@@ -230,7 +230,7 @@
         $('#saveSubseccion').on('click', function() {
             var nombreSubseccion = $('#nombreSubseccion').val().trim();
             var detallesIds = $('#detallesAsociados').val() || [];
-
+            var seccionId = $('#modalAddSubseccion').data('seccion-id');
             // Verificar si el nombre de la sección está vacío
             if (nombreSubseccion === '') {
                 alert('El nombre de la subsección no puede estar vacío.');
@@ -251,7 +251,8 @@
                 method: 'POST',
                 data: {
                     'nombre': nombreSubseccion,
-                    'subsecciones': detallesIds
+                    'subsecciones': detallesIds,
+                    'id_seccion': seccionId
                 },
                 success: function(response) {
                     console.log('Subseccion created with ID:', response.subseccionId);

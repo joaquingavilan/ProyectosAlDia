@@ -1,7 +1,11 @@
 {% extends request.base_template %}
 
 {% block content %}
-    <h1 class="mb-4">Pedidos realizados</h1>
+    <div style="text-align: center; margin-bottom: 1rem;">
+        <h1 style="display: inline-block; margin: 0;">Pedidos de materiales</h1>
+        <a href="{% url 'pedido_materiales' %}" class="btn btn-primary btn-lg" style="float: right;">Solicitar Materiales</a>
+    </div>
+
 
     {% if pedidos %}
         <table class="table table-striped table-bordered">
@@ -10,7 +14,7 @@
                     <th>ID pedido</th>
                     <th>Nombre de la obra</th>
                     <th>Estado del pedido</th>
-                    <th>Estado de la obra</th>
+                    <th>Fecha de solicitud</th>
                     <th>Cantidad de materiales</th>
                     <th>Acciones</th>
                 </tr>
@@ -21,10 +25,10 @@
                         <td>{{ pedido.id }}</td>
                         <td>{{ pedido.obra.proyecto.nombre }}</td>
                         <td>{{ pedido.get_estado_display }}</td>
-                        <td>{{ pedido.obra.get_estado_display }}</td>
+                        <td>{{ pedido.fecha_solicitud }}</td>
                         <td>{{ pedido.materialpedido_set.count }}</td>
                         <td>
-                            <a href="{% url 'inicio' %}" class="btn btn-primary btn-sm">Repetir Pedido</a>
+                            <a href="{% url 'ver_pedido' pedido.id %}" class="btn btn-primary btn-sm">Ver Pedido</a>
                         </td>
                     </tr>
                 {% endfor %}

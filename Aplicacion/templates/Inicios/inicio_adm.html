@@ -1,22 +1,138 @@
 {% extends request.base_template %}
 
 {% block content %}
-  <h1 class="display-4 text-center">Bienvenido {{nombre}}</h1>
-<br>
-<div class="container d-flex align-items-center justify-content-center">
-    <div class="mx-2">
-        <a href="{% url 'ver_presupuestos_adm' %}" class="btn btn-primary btn-lg">Ver Presupuestos</a>
+<div class="row">
+    <!-- Tablero 1 -->
+    <div class="col-md-3 col-sm-3 ">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Presupuestos en elaboracion</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div id="tablero1_contenido2">
+                    <!-- El contenido dinámico de JavaScript se irá aquí -->
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="mx-2">
-        <a href="{% url 'registrar_anticipo' %}" class="btn btn-primary btn-lg">Registrar Anticipo</a>
+
+    <!-- Tablero 2 -->
+    <div class="col-md-3 col-sm-3 ">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Presupuestos enviados sin aprobacion</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div id="tablero2_contenido">
+                    <!-- El contenido dinámico de JavaScript se irá aquí -->
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="mx-2">
-        <a href="{% url 'asignar_obras' %}" class="btn btn-primary btn-lg">Asignar obras</a>
+
+    <!-- Tablero 3 -->
+    <div class="col-md-3 col-sm-3 ">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Obras pendientes de asignación</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div id="tablero3_contenido">
+                    <!-- El contenido dinámico de JavaScript se irá aquí -->
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="mx-2">
-        <a href="{% url 'salir' %}" class="btn btn-primary btn-lg">Cerrar Sesion</a>
-    </div>
+
+
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    cargarPresupuestosEnElaboracion();
+    cargarPresupuestosEnviadosSinAnticipo();
+    cargarObrasPendientesDeAsignacion();
+});
 
+function cargarPresupuestosEnElaboracion() {
+    $.ajax({
+        url: '/presupuestos_en_elaboracion/',
+        type: 'get',
+        dataType: 'json',
+        success: function(data) {
+            let contenido = '<table class="table table-striped">';
+            contenido += '<thead><tr><th>Nombre del Proyecto</th><th>Cliente</th><th>Encargado</th></tr></thead><tbody>';
 
+            data.presupuestos.forEach(function(presupuesto) {
+                contenido += `<tr>
+                                <td>${presupuesto.proyecto}</td>
+                                <td>${presupuesto.cliente}</td>
+                                <td>${presupuesto.encargado}</td>
+                              </tr>`;
+            });
+
+            contenido += '</tbody></table>';
+            document.getElementById('tablero1_contenido2').innerHTML = contenido;
+        },
+        error: function(xhr, status, error) {
+            console.error("Error al cargar los presupuestos en elaboración: " + error);
+        }
+    });
+}
+
+function cargarPresupuestosEnviadosSinAnticipo() {
+    $.ajax({
+        url: '/presupuestos-enviados-sin-anticipo/',
+        type: 'get',
+        dataType: 'json',
+        success: function(data) {
+            let contenido = '<table class="table table-striped">';
+            contenido += '<thead><tr><th>Nombre del Proyecto</th><th>Cliente</th><th>Encargado</th></tr></thead><tbody>';
+
+            data.presupuestos.forEach(function(presupuesto) {
+                contenido += `<tr>
+                                <td>${presupuesto.proyecto}</td>
+                                <td>${presupuesto.cliente}</td>
+                                <td>${presupuesto.encargado}</td>
+                              </tr>`;
+            });
+
+            contenido += '</tbody></table>';
+            document.getElementById('tablero2_contenido').innerHTML = contenido;
+        },
+        error: function(xhr, status, error) {
+            console.error("Error al cargar los presupuestos enviados sin anticipo: " + error);
+        }
+    });
+}
+
+function cargarObrasPendientesDeAsignacion() {
+    $.ajax({
+        url: '/obras-pendientes-asignacion/',
+        type: 'get',
+        dataType: 'json',
+        success: function(data) {
+            let contenido = '<table class="table table-striped">';
+            contenido += '<thead><tr><th>Nombre del Proyecto</th><th>Cliente</th></tr></thead><tbody>';
+
+            data.obras.forEach(function(obra) {
+                contenido += `<tr>
+                                <td>${obra.proyecto}</td>
+                                <td>${obra.cliente}</td>
+                              </tr>`;
+            });
+
+            contenido += '</tbody></table>';
+            document.getElementById('tablero3_contenido').innerHTML = contenido;
+        },
+        error: function(xhr, status, error) {
+            console.error("Error al cargar las obras pendientes de asignación: " + error);
+        }
+    });
+}
+</script>
 {% endblock %}

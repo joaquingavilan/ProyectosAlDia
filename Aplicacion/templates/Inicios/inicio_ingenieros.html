@@ -1,28 +1,149 @@
 {% extends request.base_template %}
 
 {% block content %}
-  <h1 class="display-4 text-center">Bienvenido {{nombre}}</h1>
-<br>
-<div class="container d-flex align-items-center justify-content-center">
-    <div class="mx-2">
-        <a href="{% url 'ver_presupuestos' %}" class="btn btn-primary btn-lg">Ver Presupuestos</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'ver_obras' %}" class="btn btn-primary btn-lg">Ver Obras</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'elaborar_certificado' %}" class="btn btn-primary btn-lg">Elaborar certificado</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'pedido_materiales' %}" class="btn btn-primary btn-lg">Pedido de Materiales</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'ver_pedidos' %}" class="btn btn-primary btn-lg">Ver Pedidos anteriores</a>
-    </div>
-    <div class="mx-2">
-        <a href="{% url 'salir' %}" class="btn btn-primary btn-lg">Cerrar Sesion</a>
-    </div>
-</div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Menú Principal</title>
+    <!-- Asegúrate de incluir aquí los enlaces a Bootstrap 4 y Gentelella CSS -->
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center my-4">Menú Principal</h1>
+            </div>
+        </div>
 
+        <div class="row">
+            <!-- Tablero 1 -->
+            <div class="col-md-4">
+                <div class="card" id="tablero1">
+                    <div class="card-body">
+                        <h5 class="card-title">Presupuestos pendientes</h5>
+                        <div id="tablaContenedor">
+                            <!-- La tabla se generará aquí -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tablero 2 (el doble de ancho) -->
+            <div class="col-md-8">
+                <div class="card" id="tablero2">
+                    <div class="card-body">
+                        <h5 class="card-title">Actividades</h5>
+                        <div id="tablaActividadesContenedor">
+                            <!-- La tabla se generará aquí -->
+                        </div>
+                        <p id="mensajeActividadesVacias" style="display: none;">No hay actividades en los próximos 7 días.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/presupuestos_pendientes/')  // Asegúrate de que la ruta coincida con tu configuración de URL en Django
+        .then(response => response.json())
+        .then(data => cargarPresupuestosPendientes(data.presupuestos));
+    fetch('/proximas_actividades/')
+        .then(response => response.json())
+        .then(data => cargarProximasActividades(data.actividades));
+
+    const tablaContenedor = document.getElementById('tablaActividadesContenedor');
+    tablaContenedor.addEventListener('click', function(event) {
+        if (event.target.classList.contains('btn-realizado')) {
+            const button = event.target;
+            const ids = button.id.split('-');  // Ejemplo: btn-1-2 se convierte en ['btn', '1', '2']
+            const detalle_id = ids[1];
+            const cronograma_id = ids[2];
+
+            fetch('/marcar_como_realizado/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `detalle_id=${detalle_id}&cronograma_id=${cronograma_id}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                    console.log('Actividad marcada como realizada');
+                } else {
+                    // Maneja el error
+                    console.error(data.message);
+                }
+            });
+        }
+    });
+});
+
+function cargarPresupuestosPendientes(presupuestos) {
+    const contenedor = document.getElementById('tablaContenedor');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    if (presupuestos.length === 0) {
+        contenedor.innerHTML = '<p>No tienes presupuestos pendientes.</p>';
+    } else {
+        let tabla = '<table class="table table-bordered">';
+        tabla += '<thead><tr><th>Proyecto</th><th>Acciones</th></tr></thead><tbody>';
+
+        presupuestos.forEach(presupuesto => {
+            tabla += `
+                <tr>
+                    <td>${presupuesto.proyecto__nombre}</td>
+                    <td>
+                        <form method="post" action="${presupuesto.crear_presupuesto_url}" enctype="multipart/form-data" class="form-inline">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                            <button type="submit" class="btn btn-primary btn-sm">Crear Presupuesto</button>
+                        </form>
+                    </td>
+                </tr>`;
+        });
+
+        tabla += '</tbody></table>';
+        contenedor.innerHTML = tabla;
+    }
+}
+
+function cargarProximasActividades(actividades) {
+    const tablaContenedor = document.getElementById('tablaActividadesContenedor');
+    const mensajeActividadesVacias = document.getElementById('mensajeActividadesVacias');
+
+    if (actividades.length === 0) {
+        tablaContenedor.innerHTML = ''; // Vacía la tabla si no hay actividades
+        mensajeActividadesVacias.style.display = 'block'; // Muestra el mensaje
+    } else {
+        let tabla = '<table class="table" id="tablaActividades">';
+        tabla += '<thead><tr><th style="width: 20%;">Proyecto</th><th style="width: 30%;">Rubro</th><th style="width:10%;">Fecha</th><th style="width: 10%;">Acción</th></tr></thead><tbody>';
+
+        actividades.forEach(actividad => {
+            tabla += `
+                <tr>
+                    <td>${actividad.proyecto_nombre}</td>
+                    <td>${actividad.rubro}</td>
+                    <td>${actividad.fecha}</td>
+                    <td>
+                        <button id="btn-${actividad.detalle_id}-${actividad.cronograma_id}" class="btn btn-success btn-realizado">
+                            <span class="fa fa-check"></span>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+        tabla += '</tbody></table>';
+        tablaContenedor.innerHTML = tabla;
+
+        mensajeActividadesVacias.style.display = 'none'; // Oculta el mensaje si hay actividades
+    }
+}
+
+
+
+</script>
 
 {% endblock %}

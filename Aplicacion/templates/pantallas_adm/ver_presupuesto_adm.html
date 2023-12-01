@@ -1,219 +1,115 @@
 {% extends request.base_template %}
-{% load custom_filters %}
+{% block css %}
+<style>
+  /* Estilos personalizados */
+  .table td, .table th {
+    vertical-align: middle;
+    border: 1px solid #ddd; /* Añade bordes más definidos si es necesario */
+    text-align: center; /* Alinea el texto al centro, si lo prefieres */
+  }
 
-{% block content %}
-<div class="x_panel">
-    <div class="x_title">
-        <h2>Detalle del Presupuesto</h2>
-        <ul class="nav navbar-right panel_toolbox">
-            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
-        </ul>
-        <div class="clearfix"></div>
-    </div>
-
-    <div class="x_content">
-        <!-- Tabla de detalle del presupuesto -->
-        <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <thead>
-                    <tr>
-                        <th>Nombre del proyecto</th>
-                        <th>Cliente</th>
-                        <th>Ingeniero asignado</th>
-                        <th>Estado</th>
-                        <th>Anticipo recibido</th>
-                        <th>Monto Presupuesto</th>
-                        <th>Monto Anticipo</th>
-                        <th>Fecha de pago de Anticipo</th>
-                        <th>Comprobante</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>{{ presupuesto.proyecto.nombre }}</td>
-                        <td>{{ presupuesto.proyecto.cliente.nombre }}</td>
-                        <td>{{ presupuesto.encargado.first_name }} {{ presupuesto.encargado.last_name }}</td>
-                        <td data-id="{{ presupuesto.id }}" class="estado-celda">
-                            {% if presupuesto.estado == 'S' %}
-                            <select class="form-select estado-select" data-id="{{ presupuesto.id }}" onchange="actualizarEstado(this)">
-                                <option value="S" selected>Enviado</option>
-                                <option value="A">Aprobado</option>
-                            </select>
-                            {% else %}
-                            {{ presupuesto.get_estado_display }}
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if presupuesto.anticipo %}
-                            Sí
-                            {% else %}
-                            No
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if presupuesto.estado != 'E' %}
-                            {{presupuesto.monto_total|intcomma}}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if presupuesto.estado != 'E' %}
-                            {{presupuesto.monto_anticipo|intcomma}}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
-                        <td class="fecha-pago-anticipo-celda" data-id="{{ presupuesto.id }}">
-                            {{ presupuesto.fecha_pago_anticipo|date:"d/m/Y" }}
-                        </td>
-                        <td>
-                            {% if presupuesto.anticipo and presupuesto.comprobante_anticipo %}
-                                <a href="{{ presupuesto.comprobante_anticipo.url }}" target="_blank" class="btn btn-primary btn-sm">Ver Comprobante</a>
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <br>
-        {% if archivo_presupuesto %}
-        <!-- Tabla del presupuesto en sí -->
-        <div class="container-fluid">
-            <div class="row justify-content-center">
-                <div class="col-md-10">
-                    <table class="table table-bordered table-hover">
-                        <thead>
-                            <tr>
-                                <th>Rubro</th>
-                                <th>Unidad de Medida</th>
-                                <th>Cantidad</th>
-                                <th>Precio Unitario</th>
-                                <th>Precio Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for categoria in categorias %}
-                                <tr>
-                                    <td colspan="5" style="background-color: #EEE;"><strong>{{ categoria.nombre }}</strong></td>
-                                </tr>
-                                {% for item in categoria.item_set.all %}
-                                    <tr>
-                                        <td colspan="5" style="background-color: #DDD;"><strong>{{ item.nombre }}</strong></td>
-                                    </tr>
-                                    {% for subitem in item.subitem_set.all %}
-                                        <tr data-type="subitem" data-id="{{ subitem.id }}">
-                                            <td>{{ subitem.rubro }}</td>
-                                            <td>{{ subitem.unidad_medida }}</td>
-                                            <td>{{ subitem.cantidad }}</td>
-                                            <td>{{ subitem.precio_unitario|intcomma }}</td>
-                                            <td>{{ subitem.precio_total|intcomma }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                {% endfor %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="row justify-content-center">
-                <div class="col-md-4 offset-md-6">
-                    <table class="table table-bordered">
-                        <tbody>
-                            <tr>
-                                <td>Total</td>
-                                <td>{{ presupuesto.monto_total|intcomma }}</td>
-                            </tr>
-                            <tr>
-                                <td>IVA</td>
-                                <td>{{ presupuesto.monto_total|multiply:0.1|intcomma }}</td>
-                            </tr>
-                            <tr>
-                                <td>Monto Total con IVA</td>
-                                <td>{{ presupuesto.monto_total|multiply:0.1|add:presupuesto.monto_total|intcomma }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        {% else %}
-            <p>No hay un archivo de presupuesto asociado a este presupuesto.</p>
-        {% endif %}
-        <a href="{% url 'ver_presupuestos_adm' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
-    </div>
-</div>
-
+  /* Estilos existentes */
+  .table-hover .seccion-row { /* ... */ }
+  .table-hover .subseccion-row { /* ... */ }
+  .table-hover .detalle-row { /* ... */ }
+</style>
 {% endblock %}
+{% block content %}
+<div class="right_col" role="main">
 
+  <div class="">
+    <div class="row">
+      <div class="col-md-12 col-sm-12 ">
+        <h2>
+          Este presupuesto fue preparado por <strong>{{presupuesto.encargado.first_name}} {{presupuesto.encargado.last_name}}</strong><br>
+          {% if presupuesto.anticipo %}
+            El anticipo fue pagado en fecha <strong>{{presupuesto.fecha_pago_anticipo}}</strong>, aqui esta el <a href="{{ presupuesto.comprobante_anticipo.url }}" target="_blank" style="color: blue; text-decoration: underline;">comprobante</a>
+          {% else %}
+            El anticipo aún no fue pagado y el estado es <strong>{{presupuesto.get_estado_display}}</strong>
+          {% endif %}
+        </h2>
+        <div class="x_panel">
+          <div class="export-buttons pull-right">
+            <a href="{% url 'exportar_presupuesto' presupuesto_id=presupuesto_id archivo_presupuesto_id=archivo_presupuesto_id tipo='pdf' %}" class="btn btn-danger"><i class="fa fa-file-pdf-o"></i></a>
+            <a href="{% url 'exportar_presupuesto' presupuesto_id=presupuesto_id archivo_presupuesto_id=archivo_presupuesto_id tipo='excel' %}" class="btn btn-success"><i class="fa fa-file-excel-o"></i></a>
+          </div>
 
-{% block extra_js %}
-<script>
-function actualizarAnticipo(selectElem) {
-    const idPresupuesto = selectElem.getAttribute('data-id');
-    const nuevoValor = selectElem.value === 'True';
+          <div class="x_title">
+            <!-- Texto sobre el presupuesto -->
 
-    fetch(`/actualizar_anticipo/${idPresupuesto}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({anticipo: nuevoValor})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            selectElem.outerHTML = 'Sí';
-            // Localizar y actualizar la celda de estado
-            const celdaEstado = document.querySelector(`.estado-celda[data-id="${idPresupuesto}"]`);
-            celdaEstado.innerText = data.nuevo_estado;
-            const celdaFechaPagoAnticipo = document.querySelector(`.fecha-pago-anticipo-celda[data-id="${idPresupuesto}"]`);
-            celdaFechaPagoAnticipo.innerText = data.fecha_pago_anticipo;  // Asumiendo que envías la fecha en la respuesta
-        } else {
-            alert('Hubo un error al actualizar el anticipo');
-        }
-    });
-}
+            <!-- Fin del texto sobre el presupuesto -->
+            <h2>Presupuesto del proyecto <strong>{{proyecto}}</strong> para el cliente <strong>{{cliente}}</strong></h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <table class="table table-hover table-bordered"> <!-- Modificación aquí -->
+              <thead>
+                <tr>
+                  <th>Sección</th>
+                  <th>Subsección</th>
+                  <th>Rubro</th>
+                  <th>Unidad Medida</th>
+                  <th>Cantidad</th>
+                  <th>Precio Unitario</th>
+                  <th>Precio Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for seccion, subsecciones in estructura_presupuesto %}
+                  <!-- Sección -->
+                  <tr class="seccion-row" data-tipo="seccion" data-id="{{ seccion.id }}">
+                    <td>{{ seccion.nombre }}</td>
+                    <td colspan="6"></td> <!-- Colspan para cubrir el resto de las columnas -->
+                  </tr>
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-function actualizarEstado(selectElem) {
-    const idPresupuesto = selectElem.getAttribute('data-id');
-    const nuevoEstado = selectElem.value;
+                  {% for subseccion, detalles in subsecciones %}
+                    <!-- Subsección -->
+                    <tr class="subseccion-row" data-tipo="subseccion" data-id="{{ subseccion.id }}" data-seccion-id="{{ seccion.id }}">
+                      <td></td> <!-- Columna vacía para alinear con la sección padre -->
+                      <td>{{ subseccion.nombre }}</td>
+                      <td colspan="5"></td> <!-- Colspan para cubrir el resto de las columnas -->
+                    </tr>
 
-    fetch(`/actualizar_estado/${idPresupuesto}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({estado: nuevoEstado})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            selectElem.outerHTML = nuevoEstado == 'S' ? 'Enviado' : 'Aprobado';
-        } else {
-            alert('Hubo un error al actualizar el estado');
-        }
-    });
-}
-
-
-</script>
+                    {% for detalle in detalles %}
+                      <!-- Detalle -->
+                      <tr class="detalle-row" data-tipo="detalle" data-id="{{ detalle.id }}" data-subseccion-id="{{ subseccion.id }}">
+                        <td></td> <!-- Columna vacía para alinear con la sección y subsección padre -->
+                        <td></td> <!-- Columna vacía para alinear con la subsección padre -->
+                        <td>{{ detalle.rubro }}</td>
+                        <td>{{ detalle.unidad_medida.nombre }}</td>
+                        <td>{{ detalle.cantidad }}</td>
+                        <td>{{ detalle.precio_unitario }}</td>
+                        <td>{{ detalle.precio_total }}</td>
+                      </tr>
+                    {% endfor %}
+                  {% endfor %}
+                {% endfor %}
+              </tbody>
+            </table>
+                      <!-- Nueva Tabla para Subtotal, IVA y Total -->
+            <div class="float-right"> <!-- Alinea la tabla a la derecha -->
+              <table class="table">
+                <tbody>
+                  <tr>
+                    <th>Subtotal</th>
+                    <td id="subtotal">{{subtotal}}</td>
+                  </tr>
+                  <tr>
+                    <th>IVA</th>
+                    <td id="iva">{{iva}}</td>
+                  </tr>
+                  <tr>
+                    <th>Total</th>
+                    <td id="total">{{monto_total}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <a href="{% url 'ver_presupuestos_adm' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
+    </div>
+  </div>
+</div>
 {% endblock %}

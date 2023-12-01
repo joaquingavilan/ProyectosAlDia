@@ -1,67 +1,103 @@
 {% extends request.base_template %}
 {% block css %}
 <style>
-  .table-sm th, .table-sm td {
-    padding: .3rem; /* Reduce el padding en los th y td para un efecto más comprimido */
+  /* Estilos personalizados */
+  .table td, .table th {
+    vertical-align: middle;
+    border: 1px solid #ddd; /* Añade bordes más definidos si es necesario */
+    text-align: center; /* Alinea el texto al centro, si lo prefieres */
   }
 
-  .table-sm {
-    font-size: 0.875rem; /* Reduce la fuente para una tabla más compacta */
-  }
+  /* Estilos existentes */
+  .table-hover .seccion-row { /* ... */ }
+  .table-hover .subseccion-row { /* ... */ }
+  .table-hover .detalle-row { /* ... */ }
 </style>
 {% endblock %}
 {% block content %}
-<div class="x_panel">
-  <div class="x_title">
-    <h2>Presupuesto</h2>
-    <div class="clearfix"></div>
-  </div>
+<div class="right_col" role="main">
 
-  <div class="x_content">
-    <table class="table table-hover table-sm"> <!-- Modificación aquí -->
-      <thead>
-        <tr>
-          <th>Sección</th>
-          <th>Subsección</th>
-          <th>Rubro</th>
-          <th>Unidad Medida</th>
-          <th>Cantidad</th>
-          <th>Precio Unitario</th>
-          <th>Precio Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for seccion, subsecciones in estructura_presupuesto %}
-          <!-- Sección -->
-          <tr class="seccion-row" data-tipo="seccion" data-id="{{ seccion.id }}">
-            <td>{{ seccion.nombre }}</td>
-            <td colspan="6"></td> <!-- Colspan para cubrir el resto de las columnas -->
-          </tr>
+  <div class="">
+    <div class="row">
+      <div class="col-md-12 col-sm-12 ">
+        <div class="x_panel">
+          <div class="export-buttons pull-right">
+            <a href="{% url 'exportar_presupuesto' presupuesto_id=presupuesto_id archivo_presupuesto_id=archivo_presupuesto_id tipo='pdf' %}" class="btn btn-danger"><i class="fa fa-file-pdf-o"></i></a>
+            <a href="{% url 'exportar_presupuesto' presupuesto_id=presupuesto_id archivo_presupuesto_id=archivo_presupuesto_id tipo='excel' %}" class="btn btn-success"><i class="fa fa-file-excel-o"></i></a>
+          </div>
+          <div class="x_title">
+            <h2>Presupuesto del proyecto <strong>{{proyecto}}</strong> para el cliente <strong>{{cliente}}</strong></h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <table class="table table-hover table-bordered"> <!-- Modificación aquí -->
+              <thead>
+                <tr>
+                  <th>Sección</th>
+                  <th>Subsección</th>
+                  <th>Rubro</th>
+                  <th>Unidad Medida</th>
+                  <th>Cantidad</th>
+                  <th>Precio Unitario</th>
+                  <th>Precio Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for seccion, subsecciones in estructura_presupuesto %}
+                  <!-- Sección -->
+                  <tr class="seccion-row" data-tipo="seccion" data-id="{{ seccion.id }}">
+                    <td>{{ seccion.nombre }}</td>
+                    <td colspan="6"></td> <!-- Colspan para cubrir el resto de las columnas -->
+                  </tr>
 
-          {% for subseccion, detalles in subsecciones %}
-            <!-- Subsección -->
-            <tr class="subseccion-row" data-tipo="subseccion" data-id="{{ subseccion.id }}" data-seccion-id="{{ seccion.id }}">
-              <td></td> <!-- Columna vacía para alinear con la sección padre -->
-              <td>{{ subseccion.nombre }}</td>
-              <td colspan="5"></td> <!-- Colspan para cubrir el resto de las columnas -->
-            </tr>
+                  {% for subseccion, detalles in subsecciones %}
+                    <!-- Subsección -->
+                    <tr class="subseccion-row" data-tipo="subseccion" data-id="{{ subseccion.id }}" data-seccion-id="{{ seccion.id }}">
+                      <td></td> <!-- Columna vacía para alinear con la sección padre -->
+                      <td>{{ subseccion.nombre }}</td>
+                      <td colspan="5"></td> <!-- Colspan para cubrir el resto de las columnas -->
+                    </tr>
 
-            {% for detalle in detalles %}
-              <!-- Detalle -->
-              <tr class="detalle-row" data-tipo="detalle" data-id="{{ detalle.id }}" data-subseccion-id="{{ subseccion.id }}">
-                <td></td> <!-- Columna vacía para alinear con la sección y subsección padre -->
-                <td></td> <!-- Columna vacía para alinear con la subsección padre -->
-                <td>{{ detalle.rubro }}</td>
-                <td>{{ detalle.unidad_medida.nombre }}</td>
-                <td>{{ detalle.cantidad }}</td>
-                <td>{{ detalle.precio_unitario }}</td>
-                <td>{{ detalle.precio_total }}</td>
-              </tr>
-            {% endfor %}
-          {% endfor %}
-        {% endfor %}
-      </tbody>
-    </table>
+                    {% for detalle in detalles %}
+                      <!-- Detalle -->
+                      <tr class="detalle-row" data-tipo="detalle" data-id="{{ detalle.id }}" data-subseccion-id="{{ subseccion.id }}">
+                        <td></td> <!-- Columna vacía para alinear con la sección y subsección padre -->
+                        <td></td> <!-- Columna vacía para alinear con la subsección padre -->
+                        <td>{{ detalle.rubro }}</td>
+                        <td>{{ detalle.unidad_medida.nombre }}</td>
+                        <td>{{ detalle.cantidad }}</td>
+                        <td>{{ detalle.precio_unitario }}</td>
+                        <td>{{ detalle.precio_total }}</td>
+                      </tr>
+                    {% endfor %}
+                  {% endfor %}
+                {% endfor %}
+              </tbody>
+            </table>
+                      <!-- Nueva Tabla para Subtotal, IVA y Total -->
+            <div class="float-right"> <!-- Alinea la tabla a la derecha -->
+              <table class="table">
+                <tbody>
+                  <tr>
+                    <th>Subtotal</th>
+                    <td id="subtotal">{{subtotal}}</td>
+                  </tr>
+                  <tr>
+                    <th>IVA</th>
+                    <td id="iva">{{iva}}</td>
+                  </tr>
+                  <tr>
+                    <th>Total</th>
+                    <td id="total">{{monto_total}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <a href="{% url 'ver_presupuestos' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
+    </div>
   </div>
 </div>
 {% endblock %}

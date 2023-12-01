@@ -7,23 +7,24 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>{% block title %}Título del sitio{% endblock %}</title>
 
-    <!-- Bootstrap -->
+    <!-- Bootstrap CSS -->
     <link href="{% static 'vendors/bootstrap/dist/css/bootstrap.min.css' %}" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="{% static 'vendors/font-awesome/css/font-awesome.min.css' %}" rel="stylesheet">
     <!-- Custom Theme Style -->
     <link href="{% static 'build/css/custom.min.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css">
+
     {% block stylesheets %}
+    <!-- Custom styles for this template -->
     <style>
         .ui-autocomplete {
-            z-index: 2000 !important; /* Usa un valor que esté por encima del z-index del modal */
+            z-index: 2000 !important; /* Asegúrate de que esté por encima del z-index de cualquier otro componente */
         }
     </style>
     {% endblock %}
 </head>
 
-<body class="nav-md"> <!-- Esta clase es específica de Gentelella -->
+<body class="nav-md">
     <div class="container body">
         <div class="main_container">
 
@@ -32,10 +33,22 @@
                 {% block sidebar %}{% endblock %}
             </div>
 
-            <!-- Top Navigation -->
-            <div class="top_nav">
-                {% block top_navigation %}{% endblock %}
+            <div class="top_nav" style="background-color: #F7F7F7; padding: 10px 0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex-grow: 1; text-align: center;">
+                    <h1 style="margin: 0; font-size: 34px; display: inline-block;">
+                        <i class="fa fa-line-chart" style="color: #5A738E;"></i> Proyectos Al Día
+                    </h1>
+                </div>
+                <div style="margin-right: 20px;">
+                    <a href="{% url 'salir' %}" style="text-decoration: none; color: #5A738E; font-size: 20px;">
+                        <i class="fa fa-sign-out"></i> Cerrar Sesión
+                    </a>
+                </div>
+
             </div>
+
+
+
 
             <!-- Page Content -->
             <div class="right_col" role="main">
@@ -54,18 +67,23 @@
     </div>
 
     <!-- jQuery -->
-    <script src="{% static 'vendors/jquery/dist/jquery.min.js' %}"></script>
-    <!-- Bootstrap -->
-    <script src="{% static 'vendors/bootstrap/dist/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <!-- jQuery UI -->
     <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
+
+
+    <!-- Bootstrap JS -->
+    <script src="{% static 'vendors/bootstrap/dist/js/bootstrap.bundle.min.js' %}"></script>
+
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
+
+    <!-- Bootstrap Datepicker JS (inclúyelo después del script de jQuery UI y noConflict) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+
     <!-- Custom Theme Scripts -->
     <script src="{% static 'build/js/custom.min.js' %}"></script>
-
-
-
     {% block extra_js %}{% endblock %}
 </body>
 </html>

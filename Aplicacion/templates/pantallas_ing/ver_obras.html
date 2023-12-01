@@ -1,5 +1,11 @@
 {% extends request.base_template %}
-
+{% block stylesheets %}
+<style>
+    .btn-group {
+        margin-right: 10px; /* Ajusta el margen entre los botones */
+    }
+</style>
+{% endblock %}
 {% block content %}
 <div class="x_panel">
     <div class="x_title">
@@ -7,6 +13,24 @@
         <div class="clearfix"></div>
     </div>
     <div class="x_content">
+        <div class="row">
+            <div class="col-md-3">
+                <!-- Dropdown para seleccionar el campo de filtro -->
+                <select id="filtroCampo" class="form-control">
+                    <option value="cliente">Cliente</option>
+                    <option value="estadoObra">Estado de la Obra</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <!-- Dropdown para seleccionar el valor específico del filtro -->
+                <select id="filtroValor" class="form-control">
+                    <!-- El resto se llenará dinámicamente usando JS -->
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button onclick="window.location.href='{% url 'ver_obras' %}'" class="btn btn-secondary btn-block">Borrar Filtros</button>
+            </div>
+        </div>
         {% if obras %}
         <table class="table table-striped table-bordered">
             <thead>
@@ -24,22 +48,30 @@
             <tbody>
                 {% for obra in obras %}
                 <tr>
-                    <td>{{ obra.proyecto.nombre }}</td>
-                    <td>{{ obra.proyecto.cliente.nombre }}</td>
-                    <td>{{ obra.proyecto.presupuesto.fecha_pago_anticipo }}</td>
-                    <td id="fechaInicio-{{ obra.id }}">{{ obra.fecha_inicio }}</td>
-                    <td>{{ obra.plazo }} días</td>
-                    <td id="fechaFin-{{ obra.id }}">{{ obra.fecha_fin }}</td>
-                    <td id="estado-{{ obra.id }}">{{ obra.get_estado_display }}</td>
+                    <td>{{ obra.obra.proyecto.nombre }}</td>
+                    <td>{{ obra.obra.proyecto.cliente.nombre }}</td>
+                    <td>{{ obra.obra.proyecto.presupuesto.fecha_pago_anticipo }}</td>
+                    <td id="fechaInicio-{{ obra.obra.id }}">
+                        {{ obra.obra.fecha_inicio }}
+                        <input type="hidden" id="obraId1" value="{{ obra.obra.id }}">
+                    </td>
+                    <td>{{ obra.obra.plazo }} días</td>
+                    <td id="fechaFin-{{ obra.obra.id }}">{{ obra.obra.fecha_fin }}</td>
+                    <td id="estado-{{ obra.obra.id }}">{{ obra.obra.get_estado_display }}</td>
                     <td>
-                        <div class="btn-group">
-                            {% if obra.estado == 'NI' and not obra.fecha_inicio %}
-                            <button class="btn btn-primary agendar-inicio-obra" data-id="{{ obra.id }}">Agendar Inicio</button>
-                            <button class="btn btn-primary iniciar-obra" data-id="{{ obra.id }}">Iniciar Obra</button>
-                            {% elif obra.estado == 'NI' %}
-                            <button class="btn btn-secondary iniciar-obra" data-id="{{ obra.id }}">Iniciar Obra hoy</button>
-                            {% elif obra.estado == 'E' %}
-                            <button class="btn btn-primary finalizar-obra" data-id="{{ obra.id }}">Finalizar Obra</button>
+                        <div class="btn-group" role="group" aria-label="Acciones">
+                            {% if obra.obra.estado == 'NI' and not obra.obra.fecha_inicio and not obra.cronograma_existe%}
+                            <button class="btn btn-primary agendar-inicio-obra" data-id="{{ obra.obra.id }}" style="margin-right: 5px;">Agendar Inicio</button>
+                            <a href="{% url 'armar_cronograma' obra.obra.id %}" class="btn btn-primary armar-cronograma-btn" data-fecha-inicio="{{ obra.obra.fecha_inicio }}" data-id="{{ obra.obra.id }}" style="margin-right: 5px;">Armar Cronograma</a>
+                            {% elif obra.obra.estado == 'NI' and obra.cronograma_existe %}
+                            <a href="{% url 'ver_cronograma' obra_id=obra.obra.id cronograma_id=obra.cronograma.id %}" class="btn btn-primary" data-fecha-inicio="{{ obra.obra.fecha_inicio }}" data-id="{{ obra.obra.id }}" style="margin-right: 5px;">Ver Cronograma</a>
+                            <button class="btn btn-primary iniciar-obra" data-id="{{ obra.obra.id }}" style="margin-right: 5px;">Iniciar Obra hoy</button>
+                            {% elif obra.obra.estado == 'NI' and obra.obra.fecha_inicio and not obra.cronograma_existe %}
+                            <a href="{% url 'armar_cronograma' obra.obra.id %}" class="btn btn-primary armar-cronograma-btn" data-fecha-inicio="{{ obra.obra.fecha_inicio }}" data-id="{{ obra.obra.id }}" style="margin-right: 5px;">Armar Cronograma</a>
+                            <button class="btn btn-primary iniciar-obra" data-id="{{ obra.obra.id }}" style="margin-right: 5px;">Iniciar Obra hoy</button>
+                            {% elif obra.obra.estado == 'E' %}
+                            <a href="{% url 'ver_cronograma' obra_id=obra.obra.id cronograma_id=obra.cronograma.id %}" class="btn btn-primary" data-fecha-inicio="{{ obra.obra.fecha_inicio }}" data-id="{{ obra.obra.id }}" style="margin-right: 5px;">Ver Cronograma</a>
+                            <button class="btn btn-primary finalizar-obra" data-id="{{ obra.obra.id }}" style="margin-right: 5px;">Finalizar Obra</button>
                             {% endif %}
                         </div>
                     </td>
@@ -52,7 +84,6 @@
             No se encontraron obras asignadas.
         </div>
         {% endif %}
-        <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
     </div>
 </div>
 
@@ -78,6 +109,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
+
     document.querySelectorAll('.iniciar-obra').forEach(button => {
         button.addEventListener('click', function() {
             const obraId = this.getAttribute('data-id');
@@ -115,6 +147,21 @@
         }
         return cookieValue;
     }
+    // Controlar el botón "Armar Cronograma"
+    document.querySelectorAll('.armar-cronograma-btn').forEach(button => {
+        button.addEventListener('click', function(event) {
+            const obraId = this.getAttribute('data-id');
+            console.log(obraId)
+
+            const fechaInicio = this.getAttribute('data-fecha-inicio');
+            console.log(fechaInicio)
+
+            if (!fechaInicio || fechaInicio.toLowerCase() === 'none') {
+                event.preventDefault(); // Evita que se abra la URL si no hay fecha de inicio
+                alert('Seleccione una fecha de inicio antes de armar el cronograma.');
+            }
+        });
+    });
 document.querySelectorAll('.finalizar-obra').forEach(button => {
     button.addEventListener('click', function() {
         const obraId = this.getAttribute('data-id');
@@ -152,7 +199,7 @@ function formatDate(dateString) {
 document.addEventListener('DOMContentLoaded', function() {
     const modal = new bootstrap.Modal(document.getElementById('agendaInicioModal'));
     let obraIdSeleccionada = null;
-
+    inicializarFiltroValorObra();
     // Mostrar modal al hacer clic en el botón Agendar Inicio
     document.querySelectorAll('.agendar-inicio-obra').forEach(button => {
         button.addEventListener('click', function() {
@@ -160,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.show();
         });
     });
+
 
     // Confirmar fecha seleccionada
     document.getElementById('confirmarFechaInicio').addEventListener('click', function() {
@@ -188,6 +236,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.status === 'success') {
                     // Actualizar la fecha en el frontend
                     document.getElementById(`fechaInicio-${obraIdSeleccionada}`).textContent = formatDate(fechaSeleccionada);
+
+                    // Actualizar la fecha en el botón "Armar Cronograma"
+                    const armarCronogramaButton = document.querySelector(`a.armar-cronograma-btn[data-id="${obraIdSeleccionada}"]`);
+                    if (armarCronogramaButton) {
+                        armarCronogramaButton.setAttribute('data-fecha-inicio', fechaSeleccionada);
+                    }
+
+                    // Ocultar el botón Agendar Inicio
+                    const agendarInicioButton = document.querySelector(`button.agendar-inicio-obra[data-id="${obraIdSeleccionada}"]`);
+                    if (agendarInicioButton) {
+                        agendarInicioButton.style.display = 'none';
+                    }
                     modal.hide();
                 } else {
                     alert('Hubo un error al actualizar la fecha de inicio.');
@@ -195,7 +255,90 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-});
 
+    // Función de inicialización para el dropdown filtroValor
+    function inicializarFiltroValorObra() {
+        let campoSeleccionado = document.getElementById('filtroCampo').value;
+        let dropdownValor = document.getElementById('filtroValor');
+
+        // Limpiar opciones previas
+        while (dropdownValor.firstChild) {
+            dropdownValor.removeChild(dropdownValor.firstChild);
+        }
+
+        let defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.text = "-- Seleccione --";
+        dropdownValor.appendChild(defaultOption);
+
+        let url = '';  // URL de donde obtener los datos
+
+        switch (campoSeleccionado) {
+            case 'cliente':
+                url = '/obtener_clientes_con_obras/';
+                break;
+            case 'estadoObra':
+                url = '/obtener_estados_obras_ing/';
+                break;
+        }
+
+        // Si hay una URL válida, hacer la solicitud AJAX
+        if (url) {
+            fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(item => {
+                    let option = document.createElement('option');
+                    option.value = item;
+                    option.text = item;
+                    dropdownValor.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error al obtener datos:', error);
+            });
+        }
+    }
+    // Evento para el cambio en el selector de campo
+    document.getElementById('filtroCampo').addEventListener('change', function() {
+        inicializarFiltroValorObra(); // Llamar a la función al cambiar el campo
+        filtrarObras(); // Aplicar el filtro cuando cambie el campo
+    });
+
+    // Evento para el cambio en el selector de valor
+    document.getElementById('filtroValor').addEventListener('change', filtrarObras);
+
+
+    // Función para filtrar proyectos basado en la selección del usuario
+    function filtrarObras() {
+        let campoSeleccionado = document.getElementById('filtroCampo').value;
+        let valorSeleccionado = document.getElementById('filtroValor').value;
+
+        if (valorSeleccionado) {
+            // Hacer una solicitud AJAX para enviar los datos a la vista
+            $.ajax({
+                url: '/ver_obras_filtrados/', // Reemplaza con la URL correcta
+                type: 'GET',
+                data: {
+                    campo: campoSeleccionado,
+                    valor: valorSeleccionado
+                },
+                success: function(response) {
+                    // Verificar si la respuesta contiene una URL de redirección
+                    if (response.redirect_url) {
+                        window.location.href = response.redirect_url;
+                    } else {
+                        // En caso de que no haya una URL de redirección en la respuesta, manejarlo como desees
+                        console.log('La solicitud AJAX se completó correctamente, pero no se proporcionó una URL de redirección.');
+                    }
+                },
+                error: function(error) {
+                    console.error(error);
+                    alert('Hubo un error al filtrar los presupuestos.');
+                }
+            });
+        }
+    }
+});
 </script>
 {% endblock %}

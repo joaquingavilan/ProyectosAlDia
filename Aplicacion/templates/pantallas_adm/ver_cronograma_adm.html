@@ -1,0 +1,77 @@
+{% extends request.base_template %}
+
+{% block content %}
+<div class="right_col" role="main">
+    <div class="page-title">
+        <div class="title_left w-100">
+            <h3>Cronograma para el proyecto <strong>{{ obra.proyecto.nombre }}</strong></h3>
+            <h2>La fecha de inicio es el <strong class="text-uppercase">{{ obra.fecha_inicio }}</strong>, el plazo es de <strong class="text-uppercase">{{ obra.plazo }} días</strong></h2>
+            <br>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <!-- Aquí asumimos que la estructura de tu cronograma y cómo se representa es similar a armar_cronograma -->
+    <div class="row">
+        <div class="col-md-12 col-sm-12 ">
+            <div class="x_panel">
+                <div class="x_content">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Rubro</th>
+                                    <th>Un</th>
+                                    <th>Cant.</th>
+                                    <th>P. Unitario</th>
+                                    <th>P. Total</th>
+                                    <th>Fecha</th> <!-- Nueva columna para las fechas -->
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for seccion, subsecciones_data in estructura_presupuesto.items %}
+                                <tr class="table-secondary">
+                                    <td><strong>{{ seccion.nombre }}</strong></td>
+                                    <td colspan="6"></td>
+                                </tr>
+
+                                {% for subseccion, detalles in subsecciones_data.items %}
+                                    <tr class="table-light">
+                                        <td>&emsp;&emsp;{{ subseccion.nombre }}</td>
+                                        <td colspan="5"></td>
+                                        <td></td>
+                                    </tr>
+
+                                    {% for detalle, fecha, estado in detalles %}
+                                        <tr>
+                                            <td>&emsp;&emsp;&emsp;&emsp;{{ detalle.rubro }}</td>
+                                            <td>{{ detalle.unidad_medida.nombre }}</td>
+                                            <td>{{ detalle.cantidad }}</td>
+                                            <td>{{ detalle.precio_unitario }}</td>
+                                            <td>{{ detalle.precio_total }}</td>
+                                            <td>{{ fecha }}</td>
+                                            <td>{%if realizado %}
+                                                Completado
+                                                {% else %}
+                                                Pendiente
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+
+
+                        </table>
+
+                    </div>
+                </div>
+                <a href="{% url 'ver_obras_adm' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Obras</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -27,18 +27,20 @@
                 </div>
                 <div id="resultadosBusqueda"></div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select id="filtroCampo" class="custom-select">
                     <option value="cliente">Cliente</option>
                     <option value="encargadoPresupuesto">Encargado del Presupuesto</option>
                     <option value="estadoPresupuesto">Estado del Presupuesto</option>
                     <option value="encargadoObra">Encargado de la Obra</option>
                     <option value="estadoObra">Estado de la Obra</option>
-                    <option value="ciudad">Ciudad</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select id="filtroValor" class="custom-select"></select>
+            </div>
+            <div class="col-md-2">
+                <button onclick="window.location.href='{% url 'ver_proyectos' %}'" class="btn btn-secondary btn-block">Borrar Filtros</button>
             </div>
             <div class="col-md-3 d-flex justify-content-end">
                 <a href="{% url 'registrar_proyecto' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir proyecto</a>
@@ -146,8 +148,19 @@ function inicializarFiltroValorProyectos() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
     let dropdownValor = document.getElementById('filtroValor');
 
-    // Limpiar opciones previas
-    dropdownValor.innerHTML = '';
+    // Limpiar opciones previas excepto la primera opción "Seleccione"
+    let options = dropdownValor.options;
+    for (let i = options.length - 1; i > 0; i--) {
+        dropdownValor.remove(i);
+    }
+
+    // Agregar la opción "Seleccione" si no está presente
+    if (dropdownValor.options.length === 0) {
+        let defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.text = "-- Seleccione --";
+        dropdownValor.appendChild(defaultOption);
+    }
 
     let url = '';  // URL de donde obtener los datos
 
@@ -166,9 +179,6 @@ function inicializarFiltroValorProyectos() {
             break;
         case 'estadoObra':
             url = '/obtener_estados_obra/';
-            break;
-        case 'ciudad':
-            url = '/obtener_ciudades_con_proyectos/';
             break;
     }
 
@@ -218,9 +228,6 @@ function filtrarProyectos() {
             break;
         case 'estadoObra':
             url = `/ver_proyectos_estado_obra/${valorSeleccionado}/`;
-            break;
-        case 'ciudad':
-            url = `/ver_proyectos_ciudad/${valorSeleccionado}/`;
             break;
     }
 

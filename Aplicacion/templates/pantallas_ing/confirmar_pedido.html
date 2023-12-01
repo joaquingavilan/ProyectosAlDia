@@ -1,47 +1,84 @@
 {% extends request.base_template %}
 
 {% block content %}
-<h1 class="display-4 text-center">Confirmar Pedido</h1>
-<h2 class="display-4 text-center">Obra: {{obra.proyecto.nombre}}</h2>
+<div class="right_col" role="main">
+    <div class="page-title">
+      <div class="title_left">
+        <h1>Confirmar Pedido</h1>
+      </div>
+    </div>
 
-<form method="POST" action="{% url 'confirmar_pedido' %}">
-    {% csrf_token %}
-    <input type="hidden" name="obra" value="{{ obra.id }}">
+    <div class="clearfix"></div>
 
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Nombre del producto</th>
-                <th>Fotografia</th>
-                <th>Cantidad</th>
-                <th>Unidad de medida</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for material_pedido in materiales_pedido %}
-            <tr>
-                <td>{{ material_pedido.material.nombre }}</td>
-                <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" class="img-fluid" alt="{{ material_pedido.material.nombre }}" style="max-width: 100px;"></a></td>
-                <td>
-                    <div class="input-group">
-                        <button type="button" class="btn btn-outline-secondary decrement-btn" onclick="decrementQuantity({{ material_pedido.material.id }}, event)">-</button>
-                        <input type="text" class="form-control text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="{{ material_pedido.cantidad }}" readonly>
-                        <button type="button" class="btn btn-outline-secondary increment-btn" onclick="incrementQuantity({{ material_pedido.material.id }}, event)">+</button>
-                        <input type="hidden" id="minimo_{{ material_pedido.material.id }}" value="{{ material_pedido.material.minimo }}">
+    <div class="row">
+      <div class="col-md-12 col-sm-12 ">
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Obra: {{ obra.proyecto.nombre }}</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <br />
+
+            <form method="POST" action="{% url 'confirmar_pedido' %}" class="form-horizontal form-label-left">
+                {% csrf_token %}
+                <input type="hidden" name="obra" value="{{ obra.id }}">
+
+                <div class="table-responsive">
+                    <table class="table table-striped jambo_table bulk_action">
+                      <thead>
+                        <tr class="headings">
+                          <th class="column-title">Nombre del producto</th>
+                          <th class="column-title">Marca</th>
+                          <th class="column-title" style="width: 20%;">Fotografía</th> <!-- Aumentado el ancho -->
+                          <th class="column-title" style="width: 15%;">Cantidad</th> <!-- Reducido el ancho -->
+                          <th class="column-title" style="width: 15%;">Unidad de medida</th> <!-- Reducido el ancho -->
+                          <th class="column-title no-link last" style="width: 10%;"><span class="nobr">Acciones</span></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for material_pedido in materiales_pedido %}
+                        <tr class="even pointer">
+                          <td>{{ material_pedido.material.nombre }}</td>
+                          <td>{{ material_pedido.material.marca }}</td>
+                          <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" class="img-fluid" alt="{{ material_pedido.material.nombre }}" style="max-width: 150px;"></a></td> <!-- Ajustado el max-width de la imagen -->
+                          <td>
+                            <div class="input-group">
+                              <span class="input-group-btn">
+                                <button type="button" class="btn btn-default btn-number" onclick="decrementQuantity({{ material_pedido.material.id }}, event)">
+                                  <span class="glyphicon glyphicon-minus"></span>
+                                </button>
+                              </span>
+                              <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="{{ material_pedido.cantidad }}" readonly>
+                              <span class="input-group-btn">
+                                <button type="button" class="btn btn-default btn-number" onclick="incrementQuantity({{ material_pedido.material.id }}, event)">
+                                  <span class="glyphicon glyphicon-plus"></span>
+                                </button>
+                              </span>
+                            </div>
+                          </td>
+                          <td>{{ material_pedido.material.medida }}</td>
+                          <td>
+                            <button class="btn btn-danger" onclick="eliminarMaterial({{ material_pedido.material.id }})"><i class="fa fa-trash"></i></button>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-md-12 col-sm-12 text-right">
+                        <button type="submit" class="btn btn-success">Realizar Pedido</button>
                     </div>
-                </td>
-                <td>{{material_pedido.material.medida }}</td>
-                <td>
-                    <button class="btn btn-danger eliminar-btn" onclick="eliminarMaterial({{ material_pedido.material.id }})">Eliminar del pedido</button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </div>
+            </form>
 
-    <button type="submit" class="btn btn-primary">Realizar Pedido</button>
-</form>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
 {% endblock %}
 {% block extra_js %}
   <script>

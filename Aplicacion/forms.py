@@ -11,6 +11,8 @@ class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(label=_('Correo electrónico'), max_length=254)
     telefono = forms.CharField(label=_("Teléfono"), max_length=20, required=False)  # Campo teléfono
     direccion = forms.CharField(label=_("Dirección"), max_length=255, required=False)  # Campo dirección
+    password1 = forms.CharField(label="Contraseña", widget=forms.PasswordInput)
+    password2 = forms.CharField(label="Confirmar contraseña", widget=forms.PasswordInput)
     username = forms.CharField(
         label=_('Nombre de usuario'),
         max_length=150,

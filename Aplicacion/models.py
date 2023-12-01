@@ -82,11 +82,26 @@ class Proveedor(models.Model):
         return f"{self.id} - {self.nombre}"
 
 
+class UnidadMedida(models.Model):
+    descripcion = models.CharField(max_length=50)
+    nombre = models.CharField(max_length=10)
+
+    def __str__(self):
+        return self.nombre
+
+
+class Marca(models.Model):
+    nombre = models.CharField(max_length=10)
+
+    def __str__(self):
+        return self.nombre
+
+
 class Material(models.Model):
     nombre = models.CharField(max_length=100)
-    marca = models.CharField(max_length=100)
+    marca = models.ForeignKey(Marca, on_delete=models.CASCADE)
     id_proveedor = models.ForeignKey(Proveedor, on_delete=models.CASCADE)
-    medida = models.CharField(max_length=50)
+    medida = models.ForeignKey(UnidadMedida, on_delete=models.CASCADE)
     minimo = models.PositiveIntegerField()
     unidades_stock = models.PositiveIntegerField()
     fotografia = models.ImageField(upload_to='imagenes/', blank=True, null=True)
@@ -116,6 +131,8 @@ class Obra(models.Model):
 class Presupuesto(models.Model):
     proyecto = models.OneToOneField('Proyecto', on_delete=models.CASCADE)
     encargado = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groups__name='INGENIERO'))
+    subtotal = models.DecimalField(_('subtotal'), max_digits=15, decimal_places=0, null=True, blank=True)
+    iva = models.DecimalField(_('IVA'), max_digits=15, decimal_places=0, null=True, blank=True)
     monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
     anticipo = models.BooleanField(_('anticipo'), default=False)
     monto_anticipo = models.DecimalField(_('monto anticipo'), max_digits=15, decimal_places=0, null=True)
@@ -181,17 +198,6 @@ class MaterialPedido(models.Model):
         return f'{self.material} - {self.pedido}'
 
 
-class Certificado(models.Model):
-    presupuesto = models.ForeignKey(Presupuesto, on_delete=models.CASCADE)
-    ingeniero = models.ForeignKey(User, on_delete=models.CASCADE)
-    fecha = models.DateField()
-    ESTADOS = (
-        ('P', 'Presentado'),
-        ('G', 'Pagado'),
-    )
-    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
-
-
 class Seccion(models.Model):
     nombre = models.CharField(max_length=255)
 
@@ -202,14 +208,6 @@ class Seccion(models.Model):
 class SubSeccion(models.Model):
     secciones = models.ManyToManyField('Seccion', blank=True)  # 'Seccion' es el nombre de tu modelo de sección
     nombre = models.CharField(max_length=255)
-
-    def __str__(self):
-        return self.nombre
-
-
-class UnidadMedida(models.Model):
-    descripcion = models.CharField(max_length=50)
-    nombre = models.CharField(max_length=10)
 
     def __str__(self):
         return self.nombre
@@ -232,3 +230,32 @@ class ArchivoPresupuesto(models.Model):
     secciones = models.ManyToManyField(Seccion)
     subsecciones = models.ManyToManyField(SubSeccion)
     detalles = models.ManyToManyField(Detalle)
+
+
+class Cronograma(models.Model):
+    archivo_presupuesto = models.OneToOneField(ArchivoPresupuesto, on_delete=models.CASCADE)
+
+
+class DetalleCronograma(models.Model):
+    cronograma = models.ForeignKey(Cronograma, on_delete=models.CASCADE, related_name='detalles_cronograma')
+    detalle = models.ForeignKey(Detalle, on_delete=models.CASCADE)
+    fecha = models.DateField(null=True, blank=True)
+    realizado = models.BooleanField(default=False)  # Campo booleano para indicar si la actividad fue realizada
+
+    def __str__(self):
+        return f"{self.detalle} - {self.fecha}"
+
+
+class Certificado(models.Model):
+    presupuesto = models.ForeignKey(Presupuesto, on_delete=models.CASCADE)
+    ingeniero = models.ForeignKey(User, on_delete=models.CASCADE)
+    fecha = models.DateField()
+    ESTADOS = (
+        ('P', 'Presentado'),
+        ('G', 'Pagado'),
+    )
+    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
+    detalles = models.ManyToManyField(Detalle)
+    monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
+
+

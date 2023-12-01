@@ -114,7 +114,9 @@
                     <td>{{ obra.fecha_fin }}</td>
                     <td>{{ obra.plazo }}</td>
                     <td>{{ obra.get_estado_display }}</td>
-                    <td><a href="#" class="btn btn-primary btn-sm">Ver</a></td>
+                    <td><a href="{% url 'ver_cronograma_adm' obra.id %}" class="btn btn-primary btn-sm">Ver Cronograma</a>
+                        <a href="{% url 'ver_pedidos_adm' obra.id %}" class="btn btn-primary btn-sm">Ver Pedidos de materiales</a>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -172,6 +174,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    const errorMessages = document.getElementById('error-messages');
+
+    // Mostrar el elemento de mensajes de error si contiene algún mensaje
+    if (errorMessages && errorMessages.textContent.trim() !== '') {
+        const errorMessage = errorMessages.textContent.trim();
+        alert(errorMessage); // Mostrar el mensaje de error como un alert
+    }
 });
 
 function getCookie(name) {

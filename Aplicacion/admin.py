@@ -16,4 +16,7 @@ admin.site.register(SubSeccion)
 admin.site.register(Detalle)
 admin.site.register(UnidadMedida)
 admin.site.register(ArchivoPresupuesto)
-
+admin.site.register(Cronograma)
+admin.site.register(DetalleCronograma)
+admin.site.register(Marca)
+admin.site.register(Ciudad)

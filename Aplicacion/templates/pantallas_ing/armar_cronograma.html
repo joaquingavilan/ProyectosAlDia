@@ -1,0 +1,226 @@
+{% extends request.base_template %}
+<!-- Bootstrap JS (necesario para Datepicker) -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<!-- Datepicker JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+{% block stylesheets %}
+<style>
+</style>
+
+
+{% endblock %}
+
+{% block content %}
+<div class="right_col" role="main"> <!-- Asegúrate de que esta clase coincide con el contenedor principal en Gentelella -->
+    <div class="page-title">
+        <div class="title_left w-100">
+            <h3>Armar Cronograma para el proyecto <strong>{{obra.proyecto.nombre}}</strong></h3>
+            <h2>La fecha de inicio es el <strong class="text-uppercase">{{obra.fecha_inicio}}</strong>, el plazo es de  <strong class="text-uppercase">{{obra.plazo}} dias</strong></h2>
+            <br>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <div class="row">
+        <div class="col-md-12 col-sm-12 ">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Indique la fecha en que se ejecutará cada rubro</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Rubro</th>
+                                    <th>Un</th>
+                                    <th>Cant.</th>
+                                    <th>P. Unitario</th>
+                                    <th>P. Total</th>
+                                    <th>Fecha</th> <!-- Nueva columna para las fechas -->
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for seccion, subsecciones_data in estructura_presupuesto %}
+                                    <tr class="table-secondary">
+                                        <td><strong>{{ seccion.nombre }}</strong></td>
+                                        <td colspan="4"></td>
+                                        <td>
+                                            <div class="fecha-container">
+                                                <!-- Agregar un identificador único basado en la sección -->
+                                                <input type="date" class="fecha-seccion" data-seccion="{{ seccion.id }}">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% for subseccion, detalles in subsecciones_data %}
+                                        <tr class="table-light table-secondary">
+                                            <td>&emsp;&emsp;{{ subseccion.nombre }}</td>
+                                            <td colspan="4"></td>
+                                            <td>
+                                                <div class="fecha-container">
+                                                    <!-- Agregar un identificador único basado en la subsección -->
+                                                    <input type="date" class="fecha-subseccion subseccion-seccion-{{ seccion.id }}" data-subseccion="{{ subseccion.id }}">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% for detalle in detalles %}
+                                            <tr>
+                                                <td>&emsp;&emsp;&emsp;&emsp;{{ detalle.rubro }}</td>
+                                                <td>{{ detalle.unidad }}</td>
+                                                <td>{{ detalle.cantidad }}</td>
+                                                <td>{{ detalle.precio_unitario }}</td>
+                                                <td>{{ detalle.precio_total }}</td>
+                                                <td>
+                                                    <div class="fecha-container">
+                                                        <input type="hidden" id="fechaInicioObra" value="{{ fecha_inicio }}">
+                                                        <input type="hidden" id="proyectoId" value="{{ obra.proyecto.id }}">
+                                                        <!-- Agregar un identificador único basado en el detalle -->
+                                                        <input type="date" class="fecha-detalle detalle-seccion-{{ seccion.id }} detalle-subseccion-{{ subseccion.id }}" data-detalle="{{ detalle.id }}">
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Botón de Guardar Cronograma -->
+                        <form id="miFormulario" method="POST" action="/guardar_cronograma/">
+                            {% csrf_token %}
+                            <button type="button" class="btn btn-primary" id="guardarCronograma" data-cronograma-id="{{ cronograma.id }}"><i class="fa fa-save"></i> Guardar Cronograma</button>
+                        </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+{% block extra_js %}
+<script>
+
+    // Manejar cambios en la fecha de la sección
+    $('.fecha-seccion').change(function () {
+        var fechaSeleccionada = $(this).val();
+        // Obtener el identificador de la sección
+        var seccionId = $(this).data('seccion');
+
+        // Propagar la fecha a los detalles dentro de la misma sección
+        $('.fecha-subseccion.subseccion-seccion-' + seccionId).val(fechaSeleccionada);
+        $('.fecha-detalle.detalle-seccion-' + seccionId).val(fechaSeleccionada);
+    });
+
+    // Manejar cambios en la fecha de la subsección
+    $('.fecha-subseccion').change(function () {
+        var fechaSeleccionada = $(this).val();
+        // Obtener el identificador de la subsección
+        var subseccionId = $(this).data('subseccion');
+
+        // Propagar la fecha a los detalles dentro de la misma subsección
+        $('.fecha-detalle.detalle-subseccion-' + subseccionId).val(fechaSeleccionada);
+    });
+
+     // Función para verificar que no haya detalles con fecha nula
+    function verificarFechasValidas() {
+
+        var detallesConFechaNula = $('.fecha-detalle').filter(function() {
+            return $(this).val() === '';
+        });
+
+        if (detallesConFechaNula.length > 0) {
+            alert('Asegúrate de que todas las fechas estén completadas antes de guardar.');
+            return false;
+        }
+
+        var fechaActual = new Date();
+        var detallesConFechaInvalida = $('.fecha-detalle').filter(function() {
+            var fechaSeleccionada = new Date($(this).val());
+            return fechaSeleccionada < fechaActual;
+        });
+
+        if (detallesConFechaInvalida.length > 0) {
+            alert('Asegúrate de que todas las fechas sean posteriores a la fecha actual.');
+            return false;
+        }
+
+        const fechaInicioObraStr = $('#fechaInicioObra').val().trim();
+        const fechaInicioObra = new Date(fechaInicioObraStr);
+        console.log(fechaInicioObra)
+
+        const detallesConFechaMenorAInicio = $('.fecha-detalle').filter(function() {
+            const fechaSeleccionada = new Date($(this).val());
+            console.log(fechaSeleccionada)
+            return fechaSeleccionada < fechaInicioObra;
+        });
+
+        if (detallesConFechaMenorAInicio.length > 0) {
+            alert('Asegúrate de que todas las fechas sean posteriores a la fecha de inicio de la obra.');
+            return false;
+        }
+
+        return true;
+    }
+
+    // Manejar el clic en el botón de Guardar Cronograma
+    $('#guardarCronograma').click(function() {
+        // Verificar que no haya detalles con fecha nula
+        if (!verificarFechasValidas()) {
+            return; // No se permite guardar si hay fechas nulas
+        }
+            const datosAEnviar = [];
+
+        // Recorrer solo las filas de detalle
+        $('table tbody tr:not(.table-secondary)').each(function() {
+            const fila = $(this);
+
+            // Obtener el ID del detalle desde el atributo data-detalle
+            const detalleId = fila.find('input[data-detalle]').data('detalle');
+
+            // Obtener la fecha seleccionada desde el campo de fecha
+            const fechaSeleccionada = fila.find('input[type="date"]').val();
+
+            // Agregar los datos al objeto
+            datosAEnviar.push({
+                detalleId: detalleId,
+                fechaSeleccionada: fechaSeleccionada
+            });
+        });
+        if (datosAEnviar.length === 0) {
+            alert('No hay datos para guardar.');
+            return;
+        }
+        proyecto_id=$('#proyectoId').val()
+        var csrftoken = $('input[name=csrfmiddlewaretoken]').val();
+
+        // Enviar los datos a la vista mediante una solicitud AJAX
+        $.ajax({
+            url: '/guardar_cronograma/', // Reemplaza con la URL correcta de tu vista
+            type: 'POST',
+            data: JSON.stringify({
+                detalles: datosAEnviar,
+                proyecto_id: proyecto_id,
+            }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            headers: {
+                'X-CSRFToken': csrftoken // Agrega el token CSRF como encabezado
+            },
+            success: function(response) {
+                // Manejar la respuesta de la vista aquí
+                console.log(response);
+                window.location.href = '/pantallas_ing/ver_obras/';
+            },
+            error: function(error) {
+                // Manejar errores aquí
+                console.error(error);
+            }
+        });
+    });
+</script>
+{% endblock %}

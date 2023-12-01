@@ -10,8 +10,7 @@
                 <li><a href="{% url 'ver_proyectos' %}"><i class="fa fa-tasks"></i> Proyectos </a></li>
                 <li><a href="{% url 'ver_presupuestos_adm' %}"><i class="fa fa-dollar"></i> Presupuestos </a></li>
                 <li><a href="{% url 'ver_obras_adm' %}"><i class="fa fa-building"></i> Obras </a></li>
-                <li><a href="{% url 'ver_presupuestos_adm' %}"><i class="fa fa-certificate"></i> Certificados </a></li>
-                <li><a href="{% url 'ver_presupuestos_adm' %}"><i class="fa fa-credit-card"></i> Pagos </a></li>
+                <!-- <li><a href="{% url 'ver_presupuestos_adm' %}"><i class="fa fa-certificate"></i> Certificados </a></li>-->
                 <li><a href="{% url 'ver_ingenieros' %}"><i class="fa fa-users"></i> Ingenieros </a></li>
                 <li><a href="{% url 'ver_clientes' %}"><i class="fa fa-briefcase"></i> Clientes </a></li>
                 <li><a href="{% url 'ver_proveedores' %}"><i class="fa fa-truck"></i> Proveedores </a></li>
@@ -21,19 +20,4 @@
     </div>
 {% endblock %}
 
-{% block top_navigation %}
-    <div class="nav toggle">
-        <a id="menu_toggle"><i class="fa fa-bars"></i></a>
-    </div>
-    <div class="nav_menu">
-        <nav>
-            <ul class="nav navbar-nav navbar-right">
-                <li class="">
-                    <a href="{% url 'salir' %}" class="user-profile">
-                        <i class="fa fa-sign-out"></i> Cerrar sesión
-                    </a>
-                </li>
-            </ul>
-        </nav>
-    </div>
-{% endblock %}
+

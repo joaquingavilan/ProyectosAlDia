@@ -5,8 +5,9 @@ from .forms import *
 from django.db.models import Q, F, Sum
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, UserChangeForm
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User, Group
+from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 import re, locale, json, os
 from datetime import date, datetime
@@ -15,20 +16,32 @@ from django.contrib import messages
 from django.forms import formset_factory
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+import openpyxl
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment, Font, Border, Side, PatternFill
 import pandas as pd
 from django.core.files import File
 from django.views.decorators.csrf import csrf_exempt
 from decimal import Decimal
+from django.core import serializers
 from django.core.serializers import serialize
 from reportlab.lib.pagesizes import letter, landscape, A4
 from reportlab.lib import colors
+from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, Paragraph
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.forms import PasswordChangeForm
+from reportlab.pdfgen import canvas
 import logging
+from collections import defaultdict
+from django.urls import reverse
+from datetime import timedelta
+from django.contrib.auth.forms import PasswordChangeForm
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +107,7 @@ def loguear_usuario(request):
         error = ''
     return render(request, 'ABM/usuarios/login.html', {'error': error})
 
-
+@login_required
 def cambiar_password(request):
     if request.method == 'POST':
         form = PasswordChangeForm(user=request.user, data=request.POST)
@@ -125,8 +138,8 @@ def registrar_cliente(request):
         email = request.POST.get('email')
         tipo_persona = request.POST.get('tipo_persona')
         direccion = request.POST.get('direccion')
-        nombre_ciudad = request.POST.get('ciudad')
-        ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
+        id_ciudad = request.POST.get('ciudad')
+        ciudad = Ciudad.objects.get(id=id_ciudad)
         telefono = request.POST.get('telefono')
         observaciones = request.POST.get('observaciones')
 
@@ -305,7 +318,6 @@ def eliminar_contacto(request, contacto_id):
 
 #                   VISTAS PARA INGENIERO
 
-
 def registrar_ingeniero(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
@@ -316,29 +328,23 @@ def registrar_ingeniero(request):
             apellido = form.cleaned_data['last_name']
             telefono = form.cleaned_data['telefono']
             direccion = form.cleaned_data['direccion']
-            # Verificamos que el nombre y apellido solo contienen letras
-            if not re.match(r'^[A-Za-záéíóúÁÉÍÓÚñÑ ]+$', nombre):
-                form.add_error('first_name', "Nombre inválido. Solo se permiten letras, acentos y espacios.")
-            if not re.match(r'^[A-Za-záéíóúÁÉÍÓÚñÑ ]+$', apellido):
-                form.add_error('last_name', "Apellido inválido. Solo se permiten letras, acentos y espacios.")
-            if not re.search(r'[A-Za-z]', username):
-                form.add_error('username', "Nombre de usuario inválido.")
-            if form.errors:
-                return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form})
-            # Si no hay errores adicionales, creamos el usuario
+            password = form.cleaned_data['password1']  # Obtener la contraseña ingresada
+
+            # Resto del código para validar y crear el usuario
+
+            # Si no hay errores adicionales, creamos el usuario y establecemos la contraseña
             if not form.errors:
-                usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido,
-                                       email=email)
-                usuario.set_password('12345')  # Establece la contraseña predeterminada
+                usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido, email=email)
+                usuario.set_password(password)  # Establece la contraseña ingresada por el usuario
                 usuario.save()
-                personal = Personal(user=usuario, telefono=telefono, direccion=direccion, must_change_password=True)
-                personal.save()
-                group = Group.objects.get(name='INGENIERO')
-                usuario.groups.add(group)
+
+                # Resto del código para guardar otros datos del usuario
+
+                # Inicia sesión al usuario después de crearlo
+                login(request, usuario)
+
                 return redirect('ver_ingenieros')
-        else:
-            # Si el formulario no es válido, simplemente renderizamos la página con los errores
-            return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form})
+
     else:
         form = CustomUserCreationForm()
         no_obligatorios = ['Teléfono', 'Dirección']
@@ -477,8 +483,8 @@ def registrar_proveedor(request):
         ruc = request.POST.get('ruc')
         email = request.POST.get('email')
         direccion = request.POST.get('direccion')
-        nombre_ciudad = request.POST.get('ciudad')
-        ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
+        id_ciudad = request.POST.get('ciudad')
+        ciudad = Ciudad.objects.get(id=id_ciudad)
         telefono = request.POST.get('telefono')
         observaciones = request.POST.get('observaciones')
         pagina_web = request.POST.get('pagina_web')
@@ -818,7 +824,6 @@ def ver_proyecto(request, id_proyecto):
 
 
 def ver_presupuestos(request):
-    # falta verificar que el monto total sea valido y mostrar la misma pagina con el error si no lo es
     presupuestos = Presupuesto.objects.filter(encargado=request.user)
 
     return render(request, 'pantallas_ing/ver_presupuestos.html', {'presupuestos': presupuestos})
@@ -826,30 +831,42 @@ def ver_presupuestos(request):
 
 def ver_obras(request):
     obras = Obra.objects.filter(encargado=request.user)
-    return render(request, 'pantallas_ing/ver_obras.html', {'obras': obras})
+
+    # Iterar sobre las obras y agregar parámetros adicionales
+    obras_con_parametros = []
+    for obra in obras:
+        cronograma = Cronograma.objects.get(archivo_presupuesto__presupuesto__proyecto=obra.proyecto)
+        # Obtener el cronograma asociado a la obra
+        # Verificar si existe un cronograma y si al menos un detalle tiene fecha
+        if cronograma and cronograma.detalles_cronograma.filter(fecha__isnull=False).exists():
+            cronograma_existente = True
+        else:
+            cronograma_existente = False
+        print(cronograma_existente)
+        obra_parametros = {
+            'obra': obra,
+            'cronograma_existe': cronograma_existente,
+            'cronograma': cronograma
+        }
+        obras_con_parametros.append(obra_parametros)
+
+    return render(request, 'pantallas_ing/ver_obras.html', {'obras': obras_con_parametros})
 
 
 def pedido_materiales(request):
-    # Obtener todas las obras del ingeniero logueado
     obras = Obra.objects.filter(encargado=request.user)
+    search_query = request.GET.get('search', '')
 
-    # Obtener todos los materiales disponibles
-    materiales = Material.objects.all()
-    search_query = ''
-    # Manejar el formulario de búsqueda
-    if request.method == 'GET':
-        search_query = request.GET.get('search', '')
-        if search_query:
-            # Filtrar los materiales por nombre o marca según la búsqueda
-            materiales = materiales.filter(
-                Q(nombre__icontains=search_query) |
-                Q(marca__icontains=search_query)
-            )
-        context = {
-            'obras': obras,
-            'materiales': materiales,
-            'search_query': search_query
-        }
+    # Filtrar los materiales por nombre o marca según la búsqueda
+    if search_query:
+        materiales = Material.objects.filter(
+            Q(nombre__icontains=search_query) |
+            Q(marca__icontains=search_query)
+        )
+    else:
+        # Si no hay búsqueda, mostrar todos los materiales
+        materiales = Material.objects.all()
+
     if request.method == 'POST':
         materiales_pedido = []
         obra = get_object_or_404(Obra, id=request.POST.get('obra'))
@@ -863,6 +880,17 @@ def pedido_materiales(request):
         # Por ejemplo, puedes crear las instancias MaterialPedido aquí.
         return render(request, 'pantallas_ing/confirmar_pedido.html', {'materiales_pedido': materiales_pedido, 'obra': obra})
 
+    # Paginación de materiales
+    paginator = Paginator(materiales, 12)  # Muestra 18 materiales por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Asegúrate de que el contexto incluya 'page_obj' y no 'materiales' directamente
+    context = {
+        'obras': obras,
+        'page_obj': page_obj,
+        'search_query': search_query
+    }
     return render(request, 'pantallas_ing/pedido_materiales.html', context)
 
 
@@ -906,11 +934,33 @@ def ver_pedidos(request):
     return render(request, 'pantallas_ing/ver_pedidos.html', context)
 
 
+def ver_pedidos_adm(request, obra_id):
+    obra = Obra.objects.get(id=obra_id)
+    # Obtener todos los pedidos del usuario actualmente logueado
+    pedidos = Pedido.objects.filter(obra=obra)
+    # Obtener la suma de la cantidad de cada material en la obra
+    materiales_con_cantidad = Material.objects.filter(materialpedido__pedido__obra=obra).annotate(
+        total_cantidad=Sum('materialpedido__cantidad')
+    )
+    context = {
+        'obra': obra,
+        'pedidos': pedidos,
+        'materiales_con_cantidad': materiales_con_cantidad
+    }
+
+    return render(request, 'pantallas_adm/ver_pedidos_adm.html', context)
 # vistas para filtros
 
 
 def obtener_clientes_con_proyectos(request):
     clientes = Proyecto.objects.values_list('cliente__nombre', flat=True).distinct()
+    return JsonResponse(list(clientes), safe=False)
+
+
+def obtener_clientes_con_obras(request):
+    obras = Obra.objects.filter(encargado=request.user)
+    clientes = obras.values_list('proyecto__cliente__nombre', flat=True).distinct()
+
     return JsonResponse(list(clientes), safe=False)
 
 
@@ -924,6 +974,15 @@ def obtener_estados_presupuesto(request):
     estados_presentes = Presupuesto.objects.values_list('estado', flat=True).distinct()
     # Convertir esos estados a sus representaciones legibles
     estados = [dict(Presupuesto.ESTADOS)[estado] for estado in estados_presentes]
+    return JsonResponse(list(estados), safe=False)
+
+
+def obtener_estados_obras_ing(request):
+    # Obtener los estados que realmente están en la base de datos
+    obras = Obra.objects.filter(encargado=request.user)
+    estados_presentes = obras.values_list('estado', flat=True).distinct()
+    # Convertir esos estados a sus representaciones legibles
+    estados = [dict(Obra.ESTADOS)[estado] for estado in estados_presentes]
     return JsonResponse(list(estados), safe=False)
 
 
@@ -946,8 +1005,15 @@ def obtener_estados_obra(request):
 
 
 def obtener_ciudades_con_proyectos(request):
-    ciudades = Proyecto.objects.values_list('ciudad', flat=True).distinct()
-    return JsonResponse(list(ciudades), safe=False)
+    ciudades_ids = Proyecto.objects.values_list('ciudad', flat=True).distinct()
+    nombres_ciudades = [get_object_or_404(Ciudad, id=ciudad_id).nombre for ciudad_id in ciudades_ids]
+
+    # Envía una respuesta JSON con una clave 'data' que contiene la lista de nombres de ciudades
+    response_data = {
+        'data': nombres_ciudades
+    }
+
+    return JsonResponse(response_data)
 
 
 def ver_proyectos_cliente(request, cliente_nombre):
@@ -998,17 +1064,14 @@ def ver_proyectos_estado_presupuesto(request, estado):
 
 
 def ver_proyectos_estado_obra(request, estado):
+    print(estado)
     # Convertir el nombre legible del estado a su código correspondiente
     estado_codigo = {value: key for key, value in dict(Obra.ESTADOS).items()}[estado]
-
+    print(estado_codigo)
     # Filtrar los proyectos basándose en el código del estado
-    proyectos = Proyecto.objects.filter(presupuesto__estado=estado_codigo)
-    # Configuración de la paginación
-    paginator = Paginator(proyectos, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    proyectos = Proyecto.objects.filter(obra__estado=estado_codigo)
 
-    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos})
 
 
 def ver_proyectos_ciudad(request, ciudad):
@@ -1446,10 +1509,14 @@ def cargar_presupuesto(request, pk):
 
 def ver_archivo_presupuesto(request, pk):
     archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=pk)
-
+    presupuesto = Presupuesto.objects.get(id=pk)
     # Estructura para mantener la jerarquía
     estructura_presupuesto = []
-
+    subtotal = presupuesto.subtotal
+    iva = presupuesto.iva
+    monto_total = presupuesto.monto_total
+    cliente = presupuesto.proyecto.cliente.nombre
+    proyecto = presupuesto.proyecto.nombre
     # Iterar sobre las secciones asociadas con el archivo de presupuesto
     for seccion in archivo_presupuesto.secciones.all():
         subsecciones_data = []
@@ -1463,7 +1530,14 @@ def ver_archivo_presupuesto(request, pk):
         estructura_presupuesto.append((seccion, subsecciones_data))
 
     context = {
-        'estructura_presupuesto': estructura_presupuesto
+        'estructura_presupuesto': estructura_presupuesto,
+        'subtotal': subtotal,
+        'monto_total': monto_total,
+        'iva': iva,
+        'proyecto': proyecto,
+        'cliente': cliente,
+        'presupuesto_id': presupuesto.id,
+        'archivo_presupuesto_id': archivo_presupuesto.id
     }
 
     return render(request, 'pantallas_ing/ver_presupuesto.html', context)
@@ -1898,24 +1972,39 @@ def buscar_presupuestos_terminados(request):
 
 
 def ver_presupuesto_adm(request, presupuesto_id):
-    presupuesto = get_object_or_404(Presupuesto, id=presupuesto_id)
+    archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=presupuesto_id)
+    presupuesto = Presupuesto.objects.get(id=presupuesto_id)
+    # Estructura para mantener la jerarquía
+    estructura_presupuesto = []
+    subtotal = presupuesto.subtotal
+    iva = presupuesto.iva
+    monto_total = presupuesto.monto_total
+    cliente = presupuesto.proyecto.cliente.nombre
+    proyecto = presupuesto.proyecto.nombre
+    # Iterar sobre las secciones asociadas con el archivo de presupuesto
+    for seccion in archivo_presupuesto.secciones.all():
+        subsecciones_data = []
+        # Buscar subsecciones asociadas a esta sección y que estén en ArchivoPresupuesto
+        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        for subseccion in subsecciones:
+            # Filtrar detalles asociados a esta subsección y que estén en ArchivoPresupuesto
+            detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
+            subsecciones_data.append((subseccion, detalles))
 
-    try:
-        # Intenta obtener el ArchivoPresupuesto asociado al presupuesto.
-        archivo_presupuesto = ArchivoPresupuesto.objects.get(presupuesto=presupuesto)
-        # Si existe, obtener las categorías asociadas a dicho archivo.
-        categorias = Categoria.objects.filter(archivo=archivo_presupuesto).order_by('pk')
-    except ObjectDoesNotExist:
-        archivo_presupuesto = None
-        categorias = []
+        estructura_presupuesto.append((seccion, subsecciones_data))
 
     context = {
-        'presupuesto': presupuesto,
-        'archivo_presupuesto': archivo_presupuesto,
-        'categorias': categorias
+        'estructura_presupuesto': estructura_presupuesto,
+        'subtotal': subtotal,
+        'monto_total': monto_total,
+        'iva': iva,
+        'proyecto': proyecto,
+        'cliente': cliente,
+        'presupuesto_id': presupuesto.id,
+        'archivo_presupuesto_id': archivo_presupuesto.id,
+        'presupuesto': presupuesto
     }
     return render(request, 'pantallas_adm/ver_presupuesto_adm.html', context)
-
 
 def obtener_estados_anticipo(request):
     estados = ['Sí', 'No']
@@ -2306,15 +2395,20 @@ def crear_subseccion(request):
         nombre = request.POST.get('nombre')
         detalles_ids = request.POST.getlist('detalles[]')
         seccion_id = request.POST.get('id_seccion')
+        print('Nombre:', nombre, 'detalles', detalles_ids, 'seccion_id', seccion_id)
+
         seccion = Seccion.objects.get(id=seccion_id)
+
         # Create the new Seccion
-        new_subseccion = SubSeccion.objects.create(nombre=nombre, seccion=seccion)
+        new_subseccion = SubSeccion.objects.create(nombre=nombre)
+        new_subseccion.secciones.add(seccion)
 
         # Associate the SubSecciones with the new Seccion
         for det_id in detalles_ids:
+            print(det_id)
             detalle = Detalle.objects.get(id=det_id)
             detalle.subsecciones.add(new_subseccion)
-
+        new_subseccion.save()
         return JsonResponse({'subseccionId': new_subseccion.id, 'status': 'success', 'message': 'Subsección creada correctamente.'})
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
@@ -2375,7 +2469,14 @@ def guardar_presupuesto(request):
             data = json.loads(request.body)
             presupuesto_id = data.get('presupuestoId')
             presupuesto = Presupuesto.objects.get(id=presupuesto_id)
-
+            proyecto = presupuesto.proyecto
+            obra = Obra.objects.get(proyecto=proyecto)
+            obra.plazo = data.get('plazo')
+            obra.save()
+            presupuesto.subtotal = Decimal(data.get('subtotal', 0))
+            presupuesto.iva = Decimal(data.get('iva', 0))
+            presupuesto.monto_total = Decimal(data.get('monto_total', 0))
+            presupuesto.save()
             # Crea un nuevo objeto Presupuesto, modifica según sea necesario
 
             # Crea o recupera las secciones
@@ -2409,7 +2510,16 @@ def guardar_presupuesto(request):
             archivo_presupuesto.subsecciones.set(subsecciones)
             archivo_presupuesto.detalles.set(detalles)
 
-            return JsonResponse({'status': 'success', 'message': 'Presupuesto guardado correctamente.'})
+            cronograma = Cronograma(archivo_presupuesto=archivo_presupuesto)
+            cronograma.save()
+
+            for detalle in detalles:
+                detalle_cronograma = DetalleCronograma(cronograma=cronograma, detalle=detalle)  # Reemplaza 'fecha' con la fecha que desees
+                detalle_cronograma.save()
+
+            return JsonResponse({'status': 'success',
+                                 'presupuesto_id': presupuesto_id,  # Aquí devuelves el ID
+                                'message': 'Presupuesto guardado correctamente.'})
 
         except Exception as e:
             # En caso de error, envía una respuesta con el error
@@ -2417,3 +2527,553 @@ def guardar_presupuesto(request):
 
     # Si no es un POST, redirige o envía un error
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+
+def exportar_presupuesto(request, presupuesto_id, archivo_presupuesto_id, tipo):
+    print(archivo_presupuesto_id)
+    print(presupuesto_id)
+    if tipo == 'pdf':
+        return exportar_a_pdf(request, archivo_presupuesto_id, presupuesto_id)
+    elif tipo == 'excel':
+        return exportar_a_excel(request, archivo_presupuesto_id, presupuesto_id)
+    else:
+        return HttpResponse(status=400)
+
+
+def exportar_a_pdf(request, archivo_presupuesto_id, presupuesto_id):
+    archivo_presupuesto = ArchivoPresupuesto.objects.get(id=archivo_presupuesto_id)
+    presupuesto = Presupuesto.objects.get(id=presupuesto_id)
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{presupuesto.proyecto.nombre}-presupuesto.pdf"'
+
+    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    story = []
+
+    # Add title
+    styles = getSampleStyleSheet()
+    title = Paragraph(f'Presupuesto del proyecto {presupuesto.proyecto.nombre} para el cliente {presupuesto.proyecto.cliente.nombre}', styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 12))
+
+    # Main data table building
+    data = [['Sección', 'Subsección', 'Rubro', 'Unidad Medida', 'Cantidad', 'Precio Unitario', 'Precio Total']]
+    for seccion in archivo_presupuesto.secciones.all():
+        data.append([seccion.nombre, '', '', '', '', '', ''])
+        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        for subseccion in subsecciones:
+            data.append(['', subseccion.nombre, '', '', '', '', ''])
+            detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
+            for detalle in detalles:
+                data.append([
+                    '', '', detalle.rubro, detalle.unidad_medida.nombre,
+                    detalle.cantidad, f"{detalle.precio_unitario}",
+                    f"{detalle.precio_total:}"
+                ])
+
+    # Main data table styling
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ])
+    main_table = Table(data)
+    main_table.setStyle(table_style)
+    story.append(main_table)
+
+    # Spacer between tables
+    story.append(Spacer(1, 12))
+
+    # Totals table
+    totals_data = [
+        ['Subtotal', f"{presupuesto.subtotal}"],
+        ['IVA', f"{presupuesto.iva}"],
+        ['Total', f"{presupuesto.monto_total}"]
+    ]
+    totals_table = Table(totals_data, colWidths=[doc.width - 120, 120])
+    totals_table.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),
+        ('BACKGROUND', (0, 0), (0, -1), colors.grey),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+    ]))
+    story.append(totals_table)
+
+    # Build the PDF
+    doc.build(story)
+
+    return response
+
+
+def exportar_a_excel(request, archivo_presupuesto_id, presupuesto_id):
+    archivo_presupuesto = ArchivoPresupuesto.objects.get(id=archivo_presupuesto_id)
+    presupuesto = Presupuesto.objects.get(id=presupuesto_id)
+
+    # Create a workbook and grab the active worksheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+
+    # Set the title of the sheet
+    ws.title = "Presupuesto"
+
+    # Add title
+    title = f'Presupuesto del proyecto {presupuesto.proyecto.nombre} para el cliente {presupuesto.proyecto.cliente.nombre}'
+    ws.merge_cells('A1:G1')  # Assuming the title spans 7 columns
+    ws['A1'] = title
+    ws['A1'].alignment = Alignment(horizontal='center')
+    ws['A1'].font = Font(bold=True, size=14)
+
+    # Define headers
+    headers = ['Sección', 'Subsección', 'Rubro', 'Unidad Medida', 'Cantidad', 'Precio Unitario', 'Precio Total']
+    ws.append(headers)
+
+    # Styling headers
+    header_fill = PatternFill("solid", fgColor="00AAAAAA")
+    for col in range(1, 8):
+        cell = ws.cell(row=2, column=col)
+        cell.fill = header_fill
+        cell.font = Font(bold=True)
+        cell.border = Border(bottom=Side(border_style="thin"))
+        cell.alignment = Alignment(horizontal='center')
+
+    # Adding main data
+    row_num = 3
+    for seccion in archivo_presupuesto.secciones.all():
+        ws.append([seccion.nombre] + [''] * 6)
+        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        for subseccion in subsecciones:
+            ws.append(['', subseccion.nombre] + [''] * 5)
+            detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
+            for detalle in detalles:
+                ws.append([
+                    '', '', detalle.rubro, detalle.unidad_medida.nombre,
+                    detalle.cantidad, f"{detalle.precio_unitario}",
+                    f"{detalle.precio_total}"
+                ])
+
+    # Skip a row before totals
+    row_num = ws.max_row + 2
+
+    # Totals table
+    ws.merge_cells(start_row=row_num, start_column=5, end_row=row_num, end_column=6)
+    ws.cell(row=row_num, column=5).value = "Subtotal"
+    ws.cell(row=row_num, column=7).value = f"{presupuesto.subtotal}"
+
+    ws.merge_cells(start_row=row_num+1, start_column=5, end_row=row_num+1, end_column=6)
+    ws.cell(row=row_num+1, column=5).value = "IVA"
+    ws.cell(row=row_num+1, column=7).value = f"{presupuesto.iva}"
+
+    ws.merge_cells(start_row=row_num+2, start_column=5, end_row=row_num+2, end_column=6)
+    ws.cell(row=row_num+2, column=5).value = "Total"
+    ws.cell(row=row_num+2, column=7).value = f"{presupuesto.monto_total}"
+
+    # Styling totals
+    for row in ws.iter_rows(min_row=row_num, max_row=row_num+2, min_col=5, max_col=7):
+        for cell in row:
+            cell.border = Border(top=Side(border_style="thin"),
+                                 left=Side(border_style="thin"),
+                                 right=Side(border_style="thin"),
+                                 bottom=Side(border_style="thin"))
+            if cell.column == 7:  # Right align the amount column
+                cell.alignment = Alignment(horizontal='right')
+            if cell.column == 5:  # Grey background for the label column
+                cell.fill = header_fill
+
+        # After filling in all data to the worksheet, iterate over the columns
+    for column in ws.columns:
+        max_length = 0
+        column = [cell for cell in column if cell.value]  # Get all cells that are not None in this column
+        if column:  # Check if the column is not empty
+            for cell in column:
+                try:  # Necessary to avoid error on datetime values
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2) * 1.2  # Adding a little extra space
+            ws.column_dimensions[get_column_letter(column[0].column)].width = adjusted_width
+
+    # Set the response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{presupuesto.proyecto.nombre}-presupuesto.xlsx"'
+
+    # Save the workbook to the response
+    wb.save(response)
+
+    return response
+
+
+def armar_cronograma(request, obra_id):
+    # Obtener la obra y su presupuesto asociado
+    obra = get_object_or_404(Obra, id=obra_id)
+    proyecto_id = obra.proyecto.id
+    proyecto = Proyecto.objects.get(id=proyecto_id)
+    presupuesto = Presupuesto.objects.get(proyecto=proyecto)  # Asume que Obra tiene una relación con Presupuesto
+    # Obtener el ArchivoPresupuesto asociado
+    archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=presupuesto)
+    cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)
+    fecha_in= obra.fecha_inicio.strftime('%Y-%m-%d')
+    estructura_presupuesto = []
+    for seccion in archivo_presupuesto.secciones.all():
+        subsecciones_data = []
+        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        for subseccion in subsecciones:
+            detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
+            subsecciones_data.append((subseccion, detalles))
+
+        estructura_presupuesto.append((seccion, subsecciones_data))
+
+    # Renderizar una plantilla con los datos
+    return render(request, 'pantallas_ing/armar_cronograma.html', {'estructura_presupuesto': estructura_presupuesto, 'obra': obra, 'cronograma':cronograma, 'fecha_inicio':fecha_in})
+
+
+def guardar_cronograma(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            proyecto_id = data.get('proyecto_id')  # Obtén proyecto_id de data
+
+            # Encuentra el proyecto y el cronograma asociado
+            proyecto = Proyecto.objects.get(pk=proyecto_id)
+            presupuesto = Presupuesto.objects.get(proyecto=proyecto)
+            archivo_presupuesto = ArchivoPresupuesto.objects.get(presupuesto=presupuesto)
+            cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)  # Asumiendo una relación uno a uno entre proyecto y cronograma
+
+            detalles_data = data.get('detalles')  # Obtén la lista de detalles de data
+            # Guardar los detalles en la tabla DetalleCronograma
+            for detalle_data in detalles_data:
+                detalle_id = detalle_data.get('detalleId')
+                detalle = Detalle.objects.get(id=detalle_id)
+                detalle_cronograma = DetalleCronograma.objects.get(detalle=detalle, cronograma=cronograma)
+                fecha_seleccionada = detalle_data.get('fechaSeleccionada')
+                detalle_cronograma.fecha = fecha_seleccionada
+                detalle_cronograma.save()
+
+            return JsonResponse({'status': 'success', 'message': 'Cronograma guardado con éxito'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'})
+
+
+def vista_redireccion(request, campo, valor):
+    if campo == 'cliente':
+        cliente = Cliente.objects.get(nombre=valor)
+        presupuestos = Presupuesto.objects.filter(proyecto__cliente_id=cliente.id, encargado=request.user)
+    elif campo == 'estadoPresupuesto':
+        if valor == 'Aprobado':  # Verificar si el valor es 'Aprobado'
+            presupuestos = Presupuesto.objects.filter(estado='A', encargado=request.user)  # Filtrar por estado 'A'
+        elif valor == 'En elaboración':
+            presupuestos = Presupuesto.objects.filter(estado='E', encargado=request.user)  # Filtrar por estado 'A'
+        elif valor == 'Enviado':
+            presupuestos = Presupuesto.objects.filter(estado='S', encargado=request.user)  # Filtrar por estado 'A'
+        else:
+            presupuestos = Presupuesto.objects.filter(encargado=request.user)
+    else:
+        presupuestos = Presupuesto.objects.filter(encargado=request.user)
+
+    return render(request, 'pantallas_ing/ver_presupuestos.html', {'presupuestos': presupuestos})
+
+
+def vista_redireccion_obra(request, campo, valor):
+    if campo == 'cliente':
+        cliente = Cliente.objects.get(nombre=valor)
+        obras = Obra.objects.filter(proyecto__cliente_id=cliente.id, encargado=request.user)
+    elif campo == 'estadoObra':
+        if valor == 'No iniciada':  # Verificar si el valor es 'Aprobado'
+            obras = Obra.objects.filter(estado='NI', encargado=request.user)  # Filtrar por estado 'A'
+        elif valor == 'En ejecución':
+            obras = Obra.objects.filter(estado='E', encargado=request.user)  # Filtrar por estado 'A'
+        elif valor == 'Finalizada':
+            obras = Obra.objects.filter(estado='F', encargado=request.user)  # Filtrar por estado 'A'
+        else:
+            obras = Obra.objects.filter(encargado=request.user)
+    else:
+        obras = Obra.objects.filter(encargado=request.user)
+    # Iterar sobre las obras y agregar parámetros adicionales
+    obras_con_parametros = []
+    for obra in obras:
+        # Obtener el cronograma asociado a la obra
+        cronograma = Cronograma.objects.get(archivo_presupuesto__presupuesto__proyecto=obra.proyecto)
+        # Verificar si existe un cronograma y si al menos un detalle tiene fecha
+        if cronograma and cronograma.detalles_cronograma.filter(fecha__isnull=False).exists():
+            cronograma_existente = True
+        else:
+            cronograma_existente = False
+        obra_parametros = {
+            'obra': obra,
+            'cronograma_existe': cronograma_existente,
+            'cronograma': cronograma
+        }
+        obras_con_parametros.append(obra_parametros)
+
+    return render(request, 'pantallas_ing/ver_obras.html', {'obras': obras_con_parametros})
+
+
+def ver_proyectos_filtrados(request):
+    campo = request.GET.get('campo')
+    valor = request.GET.get('valor')
+    # Generar la URL de redirección a 'ver_presupuestos' con los parámetros deseados
+    redirect_url = f'/vista_redireccion/{campo}/{valor}/'
+
+    # Devolver una respuesta JSON con la URL de redirección
+    return JsonResponse({'redirect_url': redirect_url})
+
+
+def ver_presupuestos_filtrados(request):
+    campo = request.GET.get('campo')
+    valor = request.GET.get('valor')
+    # Generar la URL de redirección a 'ver_presupuestos' con los parámetros deseados
+    redirect_url = f'/vista_redireccion/{campo}/{valor}/'
+
+    # Devolver una respuesta JSON con la URL de redirección
+    return JsonResponse({'redirect_url': redirect_url})
+
+
+def ver_obras_filtrados(request):
+    campo = request.GET.get('campo')
+    valor = request.GET.get('valor')
+    # Generar la URL de redirección a 'ver_presupuestos' con los parámetros deseados
+    redirect_url = f'/vista_redireccion_obra/{campo}/{valor}/'
+
+    # Devolver una respuesta JSON con la URL de redirección
+    return JsonResponse({'redirect_url': redirect_url})
+
+
+def buscar_materiales(request):
+    search_query = request.GET.get('search', '')
+
+    # Realiza una búsqueda en la base de datos utilizando el modelo Material
+    # Puedes ajustar esta consulta según tus necesidades específicas
+    resultados = Material.objects.filter(Q(nombre__icontains=search_query))
+
+    # Crea una lista de diccionarios con los resultados
+    resultados_list = [{'id': material.id, 'nombre': material.nombre} for material in resultados]
+
+    # Devuelve los resultados en formato JSON
+    return JsonResponse(resultados_list, safe=False)
+
+
+def ver_pedido(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)  # Obtiene los materiales relacionados con el pedido
+    return render(request, 'pantallas_ing/ver_pedido.html', {'pedido': pedido, 'materiales_pedido': materiales_pedido})
+
+
+def ver_pedido_adm(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)  # Obtiene los materiales relacionados con el pedido
+    obra= pedido.obra
+    return render(request, 'pantallas_adm/ver_pedido_adm.html', {'pedido': pedido, 'materiales_pedido': materiales_pedido,'obra':obra})
+
+
+def ver_cronograma(request, obra_id, cronograma_id):
+    obra = get_object_or_404(Obra, id=obra_id)
+    cronograma = get_object_or_404(Cronograma, id=cronograma_id)
+    detalles_cronograma = cronograma.detalles_cronograma.all()
+
+    # Crear un diccionario que mapea los detalles a sus fechas en el cronograma
+    detalles_fechas = {detalle_crono.detalle: detalle_crono.fecha for detalle_crono in detalles_cronograma}
+
+    # Construir la estructura jerárquica de secciones y subsecciones
+    estructura_presupuesto = defaultdict(lambda: defaultdict(list))
+
+    # Verificar que realmente estamos obteniendo secciones y subsecciones
+    for seccion in Seccion.objects.filter(archivopresupuesto=cronograma.archivo_presupuesto):
+        for subseccion in SubSeccion.objects.filter(secciones=seccion,
+                                                    archivopresupuesto=cronograma.archivo_presupuesto):
+            print("Sección:", seccion.nombre, "Subsección:", subseccion.nombre)  # Depuración
+            for detalle in Detalle.objects.filter(subseccion=subseccion,
+                                                  archivopresupuesto=cronograma.archivo_presupuesto):
+                detalle_cron = DetalleCronograma.objects.get(detalle=detalle, cronograma=cronograma)
+                fecha = detalle_cron.fecha
+                realizado = detalle_cron.realizado
+                estructura_presupuesto[seccion][subseccion].append((detalle, fecha, realizado))
+
+    # Convertir cada defaultdict interno a un diccionario regular
+    estructura_presupuesto_regular = {seccion: dict(subsecciones) for seccion, subsecciones in estructura_presupuesto.items()}
+
+    context = {
+        'obra': obra,
+        'cronograma': cronograma,
+        'estructura_presupuesto': estructura_presupuesto_regular,
+    }
+    return render(request, 'pantallas_ing/ver_cronograma.html', context)
+
+
+def ver_cronograma_adm(request, obra_id):
+    obra = get_object_or_404(Obra, id=obra_id)
+    proyecto = obra.proyecto
+    presupuesto = Presupuesto.objects.get(proyecto=proyecto)
+    archivo_presupuesto = ArchivoPresupuesto.objects.get(presupuesto=presupuesto)
+    cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)
+    detalles_cronograma = cronograma.detalles_cronograma.all()
+    detalles_fechas_n = cronograma.detalles_cronograma.filter(fecha__isnull=True)
+
+    if detalles_fechas_n.exists():
+        messages.error(request, "No se creó aún el cronograma")
+        return redirect('ver_obras_adm')  # Ajusta el nombre de la vista según tu configuración de URL
+
+    # Crear un diccionario que mapea los detalles a sus fechas en el cronograma
+    detalles_fechas = {detalle_crono.detalle: detalle_crono.fecha for detalle_crono in detalles_cronograma}
+
+    # Construir la estructura jerárquica de secciones y subsecciones
+    estructura_presupuesto = defaultdict(lambda: defaultdict(list))
+
+    # Verificar que realmente estamos obteniendo secciones y subsecciones
+    for seccion in Seccion.objects.filter(archivopresupuesto=cronograma.archivo_presupuesto):
+        for subseccion in SubSeccion.objects.filter(secciones=seccion,
+                                                    archivopresupuesto=cronograma.archivo_presupuesto):
+            print("Sección:", seccion.nombre, "Subsección:", subseccion.nombre)  # Depuración
+            for detalle in Detalle.objects.filter(subseccion=subseccion,
+                                                  archivopresupuesto=cronograma.archivo_presupuesto):
+                detalle_cron = DetalleCronograma.objects.get(detalle=detalle, cronograma=cronograma)
+                fecha = detalle_cron.fecha
+                realizado = detalle_cron.realizado
+                estructura_presupuesto[seccion][subseccion].append((detalle, fecha, realizado))
+
+    # Convertir cada defaultdict interno a un diccionario regular
+    estructura_presupuesto_regular = {seccion: dict(subsecciones) for seccion, subsecciones in estructura_presupuesto.items()}
+
+    context = {
+        'obra': obra,
+        'cronograma': cronograma,
+        'estructura_presupuesto': estructura_presupuesto_regular,
+    }
+    return render(request, 'pantallas_adm/ver_cronograma_adm.html', context)
+
+
+def presupuestos_pendientes(request):
+    presupuestos = Presupuesto.objects.filter(encargado=request.user, estado='E')
+    data = [
+        {
+            'id': presupuesto.id,
+            'proyecto__nombre': presupuesto.proyecto.nombre,
+            'crear_presupuesto_url': reverse('crear_presupuesto', args=[presupuesto.id])
+        }
+        for presupuesto in presupuestos
+    ]
+    return JsonResponse({'presupuestos': data})
+
+
+def obras_pendientes(request):
+    obras = Obra.objects.filter(encargado=request.user, estado__in=['E', 'NI'])
+    data = []
+    for obra in obras:
+        acciones = []
+        cronograma = Cronograma.objects.get(archivo_presupuesto__presupuesto__proyecto=obra.proyecto)
+        if cronograma and cronograma.detalles_cronograma.filter(fecha__isnull=False).exists():
+            cronograma_existente = True
+        else:
+            cronograma_existente = False
+        if obra.estado == 'NI':
+            if not obra.fecha_inicio:
+                acciones.append({'nombre': 'Agendar Inicio',
+                                 'html': '<button class="btn btn-primary agendar-inicio-obra" data-id="' + str(
+                                     obra.id) + '" style="margin-right: 5px;">Agendar Inicio</button>'})
+            elif not cronograma_existente:
+                acciones.append({'nombre': 'Armar Cronograma', 'url': reverse('armar_cronograma', args=[obra.id])})
+        if acciones:
+            data.append({'id': obra.id, 'proyecto__nombre': obra.proyecto.nombre, 'acciones': acciones})
+        print(data)
+    return JsonResponse({'obras': data})
+
+
+def proximas_actividades(request):
+    fecha_limite = timezone.now().date() + timedelta(days=7)
+    actividades = DetalleCronograma.objects.filter(
+        fecha__lte=fecha_limite,
+        realizado=False,
+        fecha__gte=timezone.now().date()
+    ).select_related('detalle', 'cronograma', 'cronograma__archivo_presupuesto', 'cronograma__archivo_presupuesto__presupuesto', 'cronograma__archivo_presupuesto__presupuesto__proyecto')
+
+    data = [
+        {
+            'proyecto_nombre': actividad.cronograma.archivo_presupuesto.presupuesto.proyecto.nombre,
+            'rubro': actividad.detalle.rubro,
+            'fecha': actividad.fecha.strftime('%d-%m-%Y'),
+            'detalle_id': actividad.detalle.id,
+            'cronograma_id': actividad.cronograma.id
+        }
+        for actividad in actividades
+    ]
+    return JsonResponse({'actividades': data})
+
+
+@csrf_exempt
+def marcar_como_realizado(request):
+    if request.method == 'POST':
+        cronograma_id = request.POST.get('cronograma_id')
+        detalle_id = request.POST.get('detalle_id')
+        print(cronograma_id)
+        print(detalle_id)
+        # Encuentra el objeto DetalleCronograma correspondiente y actualiza
+        try:
+            detalle_cronograma = DetalleCronograma.objects.get(cronograma=Cronograma.objects.get(id=cronograma_id), detalle_id=Detalle.objects.get(id=detalle_id))
+            detalle_cronograma.realizado = True
+            detalle_cronograma.save()
+            return JsonResponse({'status': 'success'})
+        except DetalleCronograma.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'DetalleCronograma no encontrado'})
+
+    return JsonResponse({'status': 'error', 'message': 'Solicitud inválida'})
+
+
+def presupuestos_en_elaboracion(request):
+    presupuestos = Presupuesto.objects.filter(estado='E').select_related('proyecto__cliente')
+
+    data = [
+        {
+            'proyecto': presupuesto.proyecto.nombre,
+            'cliente': presupuesto.proyecto.cliente.nombre,  # Ajusta este campo según tu modelo Cliente
+            'encargado': f'{presupuesto.encargado.first_name} {presupuesto.encargado.last_name}' if presupuesto.encargado else 'No asignado',
+        }
+        for presupuesto in presupuestos
+    ]
+
+    return JsonResponse({'presupuestos': data})
+
+
+def presupuestos_enviados_sin_anticipo(request):
+    presupuestos = Presupuesto.objects.filter(
+        estado='E',
+        anticipo=False
+    ).select_related('proyecto__cliente', 'encargado')
+
+    data = [
+        {
+            'proyecto': presupuesto.proyecto.nombre,
+            'cliente': presupuesto.proyecto.cliente.nombre,
+            'encargado': f'{presupuesto.encargado.first_name} {presupuesto.encargado.last_name}' if presupuesto.encargado else 'No asignado',
+            # Asegúrate de tener esta URL
+        }
+        for presupuesto in presupuestos
+    ]
+
+    return JsonResponse({'presupuestos': data})
+
+
+def obras_pendientes_de_asignacion(request):
+    obras = Obra.objects.filter(
+        encargado__isnull=True,
+        proyecto__presupuesto__estado='A',
+        proyecto__presupuesto__anticipo=True
+    ).select_related('proyecto__cliente')
+
+    data = [
+        {
+            'proyecto': obra.proyecto.nombre,
+            'cliente': obra.proyecto.cliente.nombre,  # Asegúrate de que esta línea corresponda con tu modelo Cliente
+            'acciones': f'<a href="/obra/{obra.id}/detalle/">Ver Detalles</a>'  # Asegúrate de tener esta URL
+        }
+        for obra in obras
+    ]
+
+    return JsonResponse({'obras': data})

@@ -60,6 +60,16 @@
                         </ul>
                         <div class="clearfix"></div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <form>
+                                <div class="form-group">
+                                    <label for="plazoEjecucion">Ingrese el plazo de ejecución de la obra, en días</label>
+                                    <input type="number" class="form-control" id="plazoEjecucion" name="plazoEjecucion" min="0" placeholder="Plazo" required>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                     <div class="x_content">
                         <!-- Botones para añadir secciones, subsecciones y detalles -->
                         <div class='button-group'>
@@ -224,7 +234,6 @@
             var subseccionId = $subseccionRow.data('id');
             $('#modalAddDetalle').modal('show');
             $('#modalAddDetalle').data('subseccion-id', subseccionId);
-            console.log(subseccionId)
         });
 
         function actualizarSumatoriaPrecioTotal() {
@@ -277,14 +286,18 @@
         $('#guardarPresupuesto').on('click', function() {
             if (comprobarRequisitos()){
                 var presupuestoId = $(this).data('presupuesto-id'); // Obtiene el ID del atributo data- del botón
+                var plazo = document.getElementById('plazoEjecucion').value;
                 // Crear un array para almacenar los datos de cada fila
                 var presupuestoData = {
                     'presupuestoId': presupuestoId,
                     'secciones': [],
                     'subsecciones': [],
-                    'detalles': []
+                    'detalles': [],
+                    'subtotal': $('#sumatoriaPrecioTotal').text(),
+                    'iva': $('#iva').text(),
+                    'monto_total': $('#sumatoriaConIva').text(),
+                    'plazo': plazo
                 };
-
                 // Recorrer cada fila de sección
                 $('#presupuesto-content-body .seccion-row').each(function() {
                     var seccionId = $(this).data('id');
@@ -331,6 +344,8 @@
                     success: function(response) {
                         // Aquí manejas una respuesta exitosa
                         alert('Presupuesto guardado exitosamente.');
+                        var idPresupuesto = response.presupuesto_id;
+                        window.location.href = '/ver_archivo_presupuesto/' + idPresupuesto;
                     },
                     error: function(xhr, status, error) {
                         if (xhr.responseJSON && xhr.responseJSON.message) {
@@ -359,6 +374,14 @@
             if (detallesConCantidadCero.length > 0) {
                 alert('No debe haber detalles con cantidad igual a 0.');
                 detallesConCantidadCero.first().focus(); // Pone el foco en el primer detalle con cantidad 0
+                return false; // No cumplió los requisitos, no continuar
+            }
+             // Comprobación: El plazo de ejecución no debe estar vacío y debe ser mayor que 0
+            var plazoEjecucion = $('#plazoEjecucion').val();
+            console.log(plazoEjecucion)
+            if (!plazoEjecucion || plazoEjecucion <= 0) {
+                alert('Debe ingresar un plazo válido.');
+                $('#plazoEjecucion').focus(); // Pone el foco en el campo de plazo de ejecución
                 return false; // No cumplió los requisitos, no continuar
             }
 

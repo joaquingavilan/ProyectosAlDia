@@ -56,19 +56,19 @@
                     <td>{{ presupuesto.proyecto.nombre }}</td>
                     <td>{{ presupuesto.proyecto.cliente.nombre }}</td>
                     <td>
-                        {% if presupuesto.estado != 'A' %}
+                        {% if presupuesto.estado != 'A' and presupuesto.monto_total > 0 %}
                         <select class="form-control" onchange="cambiarEstado(this)" data-id="{{ presupuesto.id }}">
                             {% for estado, display_name in presupuesto.ESTADOS %}
                             <option value="{{ estado }}" {% if presupuesto.estado == estado %}selected{% endif %}>{{ display_name }}</option>
                             {% endfor %}
                         </select>
                         {% else %}
-                        {{presupuesto.get_estado_display}}
+                            {{presupuesto.get_estado_display}}
                         {% endif %}
                     </td>
                     <td>
                         {% if presupuesto.monto_total %}
-                        {{ presupuesto.monto_total|multiply:0.1|add:presupuesto.monto_total|intcomma }}
+                        {{ presupuesto.monto_total|intcomma }}
                         {% else %}
                         0
                         {% endif %}
@@ -76,9 +76,6 @@
                     <td>
                         <div class="btn-group">
                             {% if presupuesto.archivopresupuesto %}
-                                {% if presupuesto.estado != 'A' %}
-                                    <a href="{% url 'modificar_presupuesto' presupuesto.id %}" class="btn btn-info">Modificar Presupuesto</a>
-                                {% endif %}
                                 <a href="{% url 'ver_archivo_presupuesto' presupuesto.id %}" class="btn btn-info ml-2">Ver Presupuesto</a>
                             {% else %}
                                 <form method="post" action="{% url 'crear_presupuesto' presupuesto.id %}" enctype="multipart/form-data" class="form-inline">
@@ -102,6 +99,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
+
 
 // Función para la búsqueda de presupuestos
 document.getElementById('buscadorPresupuestos').addEventListener('input', function() {
@@ -207,13 +205,17 @@ function inicializarFiltroValorPresupuestos() {
         });
     }
 }
-
-document.addEventListener('DOMContentLoaded', (event) => {
-    inicializarFiltroValorPresupuestos();  // Llamar a la función al cargar la página
+// Evento para el cambio en el selector de campo
+document.getElementById('filtroCampo').addEventListener('change', function() {
+    inicializarFiltroValorPresupuestos(); // Llamar a la función al cambiar el campo
+    filtrarPresupuestos(); // Aplicar el filtro cuando cambie el campo
 });
 
-// Inicializar el dropdown al cambiar el valor del primer dropdown
-document.getElementById('filtroCampo').addEventListener('change', function() {
+// Evento para el cambio en el selector de valor
+document.getElementById('filtroValor').addEventListener('change', filtrarPresupuestos);
+
+// Llamar a la función al cargar la página
+document.addEventListener('DOMContentLoaded', (event) => {
     inicializarFiltroValorPresupuestos();
 });
 
@@ -222,12 +224,32 @@ function filtrarPresupuestos() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
     let valorSeleccionado = document.getElementById('filtroValor').value;
 
-    if (valorSeleccionado !== "") {
-        window.location.href = `?campo=${campoSeleccionado}&valor=${valorSeleccionado}`;
+    if (valorSeleccionado) {
+        // Hacer una solicitud AJAX para enviar los datos a la vista
+        $.ajax({
+            url: '/ver_presupuestos_filtrados/', // Reemplaza con la URL correcta
+            type: 'GET',
+            data: {
+                campo: campoSeleccionado,
+                valor: valorSeleccionado
+            },
+            success: function(response) {
+                // Verificar si la respuesta contiene una URL de redirección
+                if (response.redirect_url) {
+                    // Redirigir a la página 'ver_presupuestos' con la URL proporcionada en la respuesta
+                    window.location.href = response.redirect_url;
+                } else {
+                    // En caso de que no haya una URL de redirección en la respuesta, manejarlo como desees
+                    console.log('La solicitud AJAX se completó correctamente, pero no se proporcionó una URL de redirección.');
+                }
+            },
+            error: function(error) {
+                console.error(error);
+                alert('Hubo un error al filtrar los presupuestos.');
+            }
+        });
     }
 }
-
-document.getElementById('filtroValor').addEventListener('change', filtrarPresupuestos);
 
 </script>
 {% endblock %}
