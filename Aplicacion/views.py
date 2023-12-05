@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View, ListView
 from .models import *
 from .forms import *
-from django.db.models import Q, F, Sum
+from django.db.models import Q, F, Sum, Exists, OuterRef
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, UserChangeForm
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
@@ -2567,8 +2567,8 @@ def exportar_a_pdf(request, archivo_presupuesto_id, presupuesto_id):
             for detalle in detalles:
                 data.append([
                     '', '', detalle.rubro, detalle.unidad_medida.nombre,
-                    detalle.cantidad, f"{detalle.precio_unitario}",
-                    f"{detalle.precio_total:}"
+                    detalle.cantidad, f"{detalle.precio_unitario:,}",
+                    f"{detalle.precio_total:,}"
                 ])
 
     # Main data table styling
@@ -2592,9 +2592,9 @@ def exportar_a_pdf(request, archivo_presupuesto_id, presupuesto_id):
 
     # Totals table
     totals_data = [
-        ['Subtotal', f"{presupuesto.subtotal}"],
-        ['IVA', f"{presupuesto.iva}"],
-        ['Total', f"{presupuesto.monto_total}"]
+        ['Subtotal', f"{presupuesto.subtotal:,}"],
+        ['IVA', f"{presupuesto.iva:,}"],
+        ['Total', f"{presupuesto.monto_total:,}"]
     ]
     totals_table = Table(totals_data, colWidths=[doc.width - 120, 120])
     totals_table.setStyle(TableStyle([
@@ -2654,8 +2654,8 @@ def exportar_a_excel(request, archivo_presupuesto_id, presupuesto_id):
             for detalle in detalles:
                 ws.append([
                     '', '', detalle.rubro, detalle.unidad_medida.nombre,
-                    detalle.cantidad, f"{detalle.precio_unitario}",
-                    f"{detalle.precio_total}"
+                    detalle.cantidad, f"{detalle.precio_unitario:,}",
+                    f"{detalle.precio_total:,}"
                 ])
 
     # Skip a row before totals
@@ -2664,15 +2664,15 @@ def exportar_a_excel(request, archivo_presupuesto_id, presupuesto_id):
     # Totals table
     ws.merge_cells(start_row=row_num, start_column=5, end_row=row_num, end_column=6)
     ws.cell(row=row_num, column=5).value = "Subtotal"
-    ws.cell(row=row_num, column=7).value = f"{presupuesto.subtotal}"
+    ws.cell(row=row_num, column=7).value = f"{presupuesto.subtotal:,}"
 
     ws.merge_cells(start_row=row_num+1, start_column=5, end_row=row_num+1, end_column=6)
     ws.cell(row=row_num+1, column=5).value = "IVA"
-    ws.cell(row=row_num+1, column=7).value = f"{presupuesto.iva}"
+    ws.cell(row=row_num+1, column=7).value = f"{presupuesto.iva:,}"
 
     ws.merge_cells(start_row=row_num+2, start_column=5, end_row=row_num+2, end_column=6)
     ws.cell(row=row_num+2, column=5).value = "Total"
-    ws.cell(row=row_num+2, column=7).value = f"{presupuesto.monto_total}"
+    ws.cell(row=row_num+2, column=7).value = f"{presupuesto.monto_total:,}"
 
     # Styling totals
     for row in ws.iter_rows(min_row=row_num, max_row=row_num+2, min_col=5, max_col=7):
@@ -2951,7 +2951,21 @@ def ver_cronograma_adm(request, obra_id):
 
 
 def presupuestos_pendientes(request):
+    # Obtener los presupuestos que están en estado 'E' y pertenecen al usuario actual
     presupuestos = Presupuesto.objects.filter(encargado=request.user, estado='E')
+
+    # Agregar una anotación para verificar si existe al menos un DetalleCronograma asociado
+    presupuestos = presupuestos.annotate(
+        tiene_detalle_cronograma=Exists(
+            DetalleCronograma.objects.filter(
+                cronograma__archivo_presupuesto__presupuesto=OuterRef('pk')
+            )
+        )
+    )
+    presupuestos = presupuestos.filter(
+        (Q(tiene_detalle_cronograma=False))
+    )
+
     data = [
         {
             'id': presupuesto.id,
@@ -3043,16 +3057,15 @@ def presupuestos_en_elaboracion(request):
 
 def presupuestos_enviados_sin_anticipo(request):
     presupuestos = Presupuesto.objects.filter(
-        estado='E',
+        estado='S',
         anticipo=False
-    ).select_related('proyecto__cliente', 'encargado')
-
+    )
+    print(len(presupuestos))
     data = [
         {
             'proyecto': presupuesto.proyecto.nombre,
             'cliente': presupuesto.proyecto.cliente.nombre,
             'encargado': f'{presupuesto.encargado.first_name} {presupuesto.encargado.last_name}' if presupuesto.encargado else 'No asignado',
-            # Asegúrate de tener esta URL
         }
         for presupuesto in presupuestos
     ]

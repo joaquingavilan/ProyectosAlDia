@@ -153,9 +153,9 @@
                             detalleRow.append('<td>' + detalleResponse.rubro + '</td>');
                             detalleRow.append('<td>' + detalleResponse.unidad_medida + '</td>');
                             detalleRow.append('<td>' + detalleResponse.cantidad + '</td>');
-                            detalleRow.append('<td>' + precioUnitario.toFixed(2) + '</td>');
+                            detalleRow.append('<td>' + Intl.NumberFormat('es-ES').format(precioUnitario) + '</td>');
                             var totalPrice = Number(calculateTotalPrice(detalleResponse.cantidad, precioUnitario));
-                            detalleRow.append('<td>' + totalPrice.toFixed(2) + '</td>'); // Ensure to format to two decimal places
+                            detalleRow.append('<td>' + Intl.NumberFormat('es-ES').format(totalPrice) + '</td>'); // Ensure to format to two decimal places
                             addActionsButtons(detalleRow, 'detalle', detalleId);
                             lastRow.after(detalleRow); // Insert after the last detalle row or the subseccion row
                         } else {
@@ -254,7 +254,7 @@
                         detalleRow.append('<td>' + response.cantidad + '</td>');
                         detalleRow.append('<td>' + precioUnitario + '</td>');
                         var totalPrice = Number(calculateTotalPrice(response.cantidad, precioUnitario));
-                        detalleRow.append('<td>' + totalPrice.toFixed(2) + '</td>'); // Ensure to format to two decimal places
+                        detalleRow.append('<td>' + Intl.NumberFormat('es-ES').format(totalPrice) + '</td>'); // Ensure to format to two decimal places
                         addActionsButtons(detalleRow, 'detalle', detalleId);
                         lastRow.after(detalleRow); // Insert after the last detalle row or the subseccion row
                     } else {
@@ -274,7 +274,7 @@
 
         //calcular el precio total
         function calculateTotalPrice(cantidad, precioUnitario) {
-          return (Number(cantidad) * Number(precioUnitario)).toFixed(2);
+          return (Number(cantidad) * Number(precioUnitario)).toFixed();
         }
 
         // añadir boton de editar y eliminar al detalle

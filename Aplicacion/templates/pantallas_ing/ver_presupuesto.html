@@ -1,4 +1,5 @@
 {% extends request.base_template %}
+{% load custom_filters %}
 {% block css %}
 <style>
   /* Estilos personalizados */
@@ -66,8 +67,8 @@
                         <td>{{ detalle.rubro }}</td>
                         <td>{{ detalle.unidad_medida.nombre }}</td>
                         <td>{{ detalle.cantidad }}</td>
-                        <td>{{ detalle.precio_unitario }}</td>
-                        <td>{{ detalle.precio_total }}</td>
+                        <td>{{ detalle.precio_unitario|intcomma }}</td>
+                        <td>{{ detalle.precio_total|intcomma }}</td>
                       </tr>
                     {% endfor %}
                   {% endfor %}
@@ -80,15 +81,15 @@
                 <tbody>
                   <tr>
                     <th>Subtotal</th>
-                    <td id="subtotal">{{subtotal}}</td>
+                    <td id="subtotal">{{subtotal|intcomma}}</td>
                   </tr>
                   <tr>
                     <th>IVA</th>
-                    <td id="iva">{{iva}}</td>
+                    <td id="iva">{{iva|intcomma}}</td>
                   </tr>
                   <tr>
                     <th>Total</th>
-                    <td id="total">{{monto_total}}</td>
+                    <td id="total">{{monto_total|intcomma}}</td>
                   </tr>
                 </tbody>
               </table>

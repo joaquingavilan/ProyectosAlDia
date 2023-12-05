@@ -206,8 +206,8 @@
                                     detalleRow.append('<td>' + detalle.rubro + '</td>');
                                     detalleRow.append('<td>' + detalle.unidad_medida + '</td>');
                                     detalleRow.append('<td>' + detalle.cantidad + '</td>');
-                                    detalleRow.append('<td>' + precioUnitario.toFixed(2) + '</td>');
-                                    var totalPrice = Number(calculateTotalPrice(detalle.cantidad, precioUnitario));
+                                    detalleRow.append('<td>' + Intl.NumberFormat('es-ES').format(precioUnitario) + '</td>');
+                                    var totalPrice = Intl.NumberFormat('es-ES').format(calculateTotalPrice(detalle.cantidad, precioUnitario));
                                     detalleRow.append('<td>' + totalPrice + '</td>');
                                     addActionsButtons(detalleRow, 'detalle', detalleId);
                                     $('#presupuesto-content tbody').append(detalleRow);
@@ -307,8 +307,8 @@
                                     detalleRow.append('<td>' + detalle.rubro + '</td>');
                                     detalleRow.append('<td>' + detalle.unidad_medida + '</td>');
                                     detalleRow.append('<td>' + detalle.cantidad + '</td>');
-                                    detalleRow.append('<td>' + precioUnitario.toFixed(2) + '</td>');
-                                    var totalPrice = Number(calculateTotalPrice(detalle.cantidad, precioUnitario));
+                                    detalleRow.append('<td>' + Intl.NumberFormat('es-ES').format(precioUnitario) + '</td>');
+                                    var totalPrice = Intl.NumberFormat('es-ES').format(calculateTotalPrice(detalle.cantidad, precioUnitario));
                                     detalleRow.append('<td>' + totalPrice + '</td>');
                                     addActionsButtons(detalleRow, 'detalle', detalle.id);
                                 } else {
@@ -351,7 +351,7 @@
 
          //calcular el precio total
         function calculateTotalPrice(cantidad, precioUnitario) {
-          return (Number(cantidad) * Number(precioUnitario)).toFixed(2);
+          return (Number(cantidad) * Number(precioUnitario)).toFixed();
         }
 
         // añadir boton de eliminar y añadir detalle/subseccion dependiendo el tipo

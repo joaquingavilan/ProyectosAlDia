@@ -192,8 +192,8 @@
           // Retrieve the row for editing
           var row = $(this).closest('tr');
           // Retrieve the current values
-          var cantidad = row.find('td:eq(2)').text();
-          var precioUnitario = row.find('td:eq(3)').text();
+          var cantidad = cleanNumber(row.find('td:eq(2)').text());
+          var precioUnitario = cleanNumber(row.find('td:eq(3)').text());
           // Replace text with input fields
           row.find('td:eq(2)').html('<input type="number" value="' + cantidad + '" class="form-control input-cantidad">');
           row.find('td:eq(3)').html('<input type="number" value="' + precioUnitario + '" class="form-control input-precio-unitario">');
@@ -201,23 +201,32 @@
           $(this).replaceWith('<button class="btn btn-success btn-xs save-button btn-affecting-prices"><i class="fa fa-save"></i></button>');
         });
 
+        // Función para limpiar el formato del número
+        function cleanNumber(formattedNumber) {
+            console.log(formattedNumber)
+            return Number(formattedNumber.replace(/\./g, '').replace(',', '.'));
+        }
+
         // Event handler for the save button after editing
         $('#presupuesto-content').on('click', '.save-button', function() {
-          var row = $(this).closest('tr');
-          var inputCantidad = row.find('.input-cantidad').val();
-          var inputPrecioUnitario = row.find('.input-precio-unitario').val();
-          // Calculate new total price
-          var newTotalPrice = calculateTotalPrice(inputCantidad, inputPrecioUnitario);
-          // Update the row with new values
-          row.find('td:eq(2)').text(inputCantidad);
-          row.find('td:eq(3)').text(inputPrecioUnitario);
-          row.find('td:eq(4)').text(newTotalPrice);
-          // Replace save button with edit button
-          $(this).replaceWith('<button class="btn btn-primary btn-xs edit-button btn-affecting-prices"><i class="fa fa-pencil"></i></button>');
+            var row = $(this).closest('tr');
+            var inputCantidad = cleanNumber(row.find('.input-cantidad').val()); // Asegúrate de limpiar el valor
+            var inputPrecioUnitario = cleanNumber(row.find('.input-precio-unitario').val()); // Asegúrate de limpiar el valor
+            console.log(inputPrecioUnitario)
+            // Calculate new total price
+            var newTotalPrice = calculateTotalPrice(inputCantidad, inputPrecioUnitario);
+            // Update the row with new values
+            row.find('td:eq(2)').text(inputCantidad);
+            row.find('td:eq(3)').text(Intl.NumberFormat('es-ES').format(inputPrecioUnitario)); // Vuelve a formatear para mostrar
+            row.find('td:eq(4)').text(Intl.NumberFormat('es-ES').format(newTotalPrice)); // Vuelve a formatear para mostrar
+            // Replace save button with edit button
+            $(this).replaceWith('<button class="btn btn-primary btn-xs edit-button btn-affecting-prices"><i class="fa fa-pencil"></i></button>');
         });
+
         function calculateTotalPrice(cantidad, precioUnitario) {
-          return (Number(cantidad) * Number(precioUnitario)).toFixed(2);
+            return cantidad * precioUnitario; // Aquí ya tienes números limpios, no necesitas toFixed() a menos que quieras limitar los decimales
         }
+
 
         // When an "Añadir Subsección" button is clicked
         $('#presupuesto-content').on('click', '.add-subseccion-button', function() {
@@ -236,30 +245,34 @@
             $('#modalAddDetalle').data('subseccion-id', subseccionId);
         });
 
-        function actualizarSumatoriaPrecioTotal() {
+       function actualizarSumatoriaPrecioTotal() {
             var sumatoria = 0;
             // Obtén todos los elementos de la columna de precios totales de la tabla principal
             var preciosTotales = document.querySelectorAll('#presupuesto-content-body .detalle-row td:nth-child(5)');
             preciosTotales.forEach(function(precio) {
-                sumatoria += parseFloat(precio.textContent) || 0;
+                // Limpia el formato antes de sumar
+                sumatoria += parseFloat(precio.textContent.replace(/\./g, '')) || 0;
             });
-            // Actualiza la suma en la tabla de resumen
-             // Calcula el IVA como el 10% del precio total
-            var iva = sumatoria * 0.10;  // Asumiendo que el IVA es del 10%
+            // Redondea a dos decimales
+            sumatoria = parseFloat(sumatoria.toFixed(2));
 
-            // Calcula el total con IVA
-            var totalConIva = sumatoria + iva;
+            // Calcula el IVA como el 10% del precio total, redondea a dos decimales
+            var iva = parseFloat((sumatoria * 0.10).toFixed(2));
 
-            // Actualiza la suma en la tabla de resumen
-            document.getElementById('sumatoriaPrecioTotal').textContent = sumatoria.toFixed();
-            document.getElementById('iva').textContent = iva.toFixed();
-            document.getElementById('sumatoriaConIva').textContent = totalConIva.toFixed();
+            // Calcula el total con IVA, redondea a dos decimales
+            var totalConIva = parseFloat((sumatoria + iva).toFixed(2));
+
+            // Actualiza la suma en la tabla de resumen con formateo para mostrar
+            document.getElementById('sumatoriaPrecioTotal').textContent = new Intl.NumberFormat('es-ES').format(sumatoria);
+            document.getElementById('iva').textContent = new Intl.NumberFormat('es-ES').format(iva);
+            document.getElementById('sumatoriaConIva').textContent = new Intl.NumberFormat('es-ES').format(totalConIva);
         }
 
         $(document).on('click', '.btn-affecting-prices', function() {
             // Después de cualquier cambio, actualiza la sumatoria
             actualizarSumatoriaPrecioTotal();
         });
+
 
         // Esta función se llamará cada vez que ocurran mutaciones (cambios) en la tabla
         function handleMutations(mutationsList, observer) {
@@ -293,9 +306,9 @@
                     'secciones': [],
                     'subsecciones': [],
                     'detalles': [],
-                    'subtotal': $('#sumatoriaPrecioTotal').text(),
-                    'iva': $('#iva').text(),
-                    'monto_total': $('#sumatoriaConIva').text(),
+                    'subtotal': cleanNumber($('#sumatoriaPrecioTotal').text()),
+                    'iva': cleanNumber($('#iva').text()),
+                    'monto_total': cleanNumber($('#sumatoriaConIva').text()),
                     'plazo': plazo
                 };
                 // Recorrer cada fila de sección
@@ -324,8 +337,8 @@
                         'rubro': $(this).find('td').eq(0).text(),
                         'unidad': $(this).find('td').eq(1).text(),
                         'cantidad': $(this).find('td').eq(2).text(),
-                        'precioUnitario': $(this).find('td').eq(3).text(),
-                        'precioTotal': $(this).find('td').eq(4).text()
+                        'precioUnitario': cleanNumber($(this).find('td').eq(3).text()),
+                        'precioTotal': cleanNumber($(this).find('td').eq(4).text())
                     };
                     // Añadir el detalle al array
                     presupuestoData.detalles.push(detalle);
