@@ -239,23 +239,37 @@ class Cronograma(models.Model):
 class DetalleCronograma(models.Model):
     cronograma = models.ForeignKey(Cronograma, on_delete=models.CASCADE, related_name='detalles_cronograma')
     detalle = models.ForeignKey(Detalle, on_delete=models.CASCADE)
-    fecha = models.DateField(null=True, blank=True)
+    fecha_programada = models.DateField(null=True, blank=True)
+    fecha_culminacion = models.DateField(null=True, blank=True)
     realizado = models.BooleanField(default=False)  # Campo booleano para indicar si la actividad fue realizada
 
     def __str__(self):
-        return f"{self.detalle} - {self.fecha}"
+        return f"{self.detalle} - {self.fecha_programada}"
 
 
 class Certificado(models.Model):
-    presupuesto = models.ForeignKey(Presupuesto, on_delete=models.CASCADE)
-    ingeniero = models.ForeignKey(User, on_delete=models.CASCADE)
-    fecha = models.DateField()
     ESTADOS = (
-        ('P', 'Presentado'),
-        ('G', 'Pagado'),
+        ('pendiente_envio', 'Pendiente de Envío'),
+        ('enviado', 'Enviado'),
+        ('pagado', 'Pagado'),
     )
-    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
-    detalles = models.ManyToManyField(Detalle)
-    monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
 
+    obra = models.ForeignKey(Obra, on_delete=models.CASCADE)  # Asegúrate de que el modelo Obra está importado
+    fecha_creacion = models.DateField(auto_now_add=True)
+    fecha_envio = models.DateField(null=True, blank=True)
+    fecha_pago = models.DateField(null=True, blank=True)
+    comprobante_pago = models.FileField(upload_to='comprobantes_pago/', null=True, blank=True)
+    estado = models.CharField(max_length=15, choices=ESTADOS, default='pendiente_envio')
+
+    def __str__(self):
+        return f"Certificado {self.id} - {self.obra}"
+
+
+class DetalleCertificado(models.Model):
+    certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE, related_name='detalles_certificado')
+    detalle_cronograma = models.ForeignKey(DetalleCronograma, on_delete=models.CASCADE)  # Asegúrate de que el modelo DetalleCronograma está importado
+    # Aquí puedes agregar campos adicionales si son necesarios
+
+    def __str__(self):
+        return f"Detalle {self.id} - Certificado {self.certificado.id}"
 

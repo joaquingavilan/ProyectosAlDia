@@ -1,391 +1,118 @@
 {% extends request.base_template %}
 {% load custom_filters %}
+
 {% block content %}
-
-<h1 class="display-4 text-center mb-5">Elaborar Certificado</h1>
-
-<!-- Contenedor para la selección de la obra -->
-
-    <div class="container">
-        <div class="row align-items-center justify-content-center"> <!-- Agregado justify-content-center -->
-            <!-- Dropdown para las obras -->
-            <div class="col-md-6 text-center"> <!-- Cambiado col-md-8 a col-md-6 y agregado text-center -->
-                <select id="selectObra" class="form-select mx-auto" style="display:inline-block;"> <!-- Agregado mx-auto y display:inline-block -->
-                    <!-- Opción por defecto -->
-                    <option value="" selected>Seleccione la obra a certificar</option>
-
-                    {% for obra in obras %}
-                        <option value="{{ obra.proyecto.id }}">{{ obra.proyecto.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+<div class="right_col" role="main">
+    <div class="page-title">
+        <div class="title_left">
+            <h3>Elaborar Certificado</h3>
         </div>
     </div>
 
-<br>
+    <div class="clearfix"></div>
 
- <div class="container-fluid">
     <div class="row">
-        <div class="col-md-5"> <!-- Esta columna ocupará la mitad de la pantalla en dispositivos medianos y más grandes -->
-            <div id="presupuestoDiv">
-                <!-- Aquí se llenará dinámicamente el presupuesto seleccionado -->
-            </div>
-        </div>
-        <div class="col-md-5 offset-md-1">
-            <div id="certificadoDiv">
-                <!-- Aquí se llenará dinámicamente el certificado -->
+        <div class="col-md-12 col-sm-12 ">
+            <div class="x_panel">
+                <div class="x_content">
+                    <form id="seleccionar-obra-form" class="form-inline">
+                        <div class="form-group">
+                            <label for="obra-selector">Seleccione una Obra: </label>
+                            <select id="obra-selector" class="form-control">
+                                {% for obra in obras %}
+                                    <option value="{{ obra.id }}">{{ obra.proyecto.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="button" id="cargar-detalles-btn" class="btn btn-primary">Seleccionar</button>
+                    </form>
+                    <hr>
+                    <div id="detalles-cronograma-container">
+                        <!-- Aquí se cargarán los detalles del cronograma -->
+                    </div>
+                </div>
+                <button type="button" id="guardar-certificado-btn" class="btn btn-success">Guardar Certificado</button>
             </div>
         </div>
     </div>
 </div>
-<!-- Botón para guardar el certificado -->
-<button id="guardarCertificado">Guardar Certificado</button>
-
 {% endblock %}
+
 {% block extra_js %}
-    <script>
-        let presupuestosArray = JSON.parse('{{ presupuestos|safe }}');
-        let presupuestosObj = {};
-        let currentData = null;  // Variable para guardar los datos de la obra seleccionada
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cargarDetallesBtn = document.getElementById('cargar-detalles-btn');
+    cargarDetallesBtn.addEventListener('click', function() {
+        const obraId = document.getElementById('obra-selector').value;
+        fetch(`/cargar_detalles_certificado/?obra_id=${obraId}`)
+            .then(response => response.json())
+            .then(detalles => {
+                // Construir y mostrar la tabla de detalles
+                const detallesContainer = document.getElementById('detalles-cronograma-container');
+                detallesContainer.innerHTML = ''; // Limpiar el contenido anterior
+                if (detalles.length > 0) {
+                    const table = document.createElement('table');
+                    table.className = 'table table-striped table-bordered';
+                    const thead = document.createElement('thead');
+                    thead.innerHTML = `
+                        <tr>
+                            <th>Rubro</th>
+                            <th>Fecha de Culminación</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unitario</th>
+                            <th>Precio Total</th>
+                            <th>Agregar al certificado<th>
+                        </tr>`;
+                    table.appendChild(thead);
 
-        presupuestosArray.forEach(p => {
-            presupuestosObj[p.fields.proyecto] = p.fields;
-        });
-
-        document.getElementById("selectObra").addEventListener("change", function() {
-            // Obtener el ID del proyecto seleccionado
-            const proyectoId = this.value;
-
-            if (!proyectoId) {
-                document.getElementById("presupuestoDiv").innerHTML = "";  // Limpiamos el contenido si hubiera
-                return;
-            }
-
-            fetch(`/obtener_presupuesto_detalle/${proyectoId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    currentData = data;  // Guardamos los datos en la variable global
-                    let content = `
-                    <h3 class="mb-4 text-center">Presupuesto</h3>
-                    <table  class="table table-bordered table-hover table-sm">
-                        <thead>
-                            <tr>
-                                <th>Rubro</th>
-                                <th>Unidad de Medida</th>
-                                <th>Cantidad</th>
-                                <th>Precio Unitario</th>
-                                <th>Precio Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-
-                    for (let categoria of data) {
-                        content += `<tr data-type="categoria" data-id="${categoria.id}" draggable="true" style="background-color: #EEE;">
-                                        <td colspan="5"><strong>${categoria.nombre}</strong></td>
-                                    </tr>`;
-                        for (let item of categoria.items) {
-                            content += `<tr data-type="item" data-id="${item.id}" draggable="true" style="background-color: #DDD;">
-                                            <td colspan="5"><strong>${item.nombre}</strong></td>
-                                        </tr>`;
-                            for (let subitem of item.subitems) {
-                                content += `
-                                    <tr data-type="subitem" data-id="${subitem.id}" draggable="true">
-                                        <td>${subitem.rubro}</td>
-                                        <td>${subitem.unidad_medida}</td>
-                                        <td>${subitem.cantidad}</td>
-                                        <td>${subitem.precio_unitario}</td>
-                                        <td>${subitem.precio_total}</td>
-                                    </tr>`;
-                            }
-                        }
-                    }
-
-
-                    content += `</tbody></table>`;
-                    document.getElementById("presupuestoDiv").innerHTML = content;
-
-                    // Código para agregar el encabezado del certificado
-                    const certificadoContent = `
-                        <h3 class="mb-4 text-center">Certificado</h3>
-                        <table class="table table-bordered table-hover table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Rubro</th>
-                                    <th>Unidad de Medida</th>
-                                    <th>Cantidad</th>
-                                    <th>Precio Unitario</th>
-                                    <th>Precio Total</th>
-                                    <th>Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody id="certificadoBody">
-                                <!-- Aquí se llenarán dinámicamente las filas del certificado -->
-                            </tbody>
-                        </table>
-                    `;
-                    document.getElementById("certificadoDiv").innerHTML = certificadoContent;
-                })
-                .catch(error => {
-                    console.error('Error obteniendo el detalle del presupuesto:', error);
-                });
-        });
-
-        document.addEventListener("dragstart", function(event) {
-            const targetElement = getClosestWithDataId(event.target);
-            if (targetElement) {
-                const type = targetElement.getAttribute('data-type');
-                const id = targetElement.getAttribute('data-id');
-                event.dataTransfer.setData("type", type);
-                event.dataTransfer.setData("id", id);
-            }
-        });
-
-
-        // Definir lo que sucede cuando arrastramos un elemento sobre el área de destino
-        document.getElementById("certificadoDiv").addEventListener("dragover", function(event) {
-            event.preventDefault();  // Evita que se ejecute el comportamiento predeterminado
-        });
-
-        // Definir lo que sucede cuando soltamos el elemento en el área de destino
-        document.getElementById("certificadoDiv").addEventListener("drop", function(event) {
-            event.preventDefault();
-
-            // Obtener el tipo y ID del elemento que hemos soltado
-            const tipo = event.dataTransfer.getData("type");
-            const id = event.dataTransfer.getData("id");
-
-            if (tipo === "subitem") {
-                agregarSubitemAlCertificado(id);
-            } else if (tipo === "item") {
-                agregarItemAlCertificado(id);
-            } else if (tipo === "categoria") {
-                agregarCategoriaAlCertificado(id);
-            }
-        });
-
-        function agregarSubitemAlCertificado(subitemId, itemId = null) {
-            if(isSubitemInCertificado(subitemId)) {
-                return; // Si el subitem ya está en el certificado, simplemente regresa y no lo añadas nuevamente.
-            }
-            const subitem = currentData.flatMap(categoria => categoria.items.flatMap(item => item.subitems)).find(s => s.id === parseInt(subitemId, 10));
-            if (subitem) {
-                // Verificar si el ítem y la categoría del subítem están en el certificado
-                if (!isItemInCertificado(subitem.itemId)) {
-                    if (!isCategoriaInCertificado(subitem.categoriaId)) {
-                        agregarCategoriaAlCertificado(subitem.categoriaId, false);
-                    }
-                    agregarItemAlCertificado(subitem.itemId, false);
-                }
-
-                // Buscar todos los subitems del ítem correspondiente
-                const allSubitemsOfItem = document.querySelectorAll(`#certificadoBody > tr[data-type="subitem"][data-item-id="${subitem.itemId}"]`);
-
-                const fila = `
-                    <tr data-type="subitem" data-id="${subitem.id}" data-item-id="${subitem.itemId}">
-                        <td>${subitem.rubro}</td>
-                        <td>${subitem.unidad_medida}</td>
-                        <td class="subitem-cantidad"><input type="number" value="0" min="0" max="${subitem.cantidad}" class="cantidad-input"></td>
-                        <td class="subitem-precio-unitario">${subitem.precio_unitario}</td> <!-- Agregar clase -->
-                        <td class="subitem-precio-total">0</td> <!-- Establecer el precio total a 0 y agregar clase -->
-                        <td><button class="btn btn-danger btn-sm eliminar-btn">Eliminar</button></td>
-                    </tr>
-                `;
-
-                    if (itemId) {
-                        const itemInCertificado = document.querySelector(`#certificadoBody > tr[data-type="item"][data-id="${itemId}"]`);
-                        itemInCertificado.insertAdjacentHTML('afterend', fila);
-                    } else{
-                        const allSubitemsOfItem = document.querySelectorAll(`#certificadoBody > tr[data-type="subitem"][data-item-id="${subitem.itemId}"]`);
-                        if (allSubitemsOfItem.length) {
-                            const lastSubitemOfItem = allSubitemsOfItem[allSubitemsOfItem.length - 1];
-                            lastSubitemOfItem.insertAdjacentHTML('afterend', fila);
-                        } else {
-                            document.getElementById("certificadoBody").insertAdjacentHTML('beforeend', fila);
-
-                        }
-                    }
-                }
-        }
-
-        function agregarItemAlCertificado(itemId, agregarSubitems = true) {
-            if(isItemInCertificado(itemId)) {
-                return; // Si el ítem ya está en el certificado, simplemente regresa y no lo añadas nuevamente.
-            }
-            const item = currentData.flatMap(categoria => categoria.items).find(i => i.id === parseInt(itemId, 10));
-            if (item) {
-                if (!isCategoriaInCertificado(item.categoriaId)) {
-                    agregarCategoriaAlCertificado(item.categoriaId, false); // No agregamos ítems
-                }
-                const filaItem = `
-                    <tr data-type="item" data-id="${item.id}" data-categoria-id="${item.categoriaId}" style="background-color: #DDD;">
-                        <td colspan="5"><strong>${item.nombre}</strong></td>
-                        <td><button class="btn btn-danger btn-sm eliminar-btn">Eliminar</button></td>
-                    </tr>
-                `;
-
-                const allItemsOfCategoria = document.querySelectorAll(`#certificadoBody > tr[data-type="item"][data-categoria-id="${item.categoriaId}"]`);
-                if (allItemsOfCategoria.length) {
-                    const lastItemOfCategoria = allItemsOfCategoria[allItemsOfCategoria.length - 1];
-
-                    // Buscar todos los subitems del último ítem
-                    const allSubitemsOfLastItem = document.querySelectorAll(`#certificadoBody > tr[data-type="subitem"][data-item-id="${lastItemOfCategoria.getAttribute('data-id')}"]`);
-
-                    if (allSubitemsOfLastItem.length) {
-                        const lastSubitemOfLastItem = allSubitemsOfLastItem[allSubitemsOfLastItem.length - 1];
-                        lastSubitemOfLastItem.insertAdjacentHTML('afterend', filaItem);
-                    } else {
-                        lastItemOfCategoria.insertAdjacentHTML('afterend', filaItem);
-                    }
+                    const tbody = document.createElement('tbody');
+                    detalles.forEach(detalle => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${detalle.detalle__rubro}</td>
+                            <td>${detalle.fecha_culminacion}</td>
+                            <td>${detalle.detalle__cantidad}</td>
+                            <td>${detalle.detalle__precio_unitario}</td>
+                            <td>${detalle.detalle__precio_total}</td>
+                            <td><input type="checkbox" class="seleccionar-fila" data-id="${detalle.id}"></td>
+                            `;
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    detallesContainer.appendChild(table);
                 } else {
-                    document.getElementById("certificadoBody").insertAdjacentHTML('beforeend', filaItem);
+                    detallesContainer.innerHTML = '<p>No hay detalles para mostrar</p>';
                 }
+            });
+    });
+    const guardarCertificadoBtn = document.getElementById('guardar-certificado-btn');
+    guardarCertificadoBtn.addEventListener('click', function() {
+        const obraId = document.getElementById('obra-selector').value; // Captura el ID de la obra seleccionada
+        const filasSeleccionadas = document.querySelectorAll('#detalles-cronograma-container .seleccionar-fila:checked');
+        const idsCertificado = Array.from(filasSeleccionadas).map(cb => cb.getAttribute('data-id'));
 
-                if (agregarSubitems) {
-                    for (let subitem of item.subitems) {
-                        agregarSubitemAlCertificado(subitem.id, item.id);
-                    }
-                }
-            }
-        }
+        // Crea un objeto que incluya tanto los IDs de los detalles como el ID de la obra
+        const datosParaEnviar = {
+            ids: idsCertificado,
+            obra_id: obraId
+        };
 
-
-        function agregarCategoriaAlCertificado(categoriaId, agregarItems = true) {
-            if(isCategoriaInCertificado(categoriaId)) {
-                return; // Si el subitem ya está en el certificado, simplemente regresa y no lo añadas nuevamente.
-            }
-            const parsedCategoriaId = parseInt(categoriaId, 10);  // Convertir el ID a un número
-            const categoria = currentData.find(c => c.id === parsedCategoriaId);
-            if (categoria) {
-                const filaCategoria = `
-                    <tr data-type="categoria" data-id="${categoria.id}" style="background-color: #EEE;">
-                        <td colspan="5"><strong>${categoria.nombre}</strong></td>
-                        <td><button class="btn btn-danger btn-sm eliminar-btn">Eliminar</button></td>
-                    </tr>
-                `;
-                document.getElementById("certificadoBody").insertAdjacentHTML('beforeend', filaCategoria);
-                if (agregarItems) {
-                    for (let item of categoria.items) {
-                        agregarItemAlCertificado(item.id);
-                    }
-                }
-            }
-        }
-
-        document.addEventListener("click", function(event) {
-            if (event.target && event.target.classList.contains("eliminar-btn")) {
-                const row = event.target.closest('tr');
-                const type = row.getAttribute('data-type');
-                const id = row.getAttribute('data-id');
-
-                if (type === "subitem") {
-                    eliminarSubitem(row);
-                } else if (type === "item") {
-                    eliminarItem(row);
-                } else if (type === "categoria") {
-                    eliminarCategoria(row);
-                }
-            }
+        fetch('/guardar_certificado', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken // Asegúrate de incluir el CSRF token
+            },
+            body: JSON.stringify(datosParaEnviar)
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Manejar la respuesta del servidor
+        })
+        .catch(error => {
+            // Manejar errores
         });
-
-        function eliminarSubitem(row) {
-            const itemId = row.getAttribute('data-item-id');
-            row.remove();
-
-            // Verificar si todos los subitems del ítem han sido eliminados
-            const subitemRows = document.querySelectorAll(`#certificadoBody > tr[data-type="subitem"][data-item-id="${itemId}"]`);
-            if (!subitemRows.length) {
-                const itemRow = document.querySelector(`#certificadoBody > tr[data-type="item"][data-id="${itemId}"]`);
-                eliminarItem(itemRow);
-            }
-        }
-
-        function eliminarItem(row) {
-            const categoriaId = row.getAttribute('data-categoria-id');
-
-            // Eliminar todos los subitems de este ítem
-            const subitemRows = document.querySelectorAll(`#certificadoBody > tr[data-type="subitem"][data-item-id="${row.getAttribute('data-id')}"]`);
-            subitemRows.forEach(r => r.remove());
-
-            row.remove();
-
-            // Verificar si todos los ítems de la categoría han sido eliminados
-            const itemRows = document.querySelectorAll(`#certificadoBody > tr[data-type="item"][data-categoria-id="${categoriaId}"]`);
-            if (!itemRows.length) {
-                const categoriaRow = document.querySelector(`#certificadoBody > tr[data-type="categoria"][data-id="${categoriaId}"]`);
-                eliminarCategoria(categoriaRow);
-            }
-        }
-
-        function eliminarCategoria(row) {
-            // Eliminar todos los ítems y subitems de esta categoría
-            const itemRows = document.querySelectorAll(`#certificadoBody > tr[data-type="item"][data-categoria-id="${row.getAttribute('data-id')}"]`);
-            itemRows.forEach(r => eliminarItem(r));
-
-            row.remove();
-        }
-
-
-
-        // Agregar un oyente de eventos para todos los campos de cantidad
-        document.addEventListener("input", function(event) {
-            if (event.target && event.target.classList.contains("cantidad-input")) {
-                const row = event.target.closest('tr');
-                const precioUnitario = parseFloat(row.querySelector(".subitem-precio-unitario").textContent);
-                let newCantidad = parseFloat(event.target.value);
-                const precioTotalCell = row.querySelector(".subitem-precio-total");
-
-                // Verificar si el valor ingresado excede el máximo
-                const maxCantidad = parseFloat(event.target.getAttribute('max'));
-                if (newCantidad > maxCantidad) {
-                    alert('No puedes ingresar una cantidad mayor a la establecida en el presupuesto.');
-                    newCantidad = 0;  // Restablecemos la cantidad a 0
-                    event.target.value = 0;  // Restablecemos el valor del input a 0
-                }else if (newCantidad < 0) {
-                    alert('La cantidad debe ser mayor o igual a 0.');
-                    newCantidad = 0;  // Restablecemos la cantidad a 0
-                    event.target.value = 0;  // Restablecemos el valor del input a 0
-                }
-
-
-                precioTotalCell.textContent = (precioUnitario * newCantidad).toFixed(2); // Asumiendo 2 decimales
-            }
-        });
-
-
-        function getClosestWithDataId(element) {
-            while (element && !element.getAttribute('data-id') && element.tagName !== 'BODY') {
-                element = element.parentElement;
-            }
-            return (element && element.getAttribute('data-id')) ? element : null;
-        }
-
-        function isItemInCertificado(itemId) {
-            // Busca una fila con el ID del ítem en el certificado.
-            const itemRows = document.querySelectorAll('#certificadoBody > tr[data-type="item"]');
-            return Array.from(itemRows).some(row => row.getAttribute('data-id') === itemId.toString());
-        }
-
-        function isCategoriaInCertificado(categoriaId) {
-            // Busca una fila con el ID de la categoría en el certificado.
-            const categoriaRows = document.querySelectorAll('#certificadoBody > tr[data-type="categoria"]');
-            return Array.from(categoriaRows).some(row => row.getAttribute('data-id') === categoriaId.toString());
-        }
-
-        function isSubitemInCertificado(subitemId) {
-            // Busca una fila con el ID del subitem en el certificado.
-            const subitemRows = document.querySelectorAll('#certificadoBody > tr[data-type="subitem"]');
-            return Array.from(subitemRows).some(row => row.getAttribute('data-id') === subitemId.toString());
-        }
-
-
-
-
-
-
-        document.getElementById("guardarCertificado").addEventListener("click", function() {
-            // Hacer una solicitud al backend para guardar el certificado.
-        });
-    </script>
-
-
+    });
+});
+</script>
 {% endblock %}

@@ -130,6 +130,7 @@ urlpatterns = [
     path('obtener_filtro_valores/', views.obtener_filtro_valores, name='obtener_filtro_valores'),
     path('obtener_presupuestos_filtrados/', views.obtener_presupuestos_filtrados, name='obtener_presupuestos_filtrados'),
     path('obtener_monto_presupuesto/', views.obtener_monto_presupuesto, name='obtener_monto_presupuesto'),
+    path('cargar_detalles_certificado/', views.cargar_detalles_certificado, name='cargar_detalles_certificado'),
     path('cargar_distritos/', views.cargar_distritos, name='cargar_distritos'),
     path('crear_presupuesto/<int:presupuesto_id>/', views.crear_presupuesto, name='crear_presupuesto'),
     path('cambiar_password/', views.cambiar_password, name='cambiar_password'),

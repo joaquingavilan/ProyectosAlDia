@@ -26,36 +26,53 @@
                                     <th>Cant.</th>
                                     <th>P. Unitario</th>
                                     <th>P. Total</th>
-                                    <th>Fecha</th> <!-- Nueva columna para las fechas -->
+                                    <th>Fecha programada</th>
+                                    <th>Fecha de culminación</th>
                                     <th>Estado</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                             {% for seccion, subsecciones_data in estructura_presupuesto.items %}
                                 <tr class="table-secondary">
                                     <td><strong>{{ seccion.nombre }}</strong></td>
-                                    <td colspan="6"></td>
+                                    <td colspan="8"></td>
                                 </tr>
 
                                 {% for subseccion, detalles in subsecciones_data.items %}
                                     <tr class="table-light">
                                         <td>&emsp;&emsp;{{ subseccion.nombre }}</td>
-                                        <td colspan="5"></td>
+                                        <td colspan="7"></td>
                                         <td></td>
                                     </tr>
 
-                                    {% for detalle, fecha, estado in detalles %}
+                                    {% for detalle, fecha_programada, fecha_culminacion, realizado in detalles %}
                                         <tr>
                                             <td>&emsp;&emsp;&emsp;&emsp;{{ detalle.rubro }}</td>
                                             <td>{{ detalle.unidad_medida.nombre }}</td>
                                             <td>{{ detalle.cantidad }}</td>
                                             <td>{{ detalle.precio_unitario }}</td>
                                             <td>{{ detalle.precio_total }}</td>
-                                            <td>{{ fecha }}</td>
+                                            <td>{{ fecha_programada }}</td>
+                                            <td>{%if realizado %}
+                                                {{ fecha_culminacion }}
+                                                {% else %}
+                                                --
+                                                {% endif %}
+                                            </td>
                                             <td>{%if realizado %}
                                                 Completado
                                                 {% else %}
                                                 Pendiente
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if not realizado and hoy >= obra.fecha_inicio %}
+                                                    <button class="btn btn-success btn-sm marcar-realizado" data-cronograma-id="{{ cronograma.id }}" data-detalle-id="{{ detalle.id }}">
+                                                        Marcar como Realizado
+                                                    </button>
+                                                {% else %}
+                                                    -
                                                 {% endif %}
                                             </td>
                                         </tr>
@@ -74,4 +91,33 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const botones = document.querySelectorAll('.marcar-realizado');
+    botones.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const cronogramaId = this.getAttribute('data-cronograma-id');
+            const detalleId = this.getAttribute('data-detalle-id');
+            fetch('/marcar_como_realizado/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cronograma_id: cronogramaId, detalle_id: detalleId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    location.reload()
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

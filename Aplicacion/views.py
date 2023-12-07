@@ -838,7 +838,7 @@ def ver_obras(request):
         cronograma = Cronograma.objects.get(archivo_presupuesto__presupuesto__proyecto=obra.proyecto)
         # Obtener el cronograma asociado a la obra
         # Verificar si existe un cronograma y si al menos un detalle tiene fecha
-        if cronograma and cronograma.detalles_cronograma.filter(fecha__isnull=False).exists():
+        if cronograma and cronograma.detalles_cronograma.filter(fecha_programada__isnull=False).exists():
             cronograma_existente = True
         else:
             cronograma_existente = False
@@ -2090,35 +2090,48 @@ def finalizar_obra(request, obra_id):
 
 def elaborar_certificado(request):
     obras = Obra.objects.filter(encargado=request.user, estado='E')
-
-    # Extraemos los proyectos relacionados con las obras
-    proyectos = [obra.proyecto for obra in obras]
-
-    # Filtramos los presupuestos usando esos proyectos
-    presupuestos = Presupuesto.objects.filter(proyecto__in=proyectos)
-    presupuestos_dict = {presupuesto.proyecto.id: presupuesto for presupuesto in presupuestos}
-    presupuestos_serializados = serialize('json', presupuestos)
-
-    # Obtener el archivo_presupuesto
-    archivos_presupuesto = ArchivoPresupuesto.objects.filter(presupuesto__in=presupuestos)
-
-    # Obtener las categorías para cada archivo_presupuesto
-    categorias = {archivo.id: Categoria.objects.filter(archivo=archivo).order_by('pk') for archivo in archivos_presupuesto}
-
     context = {
         'obras': obras,
-        'presupuestos': presupuestos_serializados,
-        'archivos_presupuesto': archivos_presupuesto,
-        'categorias': categorias
     }
 
     return render(request, 'pantallas_ing/elaborar_certificado.html', context)
 
 
+def cargar_detalles_certificado(request):
+    obra = Obra.objects.get(id=request.GET.get('obra_id'))
+    proyecto_id = obra.proyecto.id
+    detalles = DetalleCronograma.objects.filter(
+        cronograma__archivo_presupuesto__presupuesto__proyecto__id=proyecto_id,
+        realizado=True
+    ).values('id', 'detalle__rubro', 'fecha_programada', 'fecha_culminacion', 'detalle__cantidad', 'detalle__precio_unitario', 'detalle__precio_total')
+    return JsonResponse(list(detalles), safe=False)
+
+
+@csrf_exempt  # Esto es solo para fines de prueba. En producción, maneja CSRF correctamente.
 def guardar_certificado(request):
-    # Lógica para crear el certificado y agregar todos los subitems.
-    # ...
-    return JsonResponse({"status": "success"})
+    if request.method == 'POST':
+        # Obtener los datos del cuerpo de la solicitud
+        data = json.loads(request.body)
+        ids = data.get('ids')  # Asume que 'ids' es una clave en tu JSON
+        obra_id = data.get('obra_id')  # Asume que también se envía un 'obra_id'
+
+        try:
+            obra = Obra.objects.get(id=obra_id)
+            certificado = Certificado.objects.create(obra=obra)
+
+            for identificador in ids:
+                detalle_cronograma = DetalleCronograma.objects.get(id=identificador)
+                DetalleCertificado.objects.create(certificado=certificado, detalle_cronograma=detalle_cronograma)
+
+            return JsonResponse({"status": "success"})
+        except Obra.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Obra no encontrada"}, status=404)
+        except DetalleCronograma.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Detalle de cronograma no encontrado"}, status=404)
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return JsonResponse({"status": "error"}, status=400)
 
 
 def obtener_presupuesto_detalle(request, proyecto_id):
@@ -2226,9 +2239,8 @@ def obtener_monto_presupuesto(request):
 
 def ver_certificados_ing(request):
     # Asumimos que el usuario que está iniciando sesión es el ingeniero
-    certificados = Certificado.objects.filter(ingeniero=request.user)
+
     return render(request, 'pantallas_ing/ver_certificados.html', {
-        'certificados': certificados,
         'title': 'Mis Certificados'
     })
 
@@ -2753,7 +2765,7 @@ def guardar_cronograma(request):
                 detalle = Detalle.objects.get(id=detalle_id)
                 detalle_cronograma = DetalleCronograma.objects.get(detalle=detalle, cronograma=cronograma)
                 fecha_seleccionada = detalle_data.get('fechaSeleccionada')
-                detalle_cronograma.fecha = fecha_seleccionada
+                detalle_cronograma.fecha_programada = fecha_seleccionada
                 detalle_cronograma.save()
 
             return JsonResponse({'status': 'success', 'message': 'Cronograma guardado con éxito'})
@@ -2803,7 +2815,7 @@ def vista_redireccion_obra(request, campo, valor):
         # Obtener el cronograma asociado a la obra
         cronograma = Cronograma.objects.get(archivo_presupuesto__presupuesto__proyecto=obra.proyecto)
         # Verificar si existe un cronograma y si al menos un detalle tiene fecha
-        if cronograma and cronograma.detalles_cronograma.filter(fecha__isnull=False).exists():
+        if cronograma and cronograma.detalles_cronograma.filter(fecha_programada__isnull=False).exists():
             cronograma_existente = True
         else:
             cronograma_existente = False
@@ -2879,9 +2891,6 @@ def ver_cronograma(request, obra_id, cronograma_id):
     cronograma = get_object_or_404(Cronograma, id=cronograma_id)
     detalles_cronograma = cronograma.detalles_cronograma.all()
 
-    # Crear un diccionario que mapea los detalles a sus fechas en el cronograma
-    detalles_fechas = {detalle_crono.detalle: detalle_crono.fecha for detalle_crono in detalles_cronograma}
-
     # Construir la estructura jerárquica de secciones y subsecciones
     estructura_presupuesto = defaultdict(lambda: defaultdict(list))
 
@@ -2893,9 +2902,10 @@ def ver_cronograma(request, obra_id, cronograma_id):
             for detalle in Detalle.objects.filter(subseccion=subseccion,
                                                   archivopresupuesto=cronograma.archivo_presupuesto):
                 detalle_cron = DetalleCronograma.objects.get(detalle=detalle, cronograma=cronograma)
-                fecha = detalle_cron.fecha
+                fecha_programada = detalle_cron.fecha_programada
+                fecha_culminacion = detalle_cron.fecha_culminacion
                 realizado = detalle_cron.realizado
-                estructura_presupuesto[seccion][subseccion].append((detalle, fecha, realizado))
+                estructura_presupuesto[seccion][subseccion].append((detalle, fecha_programada, fecha_culminacion, realizado))
 
     # Convertir cada defaultdict interno a un diccionario regular
     estructura_presupuesto_regular = {seccion: dict(subsecciones) for seccion, subsecciones in estructura_presupuesto.items()}
@@ -2904,6 +2914,7 @@ def ver_cronograma(request, obra_id, cronograma_id):
         'obra': obra,
         'cronograma': cronograma,
         'estructura_presupuesto': estructura_presupuesto_regular,
+        'hoy': date.today(),  # Agrega la fecha actual al contexto
     }
     return render(request, 'pantallas_ing/ver_cronograma.html', context)
 
@@ -2935,9 +2946,10 @@ def ver_cronograma_adm(request, obra_id):
             for detalle in Detalle.objects.filter(subseccion=subseccion,
                                                   archivopresupuesto=cronograma.archivo_presupuesto):
                 detalle_cron = DetalleCronograma.objects.get(detalle=detalle, cronograma=cronograma)
-                fecha = detalle_cron.fecha
+                fecha_programada = detalle_cron.fecha_programada
+                fecha_culminacion = detalle_cron.fecha_culminacion
                 realizado = detalle_cron.realizado
-                estructura_presupuesto[seccion][subseccion].append((detalle, fecha, realizado))
+                estructura_presupuesto[seccion][subseccion].append((detalle, fecha_programada, fecha_culminacion, realizado))
 
     # Convertir cada defaultdict interno a un diccionario regular
     estructura_presupuesto_regular = {seccion: dict(subsecciones) for seccion, subsecciones in estructura_presupuesto.items()}
@@ -3003,16 +3015,18 @@ def obras_pendientes(request):
 def proximas_actividades(request):
     fecha_limite = timezone.now().date() + timedelta(days=7)
     actividades = DetalleCronograma.objects.filter(
-        fecha__lte=fecha_limite,
+        fecha_programada__lte=fecha_limite,
+        fecha_culminacion=None,
         realizado=False,
-        fecha__gte=timezone.now().date()
+        fecha_programada__gte=timezone.now().date()
     ).select_related('detalle', 'cronograma', 'cronograma__archivo_presupuesto', 'cronograma__archivo_presupuesto__presupuesto', 'cronograma__archivo_presupuesto__presupuesto__proyecto')
 
     data = [
         {
             'proyecto_nombre': actividad.cronograma.archivo_presupuesto.presupuesto.proyecto.nombre,
             'rubro': actividad.detalle.rubro,
-            'fecha': actividad.fecha.strftime('%d-%m-%Y'),
+            'fecha_programada': actividad.fecha_programada.strftime('%d-%m-%Y'),
+            'fecha_programada': actividad.fecha_culminacion.strftime('%d-%m-%Y'),
             'detalle_id': actividad.detalle.id,
             'cronograma_id': actividad.cronograma.id
         }
@@ -3024,14 +3038,16 @@ def proximas_actividades(request):
 @csrf_exempt
 def marcar_como_realizado(request):
     if request.method == 'POST':
-        cronograma_id = request.POST.get('cronograma_id')
-        detalle_id = request.POST.get('detalle_id')
-        print(cronograma_id)
+        data = json.loads(request.body)
+        cronograma_id = data.get('cronograma_id')
+        detalle_id = data.get('detalle_id')
         print(detalle_id)
-        # Encuentra el objeto DetalleCronograma correspondiente y actualiza
         try:
-            detalle_cronograma = DetalleCronograma.objects.get(cronograma=Cronograma.objects.get(id=cronograma_id), detalle_id=Detalle.objects.get(id=detalle_id))
+            detalle_cronograma = DetalleCronograma.objects.get(
+                cronograma_id=cronograma_id, detalle_id=detalle_id
+            )
             detalle_cronograma.realizado = True
+            detalle_cronograma.fecha_culminacion = timezone.now().date()
             detalle_cronograma.save()
             return JsonResponse({'status': 'success'})
         except DetalleCronograma.DoesNotExist:
