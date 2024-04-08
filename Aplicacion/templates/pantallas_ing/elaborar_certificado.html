@@ -85,8 +85,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
     });
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
     const guardarCertificadoBtn = document.getElementById('guardar-certificado-btn');
     guardarCertificadoBtn.addEventListener('click', function() {
+    const csrftoken = getCookie('csrftoken');
         const obraId = document.getElementById('obra-selector').value; // Captura el ID de la obra seleccionada
         const filasSeleccionadas = document.querySelectorAll('#detalles-cronograma-container .seleccionar-fila:checked');
         const idsCertificado = Array.from(filasSeleccionadas).map(cb => cb.getAttribute('data-id'));
@@ -97,17 +113,23 @@ document.addEventListener('DOMContentLoaded', function() {
             obra_id: obraId
         };
 
-        fetch('/guardar_certificado', {
+        fetch('/guardar_certificado/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken // Asegúrate de incluir el CSRF token
+                'X-CSRFToken': csrftoken,
             },
             body: JSON.stringify(datosParaEnviar)
         })
         .then(response => response.json())
         .then(data => {
-            // Manejar la respuesta del servidor
+            if (data.status === "success") { // Cambiado de data.success a data.status
+                // Si el servidor responde con éxito, redirige a la URL deseada.
+                window.location.href = '/ver_certificados_ing';
+            } else {
+                // Manejar la situación donde la respuesta del servidor no es éxito.
+                alert('Hubo un error: ' + data.message);
+            }
         })
         .catch(error => {
             // Manejar errores

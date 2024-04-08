@@ -18,7 +18,7 @@
             </div>
             <div class="modal-body">
                 <div class="form-group row">
-                    <label for="detalleExistente" class="col-md-4 col-form-label btn-affecting-prices" style="font-size: 1rem; white-space: nowrap;">Rubro Existente:</label>
+                    <label for="detalleExistente" class="col-md-4 col-form-label btn-affecting-prices" style="font-size: 1rem; white-space: nowrap;">Detalle Existente:</label>
                     <div class="col-md-8">
                         <select class="form-control select2" id="detalleExistente" style="width: 100%;">
                             <!-- Dynamically loaded options -->
@@ -28,15 +28,15 @@
 
                 <div class="form-group row">
                     <div class="col-md-12 d-flex justify-content-between">
-                        <button type="button" class="btn btn-secondary btn-affecting-prices" id="btnNuevoDetalle">Nuevo Rubro</button>
-                        <button type="button" class="btn btn-primary btn-affecting-prices" id="btnAñadirDetalle">Añadir Rubro</button>
+                        <button type="button" class="btn btn-secondary btn-affecting-prices" id="btnNuevoDetalle">Nuevo Detalle</button>
+                        <button type="button" class="btn btn-primary btn-affecting-prices" id="btnAñadirDetalle">Añadir Detalle</button>
                     </div>
                 </div>
 
                 <div id="formNuevoDetalle">
                     <div class="form-group">
-                        <label for="nombreDetalle">Rubro</label>
-                        <input type="text" class="form-control" id="nombreDetalle" placeholder="Ingrese el Rubro">
+                        <label for="nombreDetalle">Detalle</label>
+                        <input type="text" class="form-control" id="nombreDetalle" placeholder="Ingrese el Detalle">
                     </div>
 
                     <div class="form-group">
@@ -57,7 +57,7 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary btn-affecting-prices" data-dismiss="modal">Cerrar</button>
-                        <button type="button" class="btn btn-primary btn-affecting-prices" id="saveDetalle">Guardar Rubro</button>
+                        <button type="button" class="btn btn-primary btn-affecting-prices" id="saveDetalle">Guardar Detalle</button>
                     </div>
                 </div>
             </div>
@@ -245,7 +245,7 @@
                 },
                 success: function(response) {
                     console.log('Detalle created with ID:', response.id);
-                    var detalleId = response.detalleId;
+                    var detalleId = response.id;
                     var detalleRow = $('<tr class="detalle-row" data-tipo="detalle" data-id="' + detalleId + '"></tr>');
                     var precioUnitario = Number(response.precio_unitario);
                     if (!isNaN(precioUnitario)) {

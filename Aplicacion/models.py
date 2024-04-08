@@ -260,6 +260,7 @@ class Certificado(models.Model):
     fecha_pago = models.DateField(null=True, blank=True)
     comprobante_pago = models.FileField(upload_to='comprobantes_pago/', null=True, blank=True)
     estado = models.CharField(max_length=15, choices=ESTADOS, default='pendiente_envio')
+    monto_total = models.DecimalField(max_digits=10, decimal_places=0, default=0)
 
     def __str__(self):
         return f"Certificado {self.id} - {self.obra}"

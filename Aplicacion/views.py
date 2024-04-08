@@ -39,6 +39,9 @@ from collections import defaultdict
 from django.urls import reverse
 from datetime import timedelta
 from django.contrib.auth.forms import PasswordChangeForm
+from django.core.files.storage import FileSystemStorage
+from django.utils.text import get_valid_filename
+
 
 
 
@@ -172,7 +175,6 @@ def get_cliente_data(request, cliente_id):
         "ruc": cliente.ruc,
         "email": cliente.email,
         'tipo_persona': cliente.tipo_persona,
-        'ciudad': cliente.ciudad.nombre,
         'direccion': cliente.direccion,
         'telefono': cliente.telefono,
         'observaciones': cliente.observaciones
@@ -316,6 +318,7 @@ def eliminar_contacto(request, contacto_id):
 
         return JsonResponse({'status': 'success', 'message': 'Contacto eliminado correctamente'})
 
+
 #                   VISTAS PARA INGENIERO
 
 def registrar_ingeniero(request):
@@ -328,7 +331,7 @@ def registrar_ingeniero(request):
             apellido = form.cleaned_data['last_name']
             telefono = form.cleaned_data['telefono']
             direccion = form.cleaned_data['direccion']
-            password = form.cleaned_data['password1']  # Obtener la contraseña ingresada
+            password = '12345'  # Obtener la contraseña ingresada
 
             # Resto del código para validar y crear el usuario
 
@@ -337,13 +340,13 @@ def registrar_ingeniero(request):
                 usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido, email=email)
                 usuario.set_password(password)  # Establece la contraseña ingresada por el usuario
                 usuario.save()
-
-                # Resto del código para guardar otros datos del usuario
-
-                # Inicia sesión al usuario después de crearlo
-                login(request, usuario)
+                grupo = Group.objects.get(name='INGENIERO')
+                grupo.user_set.add(usuario)
 
                 return redirect('ver_ingenieros')
+        else:
+            print(form.errors)
+            return redirect('ver_ingenieros')
 
     else:
         form = CustomUserCreationForm()
@@ -2098,38 +2101,53 @@ def elaborar_certificado(request):
 
 
 def cargar_detalles_certificado(request):
-    obra = Obra.objects.get(id=request.GET.get('obra_id'))
+    obra_id = request.GET.get('obra_id')
+    obra = get_object_or_404(Obra, id=obra_id)
     proyecto_id = obra.proyecto.id
+
+    # Obtener los IDs de los detalles del cronograma que ya han sido certificados
+    detalles_certificados_ids = DetalleCertificado.objects.filter(
+        certificado__obra__proyecto__id=proyecto_id
+    ).values_list('detalle_cronograma_id', flat=True)
+
+    # Filtrar los detalles del cronograma que no han sido certificados
     detalles = DetalleCronograma.objects.filter(
         cronograma__archivo_presupuesto__presupuesto__proyecto__id=proyecto_id,
         realizado=True
-    ).values('id', 'detalle__rubro', 'fecha_programada', 'fecha_culminacion', 'detalle__cantidad', 'detalle__precio_unitario', 'detalle__precio_total')
+    ).exclude(
+        id__in=detalles_certificados_ids
+    ).values(
+        'id', 'detalle__rubro', 'fecha_programada', 'fecha_culminacion',
+        'detalle__cantidad', 'detalle__precio_unitario', 'detalle__precio_total'
+    )
+
     return JsonResponse(list(detalles), safe=False)
 
 
-@csrf_exempt  # Esto es solo para fines de prueba. En producción, maneja CSRF correctamente.
+@csrf_exempt
 def guardar_certificado(request):
     if request.method == 'POST':
-        # Obtener los datos del cuerpo de la solicitud
         data = json.loads(request.body)
-        ids = data.get('ids')  # Asume que 'ids' es una clave en tu JSON
-        obra_id = data.get('obra_id')  # Asume que también se envía un 'obra_id'
+        ids = data.get('ids')
+        obra_id = data.get('obra_id')
 
         try:
             obra = Obra.objects.get(id=obra_id)
-            certificado = Certificado.objects.create(obra=obra)
+            certificado = Certificado.objects.create(obra=obra, monto_total=0)  # Inicializa monto_total en 0
 
+            monto_total = 0
             for identificador in ids:
                 detalle_cronograma = DetalleCronograma.objects.get(id=identificador)
                 DetalleCertificado.objects.create(certificado=certificado, detalle_cronograma=detalle_cronograma)
+                monto_total += detalle_cronograma.detalle.precio_total  # Acumula el precio total de cada detalle
+
+            certificado.monto_total = monto_total  # Asigna el monto total acumulado al certificado
+            certificado.save()  # Guarda el certificado con el monto total actualizado
 
             return JsonResponse({"status": "success"})
         except Obra.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Obra no encontrada"}, status=404)
-        except DetalleCronograma.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Detalle de cronograma no encontrado"}, status=404)
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+        # Los demás excepts permanecen igual
 
     return JsonResponse({"status": "error"}, status=400)
 
@@ -2238,10 +2256,19 @@ def obtener_monto_presupuesto(request):
 
 
 def ver_certificados_ing(request):
-    # Asumimos que el usuario que está iniciando sesión es el ingeniero
+    obras = Obra.objects.filter(encargado=request.user)
+    certificados = []
+    for obra in obras:
+        # Assuming you want to add all certificados of each obra to the list
+        # 'Certificado.objects.filter(obra=obra)' returns a QuerySet
+        # So you need to iterate through it or use 'extend' to add its elements to the certificados list
+        for certificado in Certificado.objects.filter(obra=obra):
+            certificados.append(certificado)
 
+    # Include 'certificados' in the context dictionary
     return render(request, 'pantallas_ing/ver_certificados.html', {
-        'title': 'Mis Certificados'
+        'title': 'Mis Certificados',
+        'certificados': certificados  # Add this line
     })
 
 
@@ -2448,6 +2475,7 @@ def crear_detalle(request):
             'precio_unitario': detalle.precio_unitario,
             'precio_total': detalle.precio_total
         }
+        print(data)
         return JsonResponse(data)
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
@@ -3106,3 +3134,65 @@ def obras_pendientes_de_asignacion(request):
     ]
 
     return JsonResponse({'obras': data})
+
+
+@csrf_exempt
+def marcar_certificado_enviado(request, certificado_id):
+    try:
+        # Convertir el body de la solicitud de JSON a un diccionario de Python
+        data = json.loads(request.body)
+
+        # Encontrar el certificado con el ID proporcionado
+        certificado = Certificado.objects.get(id=certificado_id)
+
+        # Cambiar el estado y la fecha de envío del certificado
+        certificado.estado = 'enviado'
+        certificado.fecha_envio = date.today()
+
+        # Guardar los cambios en la base de datos
+        certificado.save()
+
+        # Devolver una respuesta de éxito
+        return JsonResponse({"success": True, "message": "Certificado marcado como enviado."})
+
+    except Certificado.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Certificado no encontrado."}, status=404)
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
+
+@csrf_exempt
+def registrar_pago_certificado(request, certificado_id):
+    try:
+        if request.method == 'POST':
+            # Obtener el certificado
+            certificado = Certificado.objects.get(id=certificado_id)
+
+            # Comprobar si se ha subido un comprobante de pago
+            comprobante = request.FILES.get('comprobantePago')
+            if not comprobante:
+                return JsonResponse({'success': False, 'message': 'No se ha proporcionado un comprobante de pago.'})
+
+            # Limpiar el nombre del archivo y reemplazar espacios con guiones bajos
+            comprobante_name = get_valid_filename(comprobante.name)
+            cleaned_filename = comprobante_name.replace(' ', '_')
+
+            # Guardar el comprobante de pago
+            fs = FileSystemStorage()
+            filename = fs.save(cleaned_filename, comprobante)
+            certificado.comprobante_pago = fs.url(filename)
+
+            # Actualizar la fecha de pago y el estado
+            certificado.fecha_pago = timezone.now().date()
+            certificado.estado = 'pagado'
+            certificado.save()
+
+            return JsonResponse({'success': True, 'message': 'Pago registrado exitosamente.'})
+        else:
+            return JsonResponse({'success': False, 'message': 'Método no permitido.'}, status=405)
+
+    except Certificado.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Certificado no encontrado.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

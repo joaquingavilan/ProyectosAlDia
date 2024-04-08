@@ -241,62 +241,86 @@
             });
         });
 
-        document.getElementById("editarProveedorForm").addEventListener("submit", function(event) {
-            event.preventDefault();
-            let rucField = document.getElementById("rucProveedor");
-            let rucIngresado = rucField.value;
+document.getElementById("editarProveedorForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+    let rucField = document.getElementById("rucProveedor");
+    let rucIngresado = rucField.value;
 
-            let emailField = document.getElementById("emailProveedor");
-            let emailIngresado = emailField.value;
+    let emailField = document.getElementById("emailProveedor");
+    let emailIngresado = emailField.value;
 
-            // Excluye el RUC del cliente actual que se está editando y el email del cliente actual
-            let rucOriginal = this.getAttribute('data-original-ruc');
-            let rucsSinActual = rucsActuales.filter(ruc => ruc !== rucOriginal);
-            let emailOriginal = this.getAttribute('data-original-email');
-            let emailsSinActual = emailsActuales.filter(email => email !== emailOriginal);
+    // Excluye el RUC del cliente actual que se está editando y el email del cliente actual
+    let rucOriginal = this.getAttribute('data-original-ruc');
+    let rucsSinActual = rucsActuales.filter(ruc => ruc !== rucOriginal);
+    let emailOriginal = this.getAttribute('data-original-email');
+    let emailsSinActual = emailsActuales.filter(email => email !== emailOriginal);
 
-            if (rucsSinActual.includes(rucIngresado)) {
-                event.preventDefault();  // Evitar que el formulario se envíe
-                alert("El RUC ingresado ya está registrado en el sistema.");
-                rucField.value = rucOriginal;  // Restaurar el valor original del RUC
-                rucField.focus();     // Colocar el foco en el campo RUC
-                return;
+    let regexRUC = /^[\d\-]*$/;
+    // Validación Teléfono
+    let telefonoField = document.getElementById("telefonoProveedor");
+    let telefonoIngresado = telefonoField.value;
+    let regexTelefono = /^\d{6,20}$/;
+
+    if (telefonoIngresado && !regexTelefono.test(telefonoIngresado)) {
+        alert("Ingrese un teléfono válido (solo números)");
+        telefonoField.focus();
+        isValid = false;
+    } else {
+        document.getElementById("telefonoError").innerText = "";
+    }
+    // Verifica si el RUC cumple con el patrón de solo números y guiones
+    if (!rucIngresado) {
+        alert("El RUC no puede estar vacío.");
+        rucField.focus();
+        return;
+    } else if (!regexRUC.test(rucIngresado)) {
+        alert("El RUC solo debe contener números y un guión, sin puntos.");
+        rucField.value = rucOriginal;  // Opcional: Restaurar el RUC original o dejar al usuario corregir
+        rucField.focus();
+        return;
+    } else if (rucsSinActual.includes(rucIngresado)) {
+        alert("El RUC ingresado ya está registrado en el sistema.");
+        rucField.value = rucOriginal;
+        rucField.focus();
+        return;
+    }
+
+    if (emailsSinActual.includes(emailIngresado)) {
+        alert("El email ingresado ya está registrado para otro proveedor");
+        emailField.value = emailOriginal;
+        emailField.focus();
+        return;
+    }
+
+    let formData = new FormData(this);
+    fetch(this.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.status == 400) {
+            return response.json().then(data => {
+                throw data;
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            $('#editarProveedorModal').modal('hide');
+            location.reload();
+        } else if (data.status === "error") {
+            // Mostramos los errores en el modal
+            let errorContainer = document.getElementById("errorContainer");
+            errorContainer.innerHTML = "";
+            for (let field in data.errors) {
+                errorContainer.innerHTML += `${field}: ${data.errors[field]}<br>`;
             }
-            if (emailsSinActual.includes(emailIngresado)) {
-                event.preventDefault();  // Evitar que el formulario se envíe
-                alert("El email ingresado ya está registrado para otro proveedor");
-                emailField.value = emailOriginal;  // Restaurar el valor original del email
-                emailField.focus();     // Colocar el foco en el campo email
-                return;
-            }
-            let formData = new FormData(this);
-            fetch(this.action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.status == 400) {
-                    return response.json().then(data => {
-                        throw data;
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.status === 'success') {
-                    $('#editarProveedorModal').modal('hide');
-                    location.reload();
-                } else if (data.status === "error") {
-                    // Mostramos los errores en el modal
-                    let errorContainer = document.getElementById("errorContainer");
-                    errorContainer.innerHTML = "";
-                    for (let field in data.errors) {
-                        errorContainer.innerHTML += `${field}: ${data.errors[field]}<br>`;
-                    }
-                    errorContainer.style.display = "block";
-                }
-            })
-        });
+            errorContainer.style.display = "block";
+        }
+    });
+});
+
     });
 
         //buscador

@@ -151,11 +151,6 @@
                         <label for="direccion">Direccion:</label>
                         <input type="direccion" class="form-control" id="direccion" name="direccion">
                     </div>
-                    <div class="form-group">
-                        <label for="autocomplete-ciudad">Ciudad:</label>
-                        <input type="text" class="form-control autocomplete-ciudad" id="autocomplete-ciudad" name="ciudad">
-                        <span class="text-danger" id="ciudadError"></span>
-                    </div>
                     <!-- Campo para el Teléfono -->
                     <div class="form-group">
                         <label for="telefono">Teléfono:</label>
@@ -189,9 +184,9 @@
         let emailsActuales = {{ emails_json|safe }};
         editarClienteBtns.forEach(btn => {
             btn.addEventListener("click", function() {
+
                 let clienteId = this.getAttribute("data-cliente-id");
                 console.log(clienteId)
-
                 // Hacemos una solicitud AJAX para obtener los datos del cliente
                 fetch(`/get_cliente_data/${clienteId}/`)
                 .then(response => response.json())
@@ -202,7 +197,6 @@
                     document.getElementById("ruc").value = data.ruc;
                     document.getElementById("email").value = data.email;
                     document.getElementById("direccion").value = data.direccion;
-                    document.getElementById("ciudad").value = data.ciudad;
                     document.getElementById("telefono").value = data.telefono;
                     document.getElementById("observaciones").value = data.observaciones;
                     let tipoPersonaSelect = document.getElementById("tipo_persona");
@@ -211,7 +205,6 @@
                     document.getElementById("editarClienteForm").setAttribute('data-original-email', data.email);
                     // Establecemos la URL correcta para el formulario en el modal
                     document.getElementById("editarClienteForm").action = `/editar_cliente/${clienteId}/`;
-
                     // Muestra el modal
                     $('#editarClienteModal').modal('show');
                 });
@@ -232,18 +225,6 @@
                 isValid = false;
             } else {
                 document.getElementById("nombreError").innerText = "";
-            }
-
-            // Validación Ciudad
-            let ciudadField = document.getElementById("autocomplete-ciudad");
-            let ciudad = ciudadField.value;
-
-            if (!ciudad || !ciudades.includes(ciudad)) {
-                document.getElementById("ciudadError").innerText = "Seleccione la ciudad de las opciones posibles.";
-                ciudadField.focus();
-                isValid = false;
-            } else {
-                document.getElementById("ciudadError").innerText = "";
             }
 
             let rucOriginal = this.getAttribute('data-original-ruc'); // Asumiendo que ya tienes esto definido antes

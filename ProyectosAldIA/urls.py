@@ -154,6 +154,7 @@ urlpatterns = [
     path('ver_pedido/<int:pedido_id>/', views.ver_pedido, name='ver_pedido'),
     path('ver_pedido_adm/<int:pedido_id>/', views.ver_pedido_adm, name='ver_pedido_adm'),
     path('guardar_cronograma/', views.guardar_cronograma, name='guardar_cronograma'),
+    path('guardar_certificado/', views.guardar_certificado, name='guardar_certificado'),
     path('ver_proyectos_filtrados/', views.ver_proyectos_filtrados, name='ver_proyectos_filtrados'),
     path('ver_presupuestos_filtrados/', views.ver_presupuestos_filtrados, name='ver_presupuestos_filtrados'),
     path('ver_obras_filtrados/', views.ver_obras_filtrados, name='ver_obras_filtrados'),
@@ -169,5 +170,7 @@ urlpatterns = [
     path('presupuestos_enviados_sin_anticipo/', views.presupuestos_enviados_sin_anticipo, name='presupuestos_enviados_sin_anticipo'),
     path('presupuestos_en_elaboracion/', views.presupuestos_en_elaboracion, name='presupuestos_en_elaboracion'),
     path('obras-pendientes-asignacion/', views.obras_pendientes_de_asignacion, name='obras_pendientes_asignacion'),
+    path('registrar_pago_certificado/<int:certificado_id>/', views.registrar_pago_certificado, name='registrar_pago_certificado'),
+    path('marcar-enviado/<int:certificado_id>/', views.marcar_certificado_enviado, name='marcar_certificado_enviado'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
