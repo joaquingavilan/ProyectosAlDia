@@ -42,10 +42,6 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.core.files.storage import FileSystemStorage
 from django.utils.text import get_valid_filename
 
-
-
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +64,8 @@ def inicio_ingenieros(request):
 def inicio_adm(request):
     nombre = request.user.first_name
     return render(request, 'inicios/inicio_adm.html', {'nombre': nombre})
+
+
 # VISTAS PARA USUARIOS
 
 
@@ -110,6 +108,7 @@ def loguear_usuario(request):
         error = ''
     return render(request, 'ABM/usuarios/login.html', {'error': error})
 
+
 @login_required
 def cambiar_password(request):
     if request.method == 'POST':
@@ -129,6 +128,7 @@ def cambiar_password(request):
 def salir_usuario(request):
     logout(request)
     return redirect('login')
+
 
 #                   VISTAS PARA CLIENTE
 
@@ -165,7 +165,8 @@ def registrar_cliente(request):
 
     ciudades = Ciudad.objects.all()  # Obtiene todas las ciudades
 
-    return render(request, 'ABM/clientes/registro_cliente.html', {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
+    return render(request, 'ABM/clientes/registro_cliente.html',
+                  {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
 
 
 def get_cliente_data(request, cliente_id):
@@ -187,7 +188,8 @@ def get_contactos_cliente(request, cliente_id):
     cliente = get_object_or_404(Cliente, pk=cliente_id)
     contactos = cliente.contacto_set.all()
 
-    data_contactos = [{"id":contacto.id, "nombre": contacto.nombre, "numero": contacto.numero} for contacto in contactos]
+    data_contactos = [{"id": contacto.id, "nombre": contacto.nombre, "numero": contacto.numero} for contacto in
+                      contactos]
     return JsonResponse({"contactos": data_contactos})
 
 
@@ -264,7 +266,9 @@ def ver_clientes(request):
             if termino_busqueda:
                 clientes = clientes.filter(Q(ruc__icontains=termino_busqueda) | Q(nombre__icontains=termino_busqueda))
 
-    return render(request, 'ABM/clientes/ver_clientes.html', {'clientes': clientes, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades_json': ciudades_json})
+    return render(request, 'ABM/clientes/ver_clientes.html',
+                  {'clientes': clientes, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json,
+                   'emails_json': emails_json, 'ciudades_json': ciudades_json})
 
 
 def buscar_clientes(request):
@@ -337,7 +341,8 @@ def registrar_ingeniero(request):
 
             # Si no hay errores adicionales, creamos el usuario y establecemos la contraseña
             if not form.errors:
-                usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido, email=email)
+                usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido,
+                                                   email=email)
                 usuario.set_password(password)  # Establece la contraseña ingresada por el usuario
                 usuario.save()
                 grupo = Group.objects.get(name='INGENIERO')
@@ -351,7 +356,8 @@ def registrar_ingeniero(request):
     else:
         form = CustomUserCreationForm()
         no_obligatorios = ['Teléfono', 'Dirección']
-        return render(request, 'ABM/ingenieros/registrar_ingeniero.html', {'form': form, 'no_obligatorios': no_obligatorios})
+        return render(request, 'ABM/ingenieros/registrar_ingeniero.html',
+                      {'form': form, 'no_obligatorios': no_obligatorios})
 
 
 def ver_ingenieros(request):
@@ -380,9 +386,9 @@ def editar_ingeniero(request, pk):
             errors = {}
 
             if not re.match(r'^[A-Za-z]+$', nombre):
-                errors["first_name"]="Nombre inválido. Solo se permiten letras."
+                errors["first_name"] = "Nombre inválido. Solo se permiten letras."
             if not re.match(r'^[A-Za-z]+$', apellido):
-                errors["last_name"]="Apellido inválido. Solo se permiten letras."
+                errors["last_name"] = "Apellido inválido. Solo se permiten letras."
             if User.objects.filter(email=email).exclude(pk=pk).exists():
                 return JsonResponse({"status": "error", "errors": {"email": ["El email ya está registrado."]}})
             if errors.keys():
@@ -447,7 +453,8 @@ def eliminar_ingeniero(request, pk):
             ingeniero.delete()
             return redirect('ver_ingenieros')
         else:
-            messages.error(request, 'No se pudo eliminar el ingeniero porque no se asignaron otros ingenieros a los recursos asociados.')
+            messages.error(request,
+                           'No se pudo eliminar el ingeniero porque no se asignaron otros ingenieros a los recursos asociados.')
     context = {
         'ingeniero': ingeniero,
         'obras_asociadas': obras_asociadas,
@@ -511,7 +518,8 @@ def registrar_proveedor(request):
         emails = list(Proveedor.objects.values_list('email', flat=True))
         emails_json = json.dumps(emails)
         ciudades = Ciudad.objects.all()  # Obtiene todas las ciudades
-        return render(request, 'ABM/proveedores/registrar_proveedor.html', {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
+        return render(request, 'ABM/proveedores/registrar_proveedor.html',
+                      {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
 
 
 def ver_proveedores(request):
@@ -537,7 +545,9 @@ def ver_proveedores(request):
                 else:
                     proveedores = proveedores.filter(nombre__icontains=termino_busqueda)
 
-    return render(request, 'ABM/proveedores/ver_proveedores.html', {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
+    return render(request, 'ABM/proveedores/ver_proveedores.html',
+                  {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json,
+                   'emails_json': emails_json, 'ciudades': ciudades})
 
 
 def get_proveedor_data(request, proveedor_id):
@@ -587,7 +597,8 @@ def eliminar_proveedor(request, pk):
             return redirect('ver_proveedores')
         else:
             # Añadimos un mensaje indicando que no se pudo eliminar al proveedor
-            messages.error(request, 'El proveedor tiene materiales asociados, reasignelos a otro proveedor o elimine el material desde la pantalla de Materiales.')
+            messages.error(request,
+                           'El proveedor tiene materiales asociados, reasignelos a otro proveedor o elimine el material desde la pantalla de Materiales.')
 
     context = {
         'proveedor': proveedor,
@@ -597,14 +608,12 @@ def eliminar_proveedor(request, pk):
     return render(request, 'ABM/proveedores/eliminar_proveedor.html', context)
 
 
-
-
-
 def get_contactos_proveedor(request, proveedor_id):
     proveedor = get_object_or_404(Proveedor, pk=proveedor_id)
     contactos = proveedor.contacto_set.all()
 
-    data_contactos = [{"id":contacto.id, "nombre": contacto.nombre, "numero": contacto.numero} for contacto in contactos]
+    data_contactos = [{"id": contacto.id, "nombre": contacto.nombre, "numero": contacto.numero} for contacto in
+                      contactos]
     return JsonResponse({"contactos": data_contactos})
 
 
@@ -697,7 +706,8 @@ def ver_materiales(request):
             if termino_busqueda:
                 materiales = materiales.filter(nombre__icontains=termino_busqueda)
 
-    return render(request, 'ABM/materiales/ver_materiales.html', {'materiales': materiales, 'form_buscar': form_buscar, 'page_obj': page_obj})
+    return render(request, 'ABM/materiales/ver_materiales.html',
+                  {'materiales': materiales, 'form_buscar': form_buscar, 'page_obj': page_obj})
 
 
 def editar_material(request, pk):
@@ -776,7 +786,7 @@ def ver_proyectos(request):
     paginator = Paginator(proyectos, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/proyectos/ver_proyectos.html', {'proyectos': proyectos,'page_obj':page_obj})
+    return render(request, 'ABM/proyectos/ver_proyectos.html', {'proyectos': proyectos, 'page_obj': page_obj})
 
 
 def eliminar_proyecto(request, pk):
@@ -809,7 +819,8 @@ def modificar_proyecto(request, pk):
             proyecto.obra.save()
         proyecto.save()
         return redirect('ver_proyectos')
-    return render(request, 'ABM/proyectos/modificar_proyecto.html', {'proyecto': proyecto, 'clientes': clientes, 'ingenieros': ingenieros})
+    return render(request, 'ABM/proyectos/modificar_proyecto.html',
+                  {'proyecto': proyecto, 'clientes': clientes, 'ingenieros': ingenieros})
 
 
 def buscar_proyectos(request):
@@ -881,7 +892,8 @@ def pedido_materiales(request):
                 materiales_pedido.append({'material': material, 'cantidad': cantidad})
 
         # Por ejemplo, puedes crear las instancias MaterialPedido aquí.
-        return render(request, 'pantallas_ing/confirmar_pedido.html', {'materiales_pedido': materiales_pedido, 'obra': obra})
+        return render(request, 'pantallas_ing/confirmar_pedido.html',
+                      {'materiales_pedido': materiales_pedido, 'obra': obra})
 
     # Paginación de materiales
     paginator = Paginator(materiales, 12)  # Muestra 18 materiales por página
@@ -953,25 +965,28 @@ def ver_pedidos_adm(request, obra_id):
 
     return render(request, 'pantallas_adm/ver_pedidos_adm.html', context)
 
-def ver_pedidos_obras_terminadas(request):
-    # Filtrar las obras marcadas como terminadas
+def ver_obras_terminadas(request):
+    if request.method == 'POST':
+        obra_id = request.POST.get('obra')
+        if obra_id:
+            return redirect('ver_pedidos_obra', obra_id=obra_id)
+
     obras_terminadas = Obra.objects.filter(estado='F')
-
-    # Filtrar los pedidos asociados a las obras terminadas
-    pedidos_obras_terminadas = Pedido.objects.filter(obra__in=obras_terminadas)
-
-    # Obtener la suma de la cantidad de cada material en los pedidos de las obras terminadas
-    materiales_con_cantidad = Material.objects.filter(materialpedido__pedido__in=pedidos_obras_terminadas).annotate(
-        total_cantidad=Sum('materialpedido__cantidad')
-    )
-
     context = {
         'obras_terminadas': obras_terminadas,
-        'pedidos_obras_terminadas': pedidos_obras_terminadas,
-        'materiales_con_cantidad': materiales_con_cantidad
     }
-
     return render(request, 'pantallas_ing/ver_obras_terminadas.html', context)
+
+def ver_pedidos_obra(request, obra_id):
+    obra = Obra.objects.get(pk=obra_id)
+    pedidos = Pedido.objects.filter(obra=obra)
+    context = {
+        'obra': obra,
+        'pedidos': pedidos,
+    }
+    return render(request, 'pantallas_ing/ver_pedidos_obra.html', context)
+
+
 # vistas para filtros
 
 
@@ -1129,7 +1144,8 @@ def ver_materiales_marca(request, marca):
     paginator = Paginator(materiales, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales, 'page_obj': page_obj})
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html',
+                  {'materiales': materiales, 'page_obj': page_obj})
 
 
 def ver_materiales_proveedores(request, proveedor):
@@ -1139,11 +1155,11 @@ def ver_materiales_proveedores(request, proveedor):
     paginator = Paginator(materiales, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales, 'page_obj': page_obj})
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html',
+                  {'materiales': materiales, 'page_obj': page_obj})
 
 
 def ver_materiales_stock(request, cantidad):
-
     if cantidad == 'Menos de 10':
         materiales = Material.objects.filter(unidades_stock__lt=10)
     elif cantidad == 'Menos de 50':
@@ -1154,7 +1170,8 @@ def ver_materiales_stock(request, cantidad):
     paginator = Paginator(materiales, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html', {'materiales': materiales, 'page_obj': page_obj})
+    return render(request, 'ABM/materiales/ver_materiales_filtrados.html',
+                  {'materiales': materiales, 'page_obj': page_obj})
 
 
 def exportar_excel(request):
@@ -1186,7 +1203,8 @@ def exportar_excel(request):
     elif tipo_dato == 'Clientes':
         ws.title = "Clientes"
         # Añadir encabezados a la hoja
-        encabezados = ['ID', 'Tipo_persona', 'Nombre', 'RUC', 'Telefono', 'Email', 'Ciudad', 'Direccion','Observaciones']
+        encabezados = ['ID', 'Tipo_persona', 'Nombre', 'RUC', 'Telefono', 'Email', 'Ciudad', 'Direccion',
+                       'Observaciones']
         for col_num, encabezado in enumerate(encabezados, 1):
             col_letter = get_column_letter(col_num)
             ws['{}1'.format(col_letter)] = encabezado
@@ -1197,7 +1215,8 @@ def exportar_excel(request):
 
         # Añadir datos a la hoja
         for cliente in clientes:
-            ws.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.telefono, cliente.email, cliente.ciudad.nombre, cliente.direccion, cliente.observaciones])
+            ws.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.telefono, cliente.email,
+                       cliente.ciudad.nombre, cliente.direccion, cliente.observaciones])
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=Clientes.xlsx'
         wb.save(response)
@@ -1212,7 +1231,8 @@ def exportar_excel(request):
             ws.column_dimensions[col_letter].width = 15
         proveedores = Proveedor.objects.all()
         for proveedor in proveedores:
-            ws.append([proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.telefono, proveedor.email, proveedor.pagina_web, proveedor.ciudad.nombre, proveedor.direccion, proveedor.observaciones])
+            ws.append([proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.telefono, proveedor.email,
+                       proveedor.pagina_web, proveedor.ciudad.nombre, proveedor.direccion, proveedor.observaciones])
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=Proveedores.xlsx'
         wb.save(response)
@@ -1272,16 +1292,18 @@ def exportar_pdf(request):
         story = [table]
         doc.build(story)
 
-    elif tipo_dato =='Clientes':
+    elif tipo_dato == 'Clientes':
         response['Content-Disposition'] = 'attachment; filename="Clientes.pdf"'
         doc = SimpleDocTemplate(response, pagesize=landscape(A4))
         # Datos para la tabla
-        encabezados = ['ID', 'Tipo_persona', 'Nombre', 'RUC', 'Telefono', 'Email', 'Ciudad', 'Direccion','Observaciones']
+        encabezados = ['ID', 'Tipo_persona', 'Nombre', 'RUC', 'Telefono', 'Email', 'Ciudad', 'Direccion',
+                       'Observaciones']
 
         # Obtener datos de los clientes
         clientes = Cliente.objects.all()
         for cliente in clientes:
-            data.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.telefono, cliente.email, cliente.ciudad.nombre,
+            data.append([cliente.id, cliente.tipo_persona, cliente.nombre, cliente.ruc, cliente.telefono, cliente.email,
+                         cliente.ciudad.nombre,
                          cliente.direccion, cliente.observaciones])
 
         # Crear tabla
@@ -1326,7 +1348,8 @@ def exportar_pdf(request):
         proveedores = Proveedor.objects.all()
         for proveedor in proveedores:
             data.append(
-                [proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.telefono, proveedor.email, proveedor.ciudad.nombre, proveedor.direccion,
+                [proveedor.id, proveedor.nombre, proveedor.ruc, proveedor.telefono, proveedor.email,
+                 proveedor.ciudad.nombre, proveedor.direccion,
                  proveedor.pagina_web, proveedor.observaciones])
 
         # Crear tabla
@@ -1439,7 +1462,7 @@ def cargar_presupuesto(request, pk):
         workbook = load_workbook(archivo_presupuesto.archivo)
         sheet = workbook.active
 
-        #extraemos el plazo de ejecucion
+        # extraemos el plazo de ejecucion
         plazo = extraer_plazo(sheet)
         if plazo:
             obra = presupuesto.proyecto.obra
@@ -1476,10 +1499,12 @@ def cargar_presupuesto(request, pk):
 
             idx = inicio_tabla_fila + 2  # Comenzamos en la fila siguiente a inicio_tabla
 
-            while idx < sheet.max_row and sheet[idx][inicio_tabla_columna].value:  # Mientras no lleguemos al final del archivo
+            while idx < sheet.max_row and sheet[idx][
+                inicio_tabla_columna].value:  # Mientras no lleguemos al final del archivo
                 fila_actual = [cell.value for cell in sheet[idx]]
                 valor_rubros = fila_actual[inicio_tabla_columna].strip() if fila_actual[inicio_tabla_columna] else None
-                valor_un = fila_actual[inicio_tabla_columna + 1].strip() if fila_actual[inicio_tabla_columna + 1] else None
+                valor_un = fila_actual[inicio_tabla_columna + 1].strip() if fila_actual[
+                    inicio_tabla_columna + 1] else None
                 # Comprobar si la fila siguiente tiene valor en "Un"
                 fila_siguiente = [cell.value for cell in sheet[idx + 1]] if idx + 1 <= sheet.max_row else None
                 valor_un_siguiente = fila_siguiente[inicio_tabla_columna + 1].strip() if fila_siguiente and \
@@ -1519,9 +1544,11 @@ def cargar_presupuesto(request, pk):
 
         workbook.close()
         # Calcular la suma de todos los campos `precio_total` de los subitems que pertenecen al presupuesto en cuestión, y cargarlas como monto_total del presupuesto
-        suma_total = SubItem.objects.filter(item__categoria__archivo__presupuesto=presupuesto).aggregate(suma=Sum('precio_total'))['suma']
+        suma_total = \
+        SubItem.objects.filter(item__categoria__archivo__presupuesto=presupuesto).aggregate(suma=Sum('precio_total'))[
+            'suma']
         presupuesto.monto_total = suma_total
-        presupuesto.monto_anticipo = suma_total/2
+        presupuesto.monto_anticipo = suma_total / 2
         presupuesto.save()
 
         # Redirige al usuario a donde desees luego de procesar el archivo
@@ -1544,7 +1571,8 @@ def ver_archivo_presupuesto(request, pk):
     for seccion in archivo_presupuesto.secciones.all():
         subsecciones_data = []
         # Buscar subsecciones asociadas a esta sección y que estén en ArchivoPresupuesto
-        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        subsecciones = seccion.subseccion_set.filter(
+            id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
         for subseccion in subsecciones:
             # Filtrar detalles asociados a esta subsección y que estén en ArchivoPresupuesto
             detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
@@ -1591,9 +1619,11 @@ def editar_item(request, item_id):
 
 # Función para actualizar el monto_total de un presupuesto basado en sus subitems
 def actualizar_monto_total(presupuesto):
-    suma_total = SubItem.objects.filter(item__categoria__archivo__presupuesto=presupuesto).aggregate(suma=Sum('precio_total'))['suma']
+    suma_total = \
+    SubItem.objects.filter(item__categoria__archivo__presupuesto=presupuesto).aggregate(suma=Sum('precio_total'))[
+        'suma']
     presupuesto.monto_total = suma_total
-    presupuesto.monto_anticipo = suma_total/2
+    presupuesto.monto_anticipo = suma_total / 2
     presupuesto.save()
 
 
@@ -1666,7 +1696,6 @@ def actualizar_estado(request, presupuesto_id):
 
 
 def ver_presupuestos_adm(request):
-
     # Si hay filtros en la petición, úsalos.
     filtro_campo = request.GET.get('campo', None)
     filtro_valor = request.GET.get('valor', None)
@@ -1709,7 +1738,6 @@ def ver_presupuestos_adm(request):
     return render(request, 'pantallas_adm/ver_presupuestos_adm.html', context)
 
 
-
 @csrf_exempt
 def actualizar_anticipo(request, presupuesto_id):
     if request.method == "POST":
@@ -1731,7 +1759,8 @@ def actualizar_anticipo(request, presupuesto_id):
             return JsonResponse({
                 'status': 'success',
                 'nuevo_estado': presupuesto.get_estado_display(),
-                'fecha_pago_anticipo': presupuesto.fecha_pago_anticipo.strftime('%d/%m/%Y') if presupuesto.fecha_pago_anticipo else None
+                'fecha_pago_anticipo': presupuesto.fecha_pago_anticipo.strftime(
+                    '%d/%m/%Y') if presupuesto.fecha_pago_anticipo else None
             })
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
@@ -2008,7 +2037,8 @@ def ver_presupuesto_adm(request, presupuesto_id):
     for seccion in archivo_presupuesto.secciones.all():
         subsecciones_data = []
         # Buscar subsecciones asociadas a esta sección y que estén en ArchivoPresupuesto
-        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        subsecciones = seccion.subseccion_set.filter(
+            id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
         for subseccion in subsecciones:
             # Filtrar detalles asociados a esta subsección y que estén en ArchivoPresupuesto
             detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
@@ -2028,6 +2058,7 @@ def ver_presupuesto_adm(request, presupuesto_id):
         'presupuesto': presupuesto
     }
     return render(request, 'pantallas_adm/ver_presupuesto_adm.html', context)
+
 
 def obtener_estados_anticipo(request):
     estados = ['Sí', 'No']
@@ -2106,7 +2137,8 @@ def finalizar_obra(request, obra_id):
             obra.fecha_fin = date.today()
             obra.estado = 'F'  # F para Finalizada
             obra.save()
-            return JsonResponse({'status': 'success', 'message': 'Obra finalizada con éxito', 'fecha_fin': obra.fecha_fin.strftime('%Y-%m-%d')})
+            return JsonResponse({'status': 'success', 'message': 'Obra finalizada con éxito',
+                                 'fecha_fin': obra.fecha_fin.strftime('%Y-%m-%d')})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
@@ -2230,7 +2262,8 @@ def obtener_filtro_valores(request):
         data = [{'id': cliente.id, 'nombre': cliente.nombre} for cliente in clientes]
     elif tipo == 'encargadoPresupuesto':
         ingenieros = User.objects.filter(presupuesto__in=presupuestos).distinct()
-        data = [{'id': ingeniero.id, 'nombre': f"{ingeniero.first_name} {ingeniero.last_name}"} for ingeniero in ingenieros]
+        data = [{'id': ingeniero.id, 'nombre': f"{ingeniero.first_name} {ingeniero.last_name}"} for ingeniero in
+                ingenieros]
     elif tipo == 'estadoPresupuesto':
         data = [
             {'id': 'S', 'nombre': 'Enviado'},
@@ -2417,12 +2450,12 @@ def get_detalle_data(request):
     try:
         detalle = Detalle.objects.get(id=det_id)
         data = {
-                'id': detalle.id,
-                'rubro': detalle.rubro,
-                'unidad_medida': detalle.unidad_medida.nombre,
-                'cantidad': 0,
-                'precio_unitario': detalle.precio_unitario,
-                'precio_total': 0
+            'id': detalle.id,
+            'rubro': detalle.rubro,
+            'unidad_medida': detalle.unidad_medida.nombre,
+            'cantidad': 0,
+            'precio_unitario': detalle.precio_unitario,
+            'precio_total': 0
         }
         return JsonResponse(data)
     except ObjectDoesNotExist:
@@ -2443,7 +2476,8 @@ def crear_seccion(request):
             subseccion = SubSeccion.objects.get(id=sub_id)
             subseccion.secciones.add(new_seccion)
 
-        return JsonResponse({'seccionId': new_seccion.id, 'status': 'success', 'message': 'Sección creada correctamente.'})
+        return JsonResponse(
+            {'seccionId': new_seccion.id, 'status': 'success', 'message': 'Sección creada correctamente.'})
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
@@ -2468,7 +2502,8 @@ def crear_subseccion(request):
             detalle = Detalle.objects.get(id=det_id)
             detalle.subsecciones.add(new_subseccion)
         new_subseccion.save()
-        return JsonResponse({'subseccionId': new_subseccion.id, 'status': 'success', 'message': 'Subsección creada correctamente.'})
+        return JsonResponse(
+            {'subseccionId': new_subseccion.id, 'status': 'success', 'message': 'Subsección creada correctamente.'})
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
@@ -2486,7 +2521,8 @@ def crear_detalle(request):
         subseccion = SubSeccion.objects.get(id=subseccion_id)
         unidad = UnidadMedida.objects.get(id=unidadMedida)
         # Create the new Seccion
-        detalle = Detalle.objects.create(subseccion=subseccion, rubro=nombre, unidad_medida=unidad, cantidad=cantidad, precio_unitario=precioUnitario, precio_total=precioTotal)
+        detalle = Detalle.objects.create(subseccion=subseccion, rubro=nombre, unidad_medida=unidad, cantidad=cantidad,
+                                         precio_unitario=precioUnitario, precio_total=precioTotal)
         data = {
             'id': detalle.id,
             'rubro': detalle.rubro,
@@ -2574,12 +2610,13 @@ def guardar_presupuesto(request):
             cronograma.save()
 
             for detalle in detalles:
-                detalle_cronograma = DetalleCronograma(cronograma=cronograma, detalle=detalle)  # Reemplaza 'fecha' con la fecha que desees
+                detalle_cronograma = DetalleCronograma(cronograma=cronograma,
+                                                       detalle=detalle)  # Reemplaza 'fecha' con la fecha que desees
                 detalle_cronograma.save()
 
             return JsonResponse({'status': 'success',
                                  'presupuesto_id': presupuesto_id,  # Aquí devuelves el ID
-                                'message': 'Presupuesto guardado correctamente.'})
+                                 'message': 'Presupuesto guardado correctamente.'})
 
         except Exception as e:
             # En caso de error, envía una respuesta con el error
@@ -2612,7 +2649,9 @@ def exportar_a_pdf(request, archivo_presupuesto_id, presupuesto_id):
 
     # Add title
     styles = getSampleStyleSheet()
-    title = Paragraph(f'Presupuesto del proyecto {presupuesto.proyecto.nombre} para el cliente {presupuesto.proyecto.cliente.nombre}', styles['Title'])
+    title = Paragraph(
+        f'Presupuesto del proyecto {presupuesto.proyecto.nombre} para el cliente {presupuesto.proyecto.cliente.nombre}',
+        styles['Title'])
     story.append(title)
     story.append(Spacer(1, 12))
 
@@ -2620,7 +2659,8 @@ def exportar_a_pdf(request, archivo_presupuesto_id, presupuesto_id):
     data = [['Sección', 'Subsección', 'Rubro', 'Unidad Medida', 'Cantidad', 'Precio Unitario', 'Precio Total']]
     for seccion in archivo_presupuesto.secciones.all():
         data.append([seccion.nombre, '', '', '', '', '', ''])
-        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        subsecciones = seccion.subseccion_set.filter(
+            id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
         for subseccion in subsecciones:
             data.append(['', subseccion.nombre, '', '', '', '', ''])
             detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
@@ -2707,7 +2747,8 @@ def exportar_a_excel(request, archivo_presupuesto_id, presupuesto_id):
     row_num = 3
     for seccion in archivo_presupuesto.secciones.all():
         ws.append([seccion.nombre] + [''] * 6)
-        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        subsecciones = seccion.subseccion_set.filter(
+            id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
         for subseccion in subsecciones:
             ws.append(['', subseccion.nombre] + [''] * 5)
             detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
@@ -2726,16 +2767,16 @@ def exportar_a_excel(request, archivo_presupuesto_id, presupuesto_id):
     ws.cell(row=row_num, column=5).value = "Subtotal"
     ws.cell(row=row_num, column=7).value = f"{presupuesto.subtotal:,}"
 
-    ws.merge_cells(start_row=row_num+1, start_column=5, end_row=row_num+1, end_column=6)
-    ws.cell(row=row_num+1, column=5).value = "IVA"
-    ws.cell(row=row_num+1, column=7).value = f"{presupuesto.iva:,}"
+    ws.merge_cells(start_row=row_num + 1, start_column=5, end_row=row_num + 1, end_column=6)
+    ws.cell(row=row_num + 1, column=5).value = "IVA"
+    ws.cell(row=row_num + 1, column=7).value = f"{presupuesto.iva:,}"
 
-    ws.merge_cells(start_row=row_num+2, start_column=5, end_row=row_num+2, end_column=6)
-    ws.cell(row=row_num+2, column=5).value = "Total"
-    ws.cell(row=row_num+2, column=7).value = f"{presupuesto.monto_total:,}"
+    ws.merge_cells(start_row=row_num + 2, start_column=5, end_row=row_num + 2, end_column=6)
+    ws.cell(row=row_num + 2, column=5).value = "Total"
+    ws.cell(row=row_num + 2, column=7).value = f"{presupuesto.monto_total:,}"
 
     # Styling totals
-    for row in ws.iter_rows(min_row=row_num, max_row=row_num+2, min_col=5, max_col=7):
+    for row in ws.iter_rows(min_row=row_num, max_row=row_num + 2, min_col=5, max_col=7):
         for cell in row:
             cell.border = Border(top=Side(border_style="thin"),
                                  left=Side(border_style="thin"),
@@ -2779,11 +2820,12 @@ def armar_cronograma(request, obra_id):
     # Obtener el ArchivoPresupuesto asociado
     archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=presupuesto)
     cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)
-    fecha_in= obra.fecha_inicio.strftime('%Y-%m-%d')
+    fecha_in = obra.fecha_inicio.strftime('%Y-%m-%d')
     estructura_presupuesto = []
     for seccion in archivo_presupuesto.secciones.all():
         subsecciones_data = []
-        subsecciones = seccion.subseccion_set.filter(id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
+        subsecciones = seccion.subseccion_set.filter(
+            id__in=archivo_presupuesto.subsecciones.values_list('id', flat=True))
         for subseccion in subsecciones:
             detalles = subseccion.detalle_set.filter(id__in=archivo_presupuesto.detalles.values_list('id', flat=True))
             subsecciones_data.append((subseccion, detalles))
@@ -2791,7 +2833,9 @@ def armar_cronograma(request, obra_id):
         estructura_presupuesto.append((seccion, subsecciones_data))
 
     # Renderizar una plantilla con los datos
-    return render(request, 'pantallas_ing/armar_cronograma.html', {'estructura_presupuesto': estructura_presupuesto, 'obra': obra, 'cronograma':cronograma, 'fecha_inicio':fecha_in})
+    return render(request, 'pantallas_ing/armar_cronograma.html',
+                  {'estructura_presupuesto': estructura_presupuesto, 'obra': obra, 'cronograma': cronograma,
+                   'fecha_inicio': fecha_in})
 
 
 def guardar_cronograma(request):
@@ -2804,7 +2848,8 @@ def guardar_cronograma(request):
             proyecto = Proyecto.objects.get(pk=proyecto_id)
             presupuesto = Presupuesto.objects.get(proyecto=proyecto)
             archivo_presupuesto = ArchivoPresupuesto.objects.get(presupuesto=presupuesto)
-            cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)  # Asumiendo una relación uno a uno entre proyecto y cronograma
+            cronograma = Cronograma.objects.get(
+                archivo_presupuesto=archivo_presupuesto)  # Asumiendo una relación uno a uno entre proyecto y cronograma
 
             detalles_data = data.get('detalles')  # Obtén la lista de detalles de data
             # Guardar los detalles en la tabla DetalleCronograma
@@ -2923,15 +2968,18 @@ def buscar_materiales(request):
 
 def ver_pedido(request, pedido_id):
     pedido = get_object_or_404(Pedido, id=pedido_id)
-    materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)  # Obtiene los materiales relacionados con el pedido
+    materiales_pedido = MaterialPedido.objects.filter(
+        pedido=pedido)  # Obtiene los materiales relacionados con el pedido
     return render(request, 'pantallas_ing/ver_pedido.html', {'pedido': pedido, 'materiales_pedido': materiales_pedido})
 
 
 def ver_pedido_adm(request, pedido_id):
     pedido = get_object_or_404(Pedido, id=pedido_id)
-    materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)  # Obtiene los materiales relacionados con el pedido
-    obra= pedido.obra
-    return render(request, 'pantallas_adm/ver_pedido_adm.html', {'pedido': pedido, 'materiales_pedido': materiales_pedido,'obra':obra})
+    materiales_pedido = MaterialPedido.objects.filter(
+        pedido=pedido)  # Obtiene los materiales relacionados con el pedido
+    obra = pedido.obra
+    return render(request, 'pantallas_adm/ver_pedido_adm.html',
+                  {'pedido': pedido, 'materiales_pedido': materiales_pedido, 'obra': obra})
 
 
 def ver_cronograma(request, obra_id, cronograma_id):
@@ -2953,10 +3001,12 @@ def ver_cronograma(request, obra_id, cronograma_id):
                 fecha_programada = detalle_cron.fecha_programada
                 fecha_culminacion = detalle_cron.fecha_culminacion
                 realizado = detalle_cron.realizado
-                estructura_presupuesto[seccion][subseccion].append((detalle, fecha_programada, fecha_culminacion, realizado))
+                estructura_presupuesto[seccion][subseccion].append(
+                    (detalle, fecha_programada, fecha_culminacion, realizado))
 
     # Convertir cada defaultdict interno a un diccionario regular
-    estructura_presupuesto_regular = {seccion: dict(subsecciones) for seccion, subsecciones in estructura_presupuesto.items()}
+    estructura_presupuesto_regular = {seccion: dict(subsecciones) for seccion, subsecciones in
+                                      estructura_presupuesto.items()}
 
     context = {
         'obra': obra,
@@ -2997,10 +3047,12 @@ def ver_cronograma_adm(request, obra_id):
                 fecha_programada = detalle_cron.fecha_programada
                 fecha_culminacion = detalle_cron.fecha_culminacion
                 realizado = detalle_cron.realizado
-                estructura_presupuesto[seccion][subseccion].append((detalle, fecha_programada, fecha_culminacion, realizado))
+                estructura_presupuesto[seccion][subseccion].append(
+                    (detalle, fecha_programada, fecha_culminacion, realizado))
 
     # Convertir cada defaultdict interno a un diccionario regular
-    estructura_presupuesto_regular = {seccion: dict(subsecciones) for seccion, subsecciones in estructura_presupuesto.items()}
+    estructura_presupuesto_regular = {seccion: dict(subsecciones) for seccion, subsecciones in
+                                      estructura_presupuesto.items()}
 
     context = {
         'obra': obra,
@@ -3067,7 +3119,9 @@ def proximas_actividades(request):
         fecha_culminacion=None,
         realizado=False,
         fecha_programada__gte=timezone.now().date()
-    ).select_related('detalle', 'cronograma', 'cronograma__archivo_presupuesto', 'cronograma__archivo_presupuesto__presupuesto', 'cronograma__archivo_presupuesto__presupuesto__proyecto')
+    ).select_related('detalle', 'cronograma', 'cronograma__archivo_presupuesto',
+                     'cronograma__archivo_presupuesto__presupuesto',
+                     'cronograma__archivo_presupuesto__presupuesto__proyecto')
 
     data = [
         {
@@ -3179,7 +3233,6 @@ def marcar_certificado_enviado(request, certificado_id):
         return JsonResponse({"success": False, "message": "Certificado no encontrado."}, status=404)
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
-
 
 
 @csrf_exempt

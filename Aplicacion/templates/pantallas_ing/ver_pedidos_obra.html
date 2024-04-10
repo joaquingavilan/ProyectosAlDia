@@ -1,0 +1,21 @@
+<!-- ver_pedidos_obra.html -->
+{% extends 'base_ing.html' %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 1rem;">
+    <h1 style="display: inline-block; margin: 0;">Pedidos de la Obra <strong>{{ obra.proyecto.nombre }}</strong></h1>
+</div>
+
+{% if pedidos %}
+    <h2>Pedidos:</h2>
+    <ul>
+    {% for pedido in pedidos %}
+        <li>{{ pedido }}</li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <div class="alert alert-warning">
+        No se encontraron pedidos para esta obra.
+    </div>
+{% endif %}
+{% endblock %}
