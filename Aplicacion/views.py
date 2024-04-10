@@ -952,6 +952,26 @@ def ver_pedidos_adm(request, obra_id):
     }
 
     return render(request, 'pantallas_adm/ver_pedidos_adm.html', context)
+
+def ver_pedidos_obras_terminadas(request):
+    # Filtrar las obras marcadas como terminadas
+    obras_terminadas = Obra.objects.filter(estado='F')
+
+    # Filtrar los pedidos asociados a las obras terminadas
+    pedidos_obras_terminadas = Pedido.objects.filter(obra__in=obras_terminadas)
+
+    # Obtener la suma de la cantidad de cada material en los pedidos de las obras terminadas
+    materiales_con_cantidad = Material.objects.filter(materialpedido__pedido__in=pedidos_obras_terminadas).annotate(
+        total_cantidad=Sum('materialpedido__cantidad')
+    )
+
+    context = {
+        'obras_terminadas': obras_terminadas,
+        'pedidos_obras_terminadas': pedidos_obras_terminadas,
+        'materiales_con_cantidad': materiales_con_cantidad
+    }
+
+    return render(request, 'pantallas_ing/ver_obras_terminadas.html', context)
 # vistas para filtros
 
 

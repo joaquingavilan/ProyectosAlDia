@@ -172,6 +172,6 @@ urlpatterns = [
     path('obras-pendientes-asignacion/', views.obras_pendientes_de_asignacion, name='obras_pendientes_asignacion'),
     path('registrar_pago_certificado/<int:certificado_id>/', views.registrar_pago_certificado, name='registrar_pago_certificado'),
     path('marcar-enviado/<int:certificado_id>/', views.marcar_certificado_enviado, name='marcar_certificado_enviado'),
-    path('ver_devoluciones', views.ver_pedidos, name='ver_devoluciones'),
+    path('ver_devoluciones', views.ver_pedidos_obras_terminadas, name='ver_devoluciones'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
