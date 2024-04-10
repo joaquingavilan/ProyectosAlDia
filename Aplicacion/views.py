@@ -979,14 +979,17 @@ def ver_obras_terminadas(request):
 
 def ver_pedidos_obra(request, obra_id):
     obra = Obra.objects.get(pk=obra_id)
-    pedidos = Pedido.objects.filter(obra=obra)
+    pedidos_entregados = Pedido.objects.filter(obra=obra) #agregar , estado='E'
     context = {
         'obra': obra,
-        'pedidos': pedidos,
+        'pedidos': pedidos_entregados,
     }
     return render(request, 'pantallas_ing/ver_pedidos_obra.html', context)
 
-
+def ver_pedido_a_devolver(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)  # Obtiene los materiales relacionados con el pedido
+    return render(request, 'pantallas_ing/ver_pedido_a_devolver.html', {'pedido': pedido, 'materiales_pedido': materiales_pedido})
 # vistas para filtros
 
 

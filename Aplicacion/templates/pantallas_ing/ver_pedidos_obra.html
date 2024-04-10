@@ -28,7 +28,7 @@
                             <td>{{ pedido.materialpedido_set.count }}</td>
                             <td>
                                 <a href="{% url 'ver_pedido' pedido.id %}" class="btn btn-primary btn-sm">Ver Pedido</a>
-                                <a href="{% url 'ver_pedido' pedido.id %}" class="btn btn-secondary btn-sm">Devolver Pedido</a>
+                                <a href="{% url 'ver_pedido_a_devolver' pedido.id %}" class="btn btn-secondary btn-sm">Devolver Pedido</a>
                             </td>
                         </tr>
                     {% endfor %}
@@ -36,7 +36,7 @@
             </table>
         {% else %}
         <div class="alert alert-warning">
-            No se encontraron pedidos para esta obra.
+            No se encontraron pedidos entregados la obra {{ obra.proyecto.nombre }}.
         </div>
     {% endif %}
 {% endblock %}
