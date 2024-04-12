@@ -1,7 +1,7 @@
 {% extends request.base_template %}
 
 {% block content %}
-<div class="right_col" role="main">
+<div class="center_col" role="main">
     <div class="page-title" style="width: 100%;">
         <div class="title_left w-100" style="display: flex; align-items: center">
             <h1 style="margin: 0; flex-grow: 1;">Pedido para <strong>{{ pedido.obra.proyecto.nombre }}</strong> entregado el <strong>{{pedido.fecha_solicitud}}</strong></h1>
@@ -65,7 +65,8 @@
             </div>
           </div>
                 <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
-        </div>
+                <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-success float-right"><i class="fa fa-check"></i> Generar Devolución</a>
+          </div>
       </div>
     </div>
 </div>
