@@ -4,7 +4,7 @@
 <div class="right_col" role="main">
     <div class="page-title" style="width: 100%;">
         <div class="title_left w-100" style="display: flex; align-items: center">
-            <h1 style="margin: 0; flex-grow: 1;">Pedido para <strong>{{ pedido.obra.proyecto.nombre }}</strong> entregado el <strong>{{ pedido.fecha_solicitud }}</strong></h1>
+            <h1 style="margin: 0; flex-grow: 1;">Pedido para <strong>{{ pedido.obra.proyecto.nombre }}</strong> entregado el <strong>{{pedido.fecha_solicitud}}</strong></h1>
         </div>
     </div>
 
@@ -29,7 +29,7 @@
                           <th class="column-title" style="width: 20%;">Fotografía</th>
                           <th class="column-title" style="width: 15%;">Cantidad</th>
                           <th class="column-title" style="width: 15%;">Unidad de medida</th>
-                          <th class="column-title" style="width: 15%;"></th>
+                          <th class="column-title" style="width: 5%;"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -54,14 +54,17 @@
                             </div>
                           </td>
                           <td>{{ material_pedido.material.medida }}</td>
-                          <td> <a href="{% url 'ver_pedidos' %}" class="btn btn-secondary"> Devolver</a> </td>
+                          <td>
+                              <button class="btn btn-success" onclick="eliminarMaterial({{ material_pedido.material.id }})"><i class="fa fa-check"></i></button>
+                              <button class="btn btn-danger" onclick="eliminarMaterial({{ material_pedido.material.id }})"><i class="fa fa-trash"></i></button>
+                          </td>
                         </tr>
                         {% endfor %}
                       </tbody>
                     </table>
             </div>
           </div>
-                <a href="{% url 'ver_pedidos' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Pedidos</a>
+                <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
         </div>
       </div>
     </div>
@@ -90,6 +93,14 @@
             cantidad = 1;
           }
           input.value = cantidad;
+        }
+
+        // Función para eliminar el material del pedido de la devolución
+        function eliminarMaterial(materialId) {
+          const input = document.getElementById(`cantidad_${materialId}`);
+          input.value = 0;
+          const fila = input.closest('tr');
+          fila.remove();
         }
     </script>
 {% endblock %}
