@@ -28,6 +28,7 @@
                           <th class="column-title">Marca</th>
                           <th class="column-title" style="width: 20%;">Fotografía</th>
                           <th class="column-title" style="width: 15%;">Cantidad</th>
+                          <th class="column-title" style="width: 15%;">Cantidad a devolver</th>
                           <th class="column-title" style="width: 15%;">Unidad de medida</th>
                           <th class="column-title" style="width: 5%;"></th>
                         </tr>
@@ -38,24 +39,24 @@
                           <td>{{ material_pedido.material.nombre }}</td>
                           <td>{{ material_pedido.material.marca }}</td>
                           <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" class="img-fluid" alt="{{ material_pedido.material.nombre }}" style="max-width: 150px;"></a></td>
+                          <td>{{ material_pedido.cantidad }}</td>
                           <td>
                             <div class="input-group">
                               <span class="input-group-btn">
-                                <button type="button" class="btn btn-default btn-number" onclick="incrementQuantity(this)">
-                                  <span class="glyphicon glyphicon-plus"></span>
-                                </button>
-                              </span>
-                              <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="{{ material_pedido.cantidad }}" readonly min="1" data-max="{{ material_pedido.cantidad }}">
-                              <span class="input-group-btn">
                                 <button type="button" class="btn btn-default btn-number" onclick="decrementQuantity({{ material_pedido.material.id }}, event)">
                                   <span class="glyphicon glyphicon-minus"></span>
+                                </button>
+                              </span>
+                              <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="0" readonly min="1" data-max="{{ material_pedido.cantidad }}">
+                              <span class="input-group-btn">
+                                <button type="button" class="btn btn-default btn-number" onclick="incrementQuantity(this)">
+                                  <span class="glyphicon glyphicon-plus"></span>
                                 </button>
                               </span>
                             </div>
                           </td>
                           <td>{{ material_pedido.material.medida }}</td>
                           <td>
-                              <button class="btn btn-success" onclick="eliminarMaterial({{ material_pedido.material.id }})"><i class="fa fa-check"></i></button>
                               <button class="btn btn-danger" onclick="eliminarMaterial({{ material_pedido.material.id }})"><i class="fa fa-trash"></i></button>
                           </td>
                         </tr>
