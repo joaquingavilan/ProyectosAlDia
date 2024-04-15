@@ -197,6 +197,48 @@ class MaterialPedido(models.Model):
     def __str__(self):
         return f'{self.material} - {self.pedido}'
 
+class Devolucion(models.Model):
+    ingeniero = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groups__name='INGENIERO'))
+    obra = models.ForeignKey('Obra', on_delete=models.CASCADE, verbose_name=_('obra'))
+    fecha_solicitud = models.DateField(_('fecha de solicitud'))
+    fecha_devolucion = models.DateField(_('fecha de devolucion'), null=True, blank=True)
+    ESTADOS = (
+        ('P', _('Pendiente')),
+        ('E', _('Entregado')),
+    )
+    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
+    materiales = models.ManyToManyField('Material', through='MaterialDevolucion')
+
+    class Meta:
+        verbose_name = _('devolución')
+        verbose_name_plural = _('devoluciones')
+
+    def __str__(self):
+        return f'{self.obra} - {self.estado}'
+
+class MaterialDevolucion(models.Model):
+    devolucion = models.ForeignKey(Devolucion, on_delete=models.CASCADE)
+    material = models.ForeignKey('Material', on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = _('material en devolución')
+        verbose_name_plural = _('materiales en devolución')
+
+    def __str__(self):
+        return f'{self.material} - {self.devolucion}'
+
+class MaterialDevuelto(models.Model):
+    pedido = models.ForeignKey('Pedido', on_delete=models.CASCADE, null=True, default=None)
+    material = models.ForeignKey('Material', on_delete=models.CASCADE, null=True, default=None)
+    cantidad = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = _('material devuelto')
+        verbose_name_plural = _('materiales devueltos')
+
+    def __str__(self):
+        return f'{self.material} - {self.pedido}'
 
 class Seccion(models.Model):
     nombre = models.CharField(max_length=255)

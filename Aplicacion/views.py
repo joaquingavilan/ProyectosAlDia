@@ -990,8 +990,40 @@ def ver_pedido_a_devolver(request, pedido_id):
     pedido = get_object_or_404(Pedido, id=pedido_id)
     materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)  # Obtiene los materiales relacionados con el pedido
     return render(request, 'pantallas_ing/ver_pedido_a_devolver.html', {'pedido': pedido, 'materiales_pedido': materiales_pedido})
-# vistas para filtros
 
+def confirmar_devolucion(request):
+    if request.method == 'POST':
+        pedido_id = request.POST.get('pedido_id')
+        pedido = Pedido.objects.get(id=pedido_id)
+
+        # Obtener los materiales devueltos del formulario
+        materiales_devueltos = []
+        for key, value in request.POST.items():
+            if key.startswith('cantidad_') and int(value) > 0:
+                material_id = key.split('_')[1]
+                material = Material.objects.get(id=material_id)
+                cantidad = int(value)
+                materiales_devueltos.append({'material': material, 'cantidad': cantidad})
+
+        # Crear el objeto Devolucion y guardar en la base de datos
+        devolucion = Devolucion.objects.create(
+            ingeniero=request.user,
+            obra=pedido.obra,
+            fecha_solicitud=date.today(),
+            fecha_devolucion=None,
+            estado='P'
+        )
+
+        # Crear los objetos MaterialDevuelto y guardar en la base de datos
+        for material_devuelto in materiales_devueltos:
+            material = material_devuelto['material']
+            cantidad = material_devuelto['cantidad']
+            MaterialDevuelto.objects.create(devolucion=devolucion, material=material, cantidad=cantidad)
+
+        # Redirigir a una página de éxito o realizar alguna acción adicional
+        return redirect('ver_pedidos_obra', obra_id=pedido.obra.id)
+
+# vistas para filtros
 
 def obtener_clientes_con_proyectos(request):
     clientes = Proyecto.objects.values_list('cliente__nombre', flat=True).distinct()

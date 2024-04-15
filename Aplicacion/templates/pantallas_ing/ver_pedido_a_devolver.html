@@ -20,53 +20,60 @@
           <div class="x_content">
             <br />
 
-            <div class="table-responsive">
-                <table class="table table-striped jambo_table bulk_action">
-                      <thead>
-                        <tr class="headings">
-                          <th class="column-title">Nombre del producto</th>
-                          <th class="column-title">Marca</th>
-                          <th class="column-title" style="width: 20%;">Fotografía</th>
-                          <th class="column-title" style="width: 15%;">Cantidad</th>
-                          <th class="column-title" style="width: 15%;">Cantidad a devolver</th>
-                          <th class="column-title" style="width: 15%;">Unidad de medida</th>
-                          <th class="column-title" style="width: 5%;"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {% for material_pedido in materiales_pedido %}
-                        <tr class="even pointer">
-                          <td>{{ material_pedido.material.nombre }}</td>
-                          <td>{{ material_pedido.material.marca }}</td>
-                          <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" class="img-fluid" alt="{{ material_pedido.material.nombre }}" style="max-width: 150px;"></a></td>
-                          <td>{{ material_pedido.cantidad }}</td>
-                          <td>
-                            <div class="input-group">
-                              <span class="input-group-btn">
-                                <button type="button" class="btn btn-default btn-number" onclick="decrementQuantity({{ material_pedido.material.id }}, event)">
-                                  <span class="glyphicon glyphicon-minus"></span>
-                                </button>
-                              </span>
-                              <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="0" readonly min="1" data-max="{{ material_pedido.cantidad }}">
-                              <span class="input-group-btn">
-                                <button type="button" class="btn btn-default btn-number" onclick="incrementQuantity(this)">
-                                  <span class="glyphicon glyphicon-plus"></span>
-                                </button>
-                              </span>
-                            </div>
-                          </td>
-                          <td>{{ material_pedido.material.medida }}</td>
-                          <td>
-                              <button class="btn btn-danger" onclick="eliminarMaterial({{ material_pedido.material.id }})"><i class="fa fa-trash"></i></button>
-                          </td>
-                        </tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
-            </div>
+              <form method="post" action="{% url 'confirmar_devolucion' %}" class="form-horizontal form-label-left" onsubmit="return validarDevolucion()">
+                {% csrf_token %}
+
+                <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
+
+                <div class="table-responsive">
+                    <table class="table table-striped jambo_table bulk_action">
+                          <thead>
+                            <tr class="headings">
+                              <th class="column-title">Nombre del producto</th>
+                              <th class="column-title">Marca</th>
+                              <th class="column-title" style="width: 20%;">Fotografía</th>
+                              <th class="column-title" style="width: 15%;">Cantidad</th>
+                              <th class="column-title" style="width: 15%;">Cantidad a devolver</th>
+                              <th class="column-title" style="width: 15%;">Unidad de medida</th>
+                              <th class="column-title" style="width: 5%;"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for material_pedido in materiales_pedido %}
+                            <tr class="even pointer">
+                              <td>{{ material_pedido.material.nombre }}</td>
+                              <td>{{ material_pedido.material.marca }}</td>
+                              <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" class="img-fluid" alt="{{ material_pedido.material.nombre }}" style="max-width: 150px;"></a></td>
+                              <td>{{ material_pedido.cantidad }}</td>
+                              <td>
+                                <div class="input-group">
+                                  <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default btn-number" onclick="decrementQuantity({{ material_pedido.material.id }}, event)">
+                                      <span class="glyphicon glyphicon-minus"></span>
+                                    </button>
+                                  </span>
+                                  <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="0" readonly min="1" data-max="{{ material_pedido.cantidad }}">
+                                  <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default btn-number" onclick="incrementQuantity(this)">
+                                      <span class="glyphicon glyphicon-plus"></span>
+                                    </button>
+                                  </span>
+                                </div>
+                              </td>
+                              <td>{{ material_pedido.material.medida }}</td>
+                              <td>
+                                  <button class="btn btn-danger" onclick="eliminarMaterial({{ material_pedido.material.id }})"><i class="fa fa-trash"></i></button>
+                              </td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                </div>
+                <input type="hidden" id="seleccionado" value="false">
+              </form>
           </div>
                 <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
-                <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-success float-right"><i class="fa fa-check"></i> Generar Devolución</a>
+                <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-success float-right" onclick="return validarDevolucion();"><i class="fa fa-check"></i> Generar Devolución</a>
           </div>
       </div>
     </div>
@@ -84,6 +91,8 @@
           if (nuevaCantidad <= maximo) {  // Verificar si el nuevo valor no excede el máximo
             input.value = nuevaCantidad;
           }
+          // Marcar como seleccionado al menos un material
+          document.getElementById('seleccionado').value = "true";
         }
 
         function decrementQuantity(materialId, event) {
@@ -95,6 +104,8 @@
             cantidad = 1;
           }
           input.value = cantidad;
+          // Marcar como seleccionado al menos un material
+          document.getElementById('seleccionado').value = "true";
         }
 
         // Función para eliminar el material del pedido de la devolución
@@ -103,6 +114,26 @@
           input.value = 0;
           const fila = input.closest('tr');
           fila.remove();
+          // Marcar como seleccionado al menos un material
+          document.getElementById('seleccionado').value = "true";
         }
+
+        // Función para validar la devolución antes de enviar el formulario
+        function validarDevolucion() {
+            const inputs = document.querySelectorAll('input[type="text"]');
+            let seleccionado = false;
+            inputs.forEach(input => {
+                if (parseInt(input.value) > 0) {
+                    seleccionado = true;
+                }
+            });
+
+            if (!seleccionado) {
+                alert("La cantidad a devolver debe ser mayor a 0");
+                return false; // Evita que se envíe el formulario
+            }
+            return true; // Envía el formulario
+        }
+
     </script>
 {% endblock %}
