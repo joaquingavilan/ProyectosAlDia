@@ -23,3 +23,7 @@ def split(value, key):
     Returns the value turned into a list.
     """
     return value.split(key)
+
+@register.filter
+def anydevolucion(devoluciones, pedido_id):
+    return devoluciones.filter(pedido__id=pedido_id).exists()

@@ -197,48 +197,6 @@ class MaterialPedido(models.Model):
     def __str__(self):
         return f'{self.material} - {self.pedido}'
 
-class Devolucion(models.Model):
-    ingeniero = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groups__name='INGENIERO'))
-    obra = models.ForeignKey('Obra', on_delete=models.CASCADE, verbose_name=_('obra'))
-    fecha_solicitud = models.DateField(_('fecha de solicitud'))
-    fecha_devolucion = models.DateField(_('fecha de devolucion'), null=True, blank=True)
-    ESTADOS = (
-        ('P', _('Pendiente')),
-        ('E', _('Entregado')),
-    )
-    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
-    materiales = models.ManyToManyField('Material', through='MaterialDevolucion')
-
-    class Meta:
-        verbose_name = _('devolución')
-        verbose_name_plural = _('devoluciones')
-
-    def __str__(self):
-        return f'{self.obra} - {self.estado}'
-
-class MaterialDevolucion(models.Model):
-    devolucion = models.ForeignKey(Devolucion, on_delete=models.CASCADE)
-    material = models.ForeignKey('Material', on_delete=models.CASCADE)
-    cantidad = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        verbose_name = _('material en devolución')
-        verbose_name_plural = _('materiales en devolución')
-
-    def __str__(self):
-        return f'{self.material} - {self.devolucion}'
-
-class MaterialDevuelto(models.Model):
-    pedido = models.ForeignKey('Pedido', on_delete=models.CASCADE, null=True, default=None)
-    material = models.ForeignKey('Material', on_delete=models.CASCADE, null=True, default=None)
-    cantidad = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        verbose_name = _('material devuelto')
-        verbose_name_plural = _('materiales devueltos')
-
-    def __str__(self):
-        return f'{self.material} - {self.pedido}'
 
 class Seccion(models.Model):
     nombre = models.CharField(max_length=255)
@@ -289,30 +247,35 @@ class DetalleCronograma(models.Model):
         return f"{self.detalle} - {self.fecha_programada}"
 
 
-class Certificado(models.Model):
+class Devolucion(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
+    ingeniero = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groupsname='INGENIERO'))
+    obra = models.ForeignKey('Obra', on_delete=models.CASCADE, verbose_name=_('obra'))
+    fecha_solicitud = models.DateField(_('fecha de solicitud'))
+    fecha_devolucion = models.DateField(_('fecha de devolucion'), null=True, blank=True)
     ESTADOS = (
-        ('pendiente_envio', 'Pendiente de Envío'),
-        ('enviado', 'Enviado'),
-        ('pagado', 'Pagado'),
+        ('P', _('Pendiente')),
+        ('E', _('Entregado')),
     )
+    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
+    materiales = models.ManyToManyField('Material', through='MaterialDevuelto', null=True)
 
-    obra = models.ForeignKey(Obra, on_delete=models.CASCADE)  # Asegúrate de que el modelo Obra está importado
-    fecha_creacion = models.DateField(auto_now_add=True)
-    fecha_envio = models.DateField(null=True, blank=True)
-    fecha_pago = models.DateField(null=True, blank=True)
-    comprobante_pago = models.FileField(upload_to='comprobantes_pago/', null=True, blank=True)
-    estado = models.CharField(max_length=15, choices=ESTADOS, default='pendiente_envio')
-    monto_total = models.DecimalField(max_digits=10, decimal_places=0, default=0)
+    class Meta:
+        verbose_name = _('devolución')
+        verbose_name_plural = _('devoluciones')
 
-    def __str__(self):
-        return f"Certificado {self.id} - {self.obra}"
+    def str(self):
+        return f'{self.obra} - {self.estado}'
 
 
-class DetalleCertificado(models.Model):
-    certificado = models.ForeignKey(Certificado, on_delete=models.CASCADE, related_name='detalles_certificado')
-    detalle_cronograma = models.ForeignKey(DetalleCronograma, on_delete=models.CASCADE)  # Asegúrate de que el modelo DetalleCronograma está importado
-    # Aquí puedes agregar campos adicionales si son necesarios
+class MaterialDevuelto(models.Model):
+    devolucion = models.ForeignKey('Devolucion', on_delete=models.CASCADE)
+    material = models.ForeignKey('Material', on_delete=models.CASCADE, null=True, default=None)
+    cantidad = models.PositiveIntegerField(default=0)
 
-    def __str__(self):
-        return f"Detalle {self.id} - Certificado {self.certificado.id}"
+    class Meta:
+        verbose_name = _('material devuelto')
+        verbose_name_plural = _('materiales devueltos')
 
+    def str__(self):
+        return f'{self.material} - {self.pedido}'

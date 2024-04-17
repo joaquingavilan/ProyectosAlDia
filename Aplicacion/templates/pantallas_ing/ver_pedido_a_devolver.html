@@ -69,12 +69,12 @@
                           </tbody>
                         </table>
                 </div>
-                <input type="hidden" id="seleccionado" value="false">
+                  <div>
+                    <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
+                    <button type="submit" class="btn btn-success pull-right" title="Guardar"><i class="fa fa-check"></i> Generar devolución</button>
+                  </div>
+                  <input type="hidden" id="seleccionado" value="false">
               </form>
-          </div>
-                <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
-                <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-success float-right" onclick="return validarDevolucion();"><i class="fa fa-check"></i> Generar Devolución</a>
-          </div>
       </div>
     </div>
 </div>
@@ -83,6 +83,7 @@
     <script>
         // Función para incrementar la cantidad del material
         function incrementQuantity(button) {
+          console.log(1)
           const input = button.parentNode.parentNode.querySelector('input[type="text"]');
           const maximo = parseInt(input.getAttribute('data-max'));
           let cantidad = parseInt(input.value);
@@ -97,11 +98,12 @@
 
         function decrementQuantity(materialId, event) {
           event.preventDefault();
+          console.log(2)
           const input = document.getElementById(`cantidad_${materialId}`);
-          let cantidad = parseInt(input.value) || 1;
+          let cantidad = parseInt(input.value) || 0;
           cantidad--;
-          if (cantidad < 1) {
-            cantidad = 1;
+          if (cantidad < 0) {
+            cantidad = 0;
           }
           input.value = cantidad;
           // Marcar como seleccionado al menos un material
@@ -110,6 +112,7 @@
 
         // Función para eliminar el material del pedido de la devolución
         function eliminarMaterial(materialId) {
+          console.log(3)
           const input = document.getElementById(`cantidad_${materialId}`);
           input.value = 0;
           const fila = input.closest('tr');
@@ -120,6 +123,7 @@
 
         // Función para validar la devolución antes de enviar el formulario
         function validarDevolucion() {
+            console.log(4)
             const inputs = document.querySelectorAll('input[type="text"]');
             let seleccionado = false;
             inputs.forEach(input => {

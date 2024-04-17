@@ -980,9 +980,13 @@ def ver_obras_terminadas(request):
 def ver_pedidos_obra(request, obra_id):
     obra = Obra.objects.get(pk=obra_id)
     pedidos_entregados = Pedido.objects.filter(obra=obra) #agregar , estado='E'
+    devoluciones = Devolucion.objects.filter(
+        pedido__in=pedidos_entregados)  # Obtiene las devoluciones relacionadas con los pedidos entregados
+
     context = {
         'obra': obra,
         'pedidos': pedidos_entregados,
+        'devoluciones': devoluciones,
     }
     return render(request, 'pantallas_ing/ver_pedidos_obra.html', context)
 
@@ -1011,7 +1015,8 @@ def confirmar_devolucion(request):
             obra=pedido.obra,
             fecha_solicitud=date.today(),
             fecha_devolucion=None,
-            estado='P'
+            estado='P',
+            pedido=pedido
         )
 
         # Crear los objetos MaterialDevuelto y guardar en la base de datos
@@ -1022,6 +1027,14 @@ def confirmar_devolucion(request):
 
         # Redirigir a una página de éxito o realizar alguna acción adicional
         return redirect('ver_pedidos_obra', obra_id=pedido.obra.id)
+    return redirect('ver_ingenieros')
+
+def ver_devolucion(request, devolucion_id):
+    devolucion = get_object_or_404(Devolucion, id=devolucion_id)
+    context = {
+        'devolucion': devolucion
+    }
+    return render(request, 'pantallas_ing/ver_devolucion.html', context)
 
 # vistas para filtros
 
