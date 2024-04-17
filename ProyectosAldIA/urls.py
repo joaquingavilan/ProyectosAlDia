@@ -177,5 +177,6 @@ urlpatterns = [
     path('ver_pedido_a_devolver/<int:pedido_id>/', views.ver_pedido_a_devolver, name='ver_pedido_a_devolver'),
     path('confirmar_devolucion/', views.confirmar_devolucion, name='confirmar_devolucion'),
     path('ver_devolucion/<int:devolucion_id>/', views.ver_devolucion, name='ver_devolucion'),
+    path('ver_devoluciones', views.ver_devoluciones, name='ver_devoluciones'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

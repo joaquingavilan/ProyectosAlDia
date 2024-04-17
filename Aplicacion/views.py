@@ -1036,6 +1036,13 @@ def ver_devolucion(request, devolucion_id):
     }
     return render(request, 'pantallas_ing/ver_devolucion.html', context)
 
+def ver_devoluciones(request):
+    devoluciones = Devolucion.objects.all()
+    context = {
+        'devoluciones': devoluciones
+    }
+    return render(request, 'pantallas_ing/ver_devoluciones.html', context)
+
 # vistas para filtros
 
 def obtener_clientes_con_proyectos(request):
