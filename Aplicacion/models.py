@@ -248,6 +248,7 @@ class DetalleCronograma(models.Model):
 
 
 class Devolucion(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
     ingeniero = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groupsname='INGENIERO'))
     obra = models.ForeignKey('Obra', on_delete=models.CASCADE, verbose_name=_('obra'))
     fecha_solicitud = models.DateField(_('fecha de solicitud'))
@@ -257,7 +258,7 @@ class Devolucion(models.Model):
         ('E', _('Entregado')),
     )
     estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
-    materiales = models.ManyToManyField('Material', through='MaterialDevolucion')
+    materiales = models.ManyToManyField('Material', through='MaterialDevuelto', null=True)
 
     class Meta:
         verbose_name = _('devolución')
@@ -266,20 +267,9 @@ class Devolucion(models.Model):
     def str(self):
         return f'{self.obra} - {self.estado}'
 
-class MaterialDevolucion(models.Model):
-    devolucion = models.ForeignKey(Devolucion, on_delete=models.CASCADE)
-    material = models.ForeignKey('Material', on_delete=models.CASCADE)
-    cantidad = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        verbose_name = _('material en devolución')
-        verbose_name_plural = _('materiales en devolución')
-
-    def str(self):
-        return f'{self.material} - {self.devolucion}'
 
 class MaterialDevuelto(models.Model):
-    pedido = models.ForeignKey('Pedido', on_delete=models.CASCADE, null=True, default=None)
+    devolucion = models.ForeignKey('Devolucion', on_delete=models.CASCADE)
     material = models.ForeignKey('Material', on_delete=models.CASCADE, null=True, default=None)
     cantidad = models.PositiveIntegerField(default=0)
 

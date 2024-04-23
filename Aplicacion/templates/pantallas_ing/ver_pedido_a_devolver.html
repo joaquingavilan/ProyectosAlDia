@@ -1,0 +1,143 @@
+{% extends request.base_template %}
+
+{% block content %}
+<div class="center_col" role="main">
+    <div class="page-title" style="width: 100%;">
+        <div class="title_left w-100" style="display: flex; align-items: center">
+            <h1 style="margin: 0; flex-grow: 1;">Pedido para <strong>{{ pedido.obra.proyecto.nombre }}</strong> entregado el <strong>{{pedido.fecha_solicitud}}</strong></h1>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <div class="row">
+      <div class="col-md-12 col-sm-12 ">
+        <br>
+        <div class="x_panel">
+          <div class="x_title">
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <br />
+
+              <form method="post" action="{% url 'confirmar_devolucion' %}" class="form-horizontal form-label-left" onsubmit="return validarDevolucion()">
+                {% csrf_token %}
+
+                <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
+
+                <div class="table-responsive">
+                    <table class="table table-striped jambo_table bulk_action">
+                          <thead>
+                            <tr class="headings">
+                              <th class="column-title">Nombre del producto</th>
+                              <th class="column-title">Marca</th>
+                              <th class="column-title" style="width: 20%;">Fotografía</th>
+                              <th class="column-title" style="width: 15%;">Cantidad</th>
+                              <th class="column-title" style="width: 15%;">Cantidad a devolver</th>
+                              <th class="column-title" style="width: 15%;">Unidad de medida</th>
+                              <th class="column-title" style="width: 5%;"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for material_pedido in materiales_pedido %}
+                            <tr class="even pointer">
+                              <td>{{ material_pedido.material.nombre }}</td>
+                              <td>{{ material_pedido.material.marca }}</td>
+                              <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" class="img-fluid" alt="{{ material_pedido.material.nombre }}" style="max-width: 150px;"></a></td>
+                              <td>{{ material_pedido.cantidad }}</td>
+                              <td>
+                                <div class="input-group">
+                                  <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default btn-number" onclick="decrementQuantity({{ material_pedido.material.id }}, event)">
+                                      <span class="glyphicon glyphicon-minus"></span>
+                                    </button>
+                                  </span>
+                                  <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="0" readonly min="1" data-max="{{ material_pedido.cantidad }}">
+                                  <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default btn-number" onclick="incrementQuantity(this)">
+                                      <span class="glyphicon glyphicon-plus"></span>
+                                    </button>
+                                  </span>
+                                </div>
+                              </td>
+                              <td>{{ material_pedido.material.medida }}</td>
+                              <td>
+                                  <button class="btn btn-danger" onclick="eliminarMaterial({{ material_pedido.material.id }})"><i class="fa fa-trash"></i></button>
+                              </td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                </div>
+                  <div>
+                    <a href="{% url 'ver_pedidos_obra' obra_id=pedido.obra.id %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
+                    <button type="submit" class="btn btn-success pull-right" title="Guardar"><i class="fa fa-check"></i> Generar devolución</button>
+                  </div>
+                  <input type="hidden" id="seleccionado" value="false">
+              </form>
+      </div>
+    </div>
+</div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Función para incrementar la cantidad del material
+        function incrementQuantity(button) {
+          console.log(1)
+          const input = button.parentNode.parentNode.querySelector('input[type="text"]');
+          const maximo = parseInt(input.getAttribute('data-max'));
+          let cantidad = parseInt(input.value);
+
+          const nuevaCantidad = cantidad + 1;
+          if (nuevaCantidad <= maximo) {  // Verificar si el nuevo valor no excede el máximo
+            input.value = nuevaCantidad;
+          }
+          // Marcar como seleccionado al menos un material
+          document.getElementById('seleccionado').value = "true";
+        }
+
+        function decrementQuantity(materialId, event) {
+          event.preventDefault();
+          console.log(2)
+          const input = document.getElementById(`cantidad_${materialId}`);
+          let cantidad = parseInt(input.value) || 0;
+          cantidad--;
+          if (cantidad < 0) {
+            cantidad = 0;
+          }
+          input.value = cantidad;
+          // Marcar como seleccionado al menos un material
+          document.getElementById('seleccionado').value = "true";
+        }
+
+        // Función para eliminar el material del pedido de la devolución
+        function eliminarMaterial(materialId) {
+          console.log(3)
+          const input = document.getElementById(`cantidad_${materialId}`);
+          input.value = 0;
+          const fila = input.closest('tr');
+          fila.remove();
+          // Marcar como seleccionado al menos un material
+          document.getElementById('seleccionado').value = "true";
+        }
+
+        // Función para validar la devolución antes de enviar el formulario
+        function validarDevolucion() {
+            console.log(4)
+            const inputs = document.querySelectorAll('input[type="text"]');
+            let seleccionado = false;
+            inputs.forEach(input => {
+                if (parseInt(input.value) > 0) {
+                    seleccionado = true;
+                }
+            });
+
+            if (!seleccionado) {
+                alert("La cantidad a devolver debe ser mayor a 0");
+                return false; // Evita que se envíe el formulario
+            }
+            return true; // Envía el formulario
+        }
+
+    </script>
+{% endblock %}
