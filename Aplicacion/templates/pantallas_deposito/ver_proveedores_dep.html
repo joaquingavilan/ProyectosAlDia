@@ -1,0 +1,349 @@
+{% extends request.base_template %}
+
+{% block content %}
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Proveedores</h2>
+        <div class="btn-group pull-right">
+            <form action="{% url 'exportar_excel' %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_dato" value="Proveedores">
+                <button type="submit" class="btn btn-success btn-sm" title="Exportar a Excel"><i class="fa fa-file-excel-o"></i></button>
+            </form>
+            <form action="{% url 'exportar_pdf' %}" method="post" class="ml-2">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_dato" value="Proveedores">
+                <button type="submit" class="btn btn-danger btn-sm" title="Exportar a PDF"><i class="fa fa-file-pdf-o"></i></button>
+            </form>
+        </div>
+        <ul class="nav navbar-right panel_toolbox">
+            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+        </ul>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        <!-- Contenido principal -->
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <div class="input-group w-25">
+                <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
+                <input type="hidden" id="proveedorUrl" value="{% url 'ver_proveedor' 999999 %}">
+            </div>
+            <a href="{% url 'registrar_proveedor' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir proveedor</a>
+        </div>
+        <div id="resultadosBusqueda"></div>
+        <br>
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">RUC</th>
+                    <th scope="col">Telefono</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Pagina web</th>
+                    <th scope="col">Ciudad</th>
+                    <th scope="col">Direccion</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for proveedor in page_obj %}
+                <tr>
+                    <td>{{ proveedor.nombre }}</td>
+                    <td>{{ proveedor.ruc }}</td>
+                    <td>{% if proveedor.telefono %}
+                            {{ proveedor.telefono }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ proveedor.email }}</td>
+                    <td>
+                        {% if proveedor.pagina_web %}
+                            {% if "http://" in proveedor.pagina_web or "https://" in proveedor.pagina_web %}
+                                <a href="{{ proveedor.pagina_web }}" target="_blank">{{ proveedor.pagina_web }}</a>
+                            {% else %}
+                                <a href="http://{{ proveedor.pagina_web }}" target="_blank">{{ proveedor.pagina_web }}</a>
+                            {% endif %}
+                        {%else%}
+                            -
+                        {%endif%}
+                    </td>
+                    <td>
+                        {% if proveedor.ciudad %}
+                            {{ proveedor.ciudad }}
+                        {% else %}
+                        -
+                        {%endif%}
+                    </td>
+                    <td>{% if proveedor.direccion %}
+                            {{ proveedor.direccion }}
+                        {% else %}
+                        -
+                        {%endif%}
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-primary btn-sm editarProveedorBtn" data-proveedor-id="{{ proveedor.id }}"><i class="fa fa-pencil"></i></button>
+                        <!-- Formulario para eliminar proveedor -->
+                        <form method="POST" action="{% url 'eliminar_proveedor' proveedor.id %}"  class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="proveedor_id" value="{{ proveedor.id }}">
+                            <button type="submit"  class="btn btn-danger btn-sm"><i class="fa fa-trash-o"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para editar proveedor -->
+<div class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel"  role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editarProveedorModalLabel">Editar Proveedor</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <form method="post" action="{% url 'editar_proveedor' 0 %}" id="editarProveedorForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Campo oculto para el ID del proveedor -->
+                    <input type="hidden" name="proveedor_id" id="proveedorId">
+
+                    <!-- Campos del proveedor -->
+                    <div class="form-group">
+                        <label for="nombreProveedor">Nombre:</label>
+                        <input type="text" class="form-control" id="nombreProveedor" name="nombre">
+                    </div>
+                    <div class="form-group">
+                        <label for="rucProveedor">RUC:</label>
+                        <!-- Mensaje de error para el RUC -->
+                        <div id="errorRucProveedor" class="text-danger"></div>
+                        <input type="text" class="form-control" id="rucProveedor" name="ruc">
+                    </div>
+                    <!-- Campo para el Teléfono -->
+                    <div class="form-group">
+                        <label for="telefonoProveedor">Teléfono:</label>
+                        <input type="text" class="form-control" id="telefonoProveedor" name="telefono">
+                        <span class="text-danger" id="telefonoError"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="emailProveedor">Email:</label>
+                        <input type="email" class="form-control" id="emailProveedor" name="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="direccionProveedor">Dirección:</label>
+                        <input type="text" class="form-control" id="direccionProveedor" name="direccion">
+                    </div>
+                    <div class="form-group">
+                        <label for="ciudadProveedor">Ciudad:</label>
+                        <select class="form-control" id="ciudadProveedor" name="ciudad">
+                            {% for ciudad in ciudades %}
+                                <option value="{{ ciudad }}">{{ ciudad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="paginaWebProveedor">Página Web:</label>
+                        <input type="text" class="form-control" id="paginaWebProveedor" name="pagina_web">
+                    </div>
+                    <!-- Campo para las Observaciones -->
+                    <div class="form-group">
+                        <label for="observacionesProveedor">Observaciones:</label>
+                        <textarea class="form-control" id="observacionesProveedor" name="observaciones" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Paginador -->
+<nav>
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+        {% else %}
+            <li class="page-item disabled"><a class="page-link">Primera</a></li>
+            <li class="page-item disabled"><a class="page-link">Anterior</a></li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+        {% else %}
+            <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+            <li class="page-item disabled"><a class="page-link">Última</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentProveedorId = null;
+    let rucsActuales = {{ rucs_json|safe }};
+    let emailsActuales = {{emails_json|safe }};
+    document.addEventListener('DOMContentLoaded', (event) => {
+        // Manejo de botones editar proveedor
+        let editarProveedorBtns = document.querySelectorAll(".editarProveedorBtn");
+        editarProveedorBtns.forEach(btn => {
+            btn.addEventListener("click", function() {
+                let proveedorId = this.getAttribute("data-proveedor-id");
+                fetch(`/get_proveedor_data/${proveedorId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById("proveedorId").value = proveedorId;
+                    document.getElementById("nombreProveedor").value = data.nombre;
+                    document.getElementById("rucProveedor").value = data.ruc;
+                    document.getElementById("telefonoProveedor").value = data.telefono;
+                    document.getElementById("observacionesProveedor").value = data.observaciones;
+                    document.getElementById("emailProveedor").value = data.email;
+                    document.getElementById("direccionProveedor").value = data.direccion || '';  // Añadido
+                    document.getElementById("ciudadProveedor").value = data.ciudad || '';        // Añadido
+                    document.getElementById("paginaWebProveedor").value = data.pagina_web || ''; // Añadido
+                    document.getElementById("editarProveedorForm").setAttribute("data-original-ruc", data.ruc);
+                    document.getElementById("editarProveedorForm").setAttribute("data-original-email", data.email);
+                    document.getElementById("editarProveedorForm").action = `/editar_proveedor/${proveedorId}/`;
+
+                    $('#editarProveedorModal').modal('show');
+
+
+                })
+                .catch(error => {
+                    console.log('There was a problem with the fetch operation:', error.message);
+                });
+            });
+        });
+
+document.getElementById("editarProveedorForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+    let rucField = document.getElementById("rucProveedor");
+    let rucIngresado = rucField.value;
+
+    let emailField = document.getElementById("emailProveedor");
+    let emailIngresado = emailField.value;
+
+    // Excluye el RUC del cliente actual que se está editando y el email del cliente actual
+    let rucOriginal = this.getAttribute('data-original-ruc');
+    let rucsSinActual = rucsActuales.filter(ruc => ruc !== rucOriginal);
+    let emailOriginal = this.getAttribute('data-original-email');
+    let emailsSinActual = emailsActuales.filter(email => email !== emailOriginal);
+
+    let regexRUC = /^[\d\-]*$/;
+    // Validación Teléfono
+    let telefonoField = document.getElementById("telefonoProveedor");
+    let telefonoIngresado = telefonoField.value;
+    let regexTelefono = /^\d{6,20}$/;
+
+    if (telefonoIngresado && !regexTelefono.test(telefonoIngresado)) {
+        alert("Ingrese un teléfono válido (solo números)");
+        telefonoField.focus();
+        isValid = false;
+    } else {
+        document.getElementById("telefonoError").innerText = "";
+    }
+    // Verifica si el RUC cumple con el patrón de solo números y guiones
+    if (!rucIngresado) {
+        alert("El RUC no puede estar vacío.");
+        rucField.focus();
+        return;
+    } else if (!regexRUC.test(rucIngresado)) {
+        alert("El RUC solo debe contener números y un guión, sin puntos.");
+        rucField.value = rucOriginal;  // Opcional: Restaurar el RUC original o dejar al usuario corregir
+        rucField.focus();
+        return;
+    } else if (rucsSinActual.includes(rucIngresado)) {
+        alert("El RUC ingresado ya está registrado en el sistema.");
+        rucField.value = rucOriginal;
+        rucField.focus();
+        return;
+    }
+
+    if (emailsSinActual.includes(emailIngresado)) {
+        alert("El email ingresado ya está registrado para otro proveedor");
+        emailField.value = emailOriginal;
+        emailField.focus();
+        return;
+    }
+
+    let formData = new FormData(this);
+    fetch(this.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.status == 400) {
+            return response.json().then(data => {
+                throw data;
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            $('#editarProveedorModal').modal('hide');
+            location.reload();
+        } else if (data.status === "error") {
+            // Mostramos los errores en el modal
+            let errorContainer = document.getElementById("errorContainer");
+            errorContainer.innerHTML = "";
+            for (let field in data.errors) {
+                errorContainer.innerHTML += `${field}: ${data.errors[field]}<br>`;
+            }
+            errorContainer.style.display = "block";
+        }
+    });
+});
+
+    });
+
+        //buscador
+    document.getElementById('buscador').addEventListener('input', function() {
+        let query = this.value;
+        let resultadosDiv = document.getElementById('resultadosBusqueda');
+        let baseUrl = document.getElementById('proveedorUrl').value;
+
+        if (query.length >= 3) {
+            fetch(`/buscar_proveedores/?q=${query}`)
+            .then(response => response.json())
+            .then(data => {
+                resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+                data.forEach(proveedor => {
+                    let div = document.createElement('div');
+                    let proveedorUrl = baseUrl.replace('999999', proveedor.id);
+                    div.innerHTML = `<a class="container" href="${proveedorUrl}">${proveedor.nombre}</a>`;
+                    resultadosDiv.appendChild(div);
+                });
+            });
+        } else {
+            resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+        }
+    });
+</script>
+{% endblock %}
