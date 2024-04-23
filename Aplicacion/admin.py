@@ -20,5 +20,4 @@ admin.site.register(Cronograma)
 admin.site.register(DetalleCronograma)
 admin.site.register(Marca)
 admin.site.register(Ciudad)
-admin.site.register(Certificado)
-admin.site.register(DetalleCertificado)
+
