@@ -248,7 +248,7 @@ class DetalleCronograma(models.Model):
 
 
 class Devolucion(models.Model):
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, default=1)
     ingeniero = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groupsname='INGENIERO'))
     obra = models.ForeignKey('Obra', on_delete=models.CASCADE, verbose_name=_('obra'))
     fecha_solicitud = models.DateField(_('fecha de solicitud'))
@@ -271,7 +271,7 @@ class Devolucion(models.Model):
 
 
 class MaterialDevuelto(models.Model):
-    devolucion = models.ForeignKey('Devolucion', on_delete=models.CASCADE)
+    devolucion = models.ForeignKey('Devolucion', on_delete=models.CASCADE, default=1)
     material = models.ForeignKey('Material', on_delete=models.CASCADE, null=True, default=None)
     cantidad = models.PositiveIntegerField(default=0)
 
