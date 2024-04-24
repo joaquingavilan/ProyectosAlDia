@@ -14,7 +14,7 @@ from datetime import date, datetime
 from io import BytesIO
 from django.contrib import messages
 from django.forms import formset_factory
-from django.http import JsonResponse, HttpResponse, FileResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, FileResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 import openpyxl
 from openpyxl import Workbook, load_workbook
@@ -54,6 +54,9 @@ def inicio(request):
         return render(request, 'inicios/inicio_adm.html')
     elif request.user.groups.filter(name='INGENIERO').exists():
         return redirect(inicio_ingenieros)
+    elif request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        return redirect(inicio_deposito)
+
 
 
 def inicio_ingenieros(request):
@@ -65,6 +68,9 @@ def inicio_adm(request):
     nombre = request.user.first_name
     return render(request, 'inicios/inicio_adm.html', {'nombre': nombre})
 
+def inicio_deposito(request):
+    nombre = request.user.first_name
+    return render(request, 'inicios/inicio_deposito.html', {'nombre': nombre})
 
 # VISTAS PARA USUARIOS
 
@@ -545,7 +551,12 @@ def ver_proveedores(request):
                 else:
                     proveedores = proveedores.filter(nombre__icontains=termino_busqueda)
 
-    return render(request, 'ABM/proveedores/ver_proveedores.html',
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_proveedores_dep.html'
+    else:
+        template_name = 'ABM/proveedores/ver_proveedores.html'
+
+    return render(request, template_name,
                   {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json,
                    'emails_json': emails_json, 'ciudades': ciudades})
 
@@ -1029,19 +1040,55 @@ def confirmar_devolucion(request):
         return redirect('ver_pedidos_obra', obra_id=pedido.obra.id)
     return redirect('ver_ingenieros')
 
+
+@csrf_exempt
+def aceptar_devolucion(request, devolucion_id):
+    if request.method == "POST":
+        try:
+            nuevo_estado = 'D'
+            devolucion = Devolucion.objects.get(pk=devolucion_id)
+            devolucion.estado = nuevo_estado
+            devolucion.fecha_devolucion = date.today()
+            devolucion.save()
+            return HttpResponseRedirect(reverse('ver_devoluciones_dep'))
+        except Devolucion.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Devolución no encontrada'}, status=404)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
 def ver_devolucion(request, devolucion_id):
     devolucion = get_object_or_404(Devolucion, id=devolucion_id)
     context = {
         'devolucion': devolucion
     }
-    return render(request, 'pantallas_ing/ver_devolucion.html', context)
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_devolucion_dep.html'
+    else:
+        template_name = 'pantallas_ing/ver_devoluciones.html'
+    return render(request, template_name, context)
 
 def ver_devoluciones(request):
     devoluciones = Devolucion.objects.all()
+    # Determinar qué template renderizar en función del rol del usuario
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_devoluciones_dep.html'
+    else:
+        template_name = 'pantallas_ing/ver_devoluciones.html'
     context = {
         'devoluciones': devoluciones
     }
-    return render(request, 'pantallas_ing/ver_devoluciones.html', context)
+    return render(request, template_name, context)
+
+def devoluciones_pedidos_pendientes(request):
+    devoluciones_pendientes = Devolucion.objects.filter(estado='P').values('obra__nombre')
+    pedidos_pendientes = Pedido.objects.filter(estado='P').values('id')
+
+    data = {
+        'devoluciones': list(devoluciones_pendientes),
+        'pedidos': list(pedidos_pendientes)
+    }
+
+    return JsonResponse(data)
+
 
 # vistas para filtros
 

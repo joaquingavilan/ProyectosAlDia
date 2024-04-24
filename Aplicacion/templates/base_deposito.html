@@ -6,9 +6,10 @@
     <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
         <div class="menu_section">
             <ul class="nav side-menu">
-                <li><a href="{% url 'inicio_ingenieros' %}"><i class="fa fa-home"></i> Inicio </a></li>
-                <li><a href="{% url 'ver_presupuestos' %}"><i class="fa fa-dollar"></i> Presupuestos </a></li>
-                <li><a href="{% url 'ver_obras' %}"><i class="fa fa-building-o"></i> Obras </a></li>
+                <li><a href="{% url 'inicio' %}"><i class="fa fa-home"></i> Inicio </a></li> <!-- Aquí está el nuevo enlace -->
+                <li><a href="{% url 'ver_proveedores_dep' %}"><i class="fa fa-truck"></i> Proveedores </a></li>
+                <li><a href="{% url 'ver_materiales' %}"><i class="fa fa-wrench"></i> Materiales </a></li>
+                <li><a href="{% url 'ver_proyectos' %}"><i class="fa fa-tasks"></i> Proyectos </a></li>
                 <li><a href="{% url 'ver_pedidos' %}"><i class="fa fa-clipboard"></i> Pedido de materiales </a></li>
                 <li><a href="{% url 'ver_devoluciones' %}"><i class="fa fa-exchange"></i> Devolución de materiales </a></li>
             </ul>

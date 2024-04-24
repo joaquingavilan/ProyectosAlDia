@@ -4,10 +4,15 @@
 <div class="center_col" role="main">
     <div class="page-title" style="width: 100%;">
         <div class="title_left w-100" style="display: flex; align-items: center">
-            <h1 style="margin: 0; flex-grow: 1;">Pedido para <strong>{{ pedido.obra.proyecto.nombre }}</strong> realizado el <strong>{{ pedido.fecha_solicitud }}</strong></h1>
+            <h1 style="margin: 0; flex-grow: 1;">Pedido para <strong>{{ pedido.obra.proyecto.nombre }}</strong></h1>
         </div>
     </div>
 
+    <div>
+        <h2>Fecha de solicitud: {{pedido.fecha_solicitud}}</h2>
+        <h2>Fecha de Entrega: {{pedido.fecha_entrega}}</h2>
+        <h2>Estado: {{pedido.get_estado_display}}</h2>
+    </div>
 
 
 

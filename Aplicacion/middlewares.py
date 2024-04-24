@@ -12,6 +12,8 @@ class TemplateBaseMiddleware:
                 request.base_template = "base_adm.html"
             elif request.user.groups.filter(name="INGENIERO").exists():
                 request.base_template = "base_ing.html"
+            elif request.user.groups.filter(name="ENCARGADO_DEPOSITO").exists():
+                request.base_template = "base_deposito.html"
             # ... cualquier otra lógica para otros grupos
             else:
                 request.base_template = "base.html"  # Un valor por defecto, si es necesario
