@@ -1,0 +1,137 @@
+{% extends request.base_template %}
+
+{% block content %}
+    <div class="page-title">
+        <div class="title_left">
+            <h3>Proyectos al día</h3>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <div class="row">
+        <div class="col-md-12 col-sm-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Panel de Notificaciones</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <!-- Tablero 1 -->
+            <div class="col-md-6">
+                <div class="card" id="tablero1">
+                    <div class="card-body">
+                        <h5 class="card-title">Entrega de Pedidos pendientes</h5>
+                        <div id="tablaContenedor">
+                            <!-- La tabla se generará aquí -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tablero 2 (el doble de ancho) -->
+            <div class="col-md-6">
+                <div class="card" id="tablero2">
+                    <div class="card-body">
+                        <h5 class="card-title">Recepción de devoluciones pendientes</h5>
+                        <div id="tablaActividadesContenedor">
+                            <!-- La tabla se generará aquí -->
+                        </div>
+                        <p id="mensajeActividadesVacias" style="display: none;">No hay actividades en los próximos 7 días.</p>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block sidebar %}
+    <!-- Contenido de la barra lateral -->
+    <!-- Menú de la barra lateral -->
+    <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
+        <div class="menu_section">
+            <ul class="nav side-menu">
+                <li><a href="{% url 'inicio' %}"><i class="fa fa-home"></i> Inicio </a></li> <!-- Aquí está el nuevo enlace -->
+                <li><a href="{% url 'ver_proveedores_dep' %}"><i class="fa fa-truck"></i> Proveedores </a></li>
+                <li><a href="{% url 'ver_materiales' %}"><i class="fa fa-wrench"></i> Materiales </a></li>
+                <li><a href="{% url 'ver_proyectos' %}"><i class="fa fa-tasks"></i> Proyectos </a></li>
+                <li><a href="{% url 'ver_pedidos' %}"><i class="fa fa-clipboard"></i> Pedido de materiales </a></li>
+                <li><a href="{% url 'ver_devoluciones' %}"><i class="fa fa-exchange"></i> Devolución de materiales </a></li>
+            </ul>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block top_navigation %}
+<div class="nav toggle">
+    <a id="menu_toggle"><i class="fa fa-bars"></i></a>
+</div>
+<div class="nav_menu">
+    <nav>
+        <ul class="nav navbar-nav navbar-right">
+            <li class="">
+                <a href="{% url 'salir' %}" class="user-profile">
+                    <i class="fa fa-sign-out"></i> Cerrar sesión
+                </a>
+            </li>
+        </ul>
+    </nav>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/devoluciones_pedidos_pendientes/')  // Asegúrate de que la ruta coincida con tu configuración de URL en Django
+            .then(response => response.json())
+            .then(data => cargarDevolucionesPedidosPendientes(data));
+    });
+
+    function cargarDevolucionesPedidosPendientes(data) {
+        const contenedorDevoluciones = document.getElementById('contenedorDevoluciones');
+        const contenedorPedidos = document.getElementById('contenedorPedidos');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        if (data.devoluciones.length === 0) {
+            contenedorDevoluciones.innerHTML = '<p>No tienes devoluciones pendientes.</p>';
+        } else {
+            let tablaDevoluciones = '<table class="table table-bordered">';
+            tablaDevoluciones += '<thead><tr><th>Obra</th><th>Acciones</th></tr></thead><tbody>';
+
+            data.devoluciones.forEach(devolucion => {
+                tablaDevoluciones += `
+                    <tr>
+                        <td>${devolucion.obra.proyecto__nombre}</td>
+                        <td>
+                            <!-- Aquí puedes colocar el formulario o botón para crear la devolución -->
+                        </td>
+                    </tr>`;
+            });
+
+            tablaDevoluciones += '</tbody></table>';
+            contenedorDevoluciones.innerHTML = tablaDevoluciones;
+        }
+
+        if (data.pedidos.length === 0) {
+            contenedorPedidos.innerHTML = '<p>No tienes pedidos pendientes.</p>';
+        } else {
+            let tablaPedidos = '<table class="table table-bordered">';
+            tablaPedidos += '<thead><tr><th>ID Pedido</th><th>Acciones</th></tr></thead><tbody>';
+
+            data.pedidos.forEach(pedido => {
+                tablaPedidos += `
+                    <tr>
+                        <td>${pedido.id}</td>
+                        <td>
+                            <!-- Aquí puedes colocar el formulario o botón para realizar acciones con el pedido -->
+                        </td>
+                    </tr>`;
+            });
+
+            tablaPedidos += '</tbody></table>';
+            contenedorPedidos.innerHTML = tablaPedidos;
+        }
+    }
+
+{% endblock %}
