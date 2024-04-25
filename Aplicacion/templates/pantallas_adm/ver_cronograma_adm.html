@@ -26,7 +26,8 @@
                                     <th>Cant.</th>
                                     <th>P. Unitario</th>
                                     <th>P. Total</th>
-                                    <th>Fecha</th> <!-- Nueva columna para las fechas -->
+                                    <th>Fecha Programada</th> <!-- Nueva columna para las fechas -->
+                                    <th>Fecha de Culminación</th>
                                     <th>Estado</th>
                                 </tr>
                             </thead>
@@ -34,24 +35,25 @@
                             {% for seccion, subsecciones_data in estructura_presupuesto.items %}
                                 <tr class="table-secondary">
                                     <td><strong>{{ seccion.nombre }}</strong></td>
-                                    <td colspan="6"></td>
+                                    <td colspan="7"></td>
                                 </tr>
 
                                 {% for subseccion, detalles in subsecciones_data.items %}
                                     <tr class="table-light">
                                         <td>&emsp;&emsp;{{ subseccion.nombre }}</td>
-                                        <td colspan="5"></td>
+                                        <td colspan="6"></td>
                                         <td></td>
                                     </tr>
 
-                                    {% for detalle, fecha, estado in detalles %}
+                                    {% for detalle, fecha_programada, fecha_culminacion, estado in detalles %}
                                         <tr>
                                             <td>&emsp;&emsp;&emsp;&emsp;{{ detalle.rubro }}</td>
                                             <td>{{ detalle.unidad_medida.nombre }}</td>
                                             <td>{{ detalle.cantidad }}</td>
                                             <td>{{ detalle.precio_unitario }}</td>
                                             <td>{{ detalle.precio_total }}</td>
-                                            <td>{{ fecha }}</td>
+                                            <td>{{ fecha_programada }}</td>
+                                            <td>{{ fecha_culminacion }}</td>
                                             <td>{%if realizado %}
                                                 Completado
                                                 {% else %}

@@ -11,6 +11,8 @@
         </ul>
         <div class="clearfix"></div>
     </div>
+
+
     <div class="x_content" {% if not presupuestos %}style="display: none;"{% endif %}>
         {% if presupuestos %}
         <!-- Panel desplegable para obras sin asignar -->
@@ -58,6 +60,13 @@
         <h2>Obras</h2>
         <div class="clearfix"></div>
     </div>
+    {% if messages %}
+        <div class="alert alert-warning" role="alert">
+            {% for message in messages %}
+                {{ message }}
+            {% endfor %}
+        </div>
+    {% endif %}
     <div class="x_content">
         <!-- Búsqueda y filtros -->
         <div class="row mb-4">

@@ -279,3 +279,66 @@ class MaterialDevuelto(models.Model):
 
     def str__(self):
         return f'{self.material} - {self.pedido}'
+
+
+class Certificado(models.Model):
+    presupuesto = models.ForeignKey('Presupuesto', on_delete=models.CASCADE)
+    ingeniero = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to=Q(groups__name='INGENIERO'))
+    subtotal = models.DecimalField(_('subtotal'), max_digits=15, decimal_places=0, null=True, blank=True)
+    iva = models.DecimalField(_('IVA'), max_digits=15, decimal_places=0, null=True, blank=True)
+    monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
+    fecha_pago = models.DateField(_('fecha de pago del certificado'), null=True, blank=True)
+    fecha_envio = models.DateField(_('fecha de envio del certificado'), null=True, blank=True)
+    fecha_creacion = models.DateTimeField(_('fecha de creación del certificado'), auto_now_add=True)
+    comprobante_pago = models.FileField(upload_to='comprobantes/', blank=True, null=True)
+    ESTADOS = (
+        ('P', _('Pendiente de envio')),
+        ('S', _('Enviado')),
+        ('A', _('Aprobado')),
+    )
+    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
+
+    def get_estado_display(self):
+        return dict(Certificado.ESTADOS)[self.estado]
+
+    class Meta:
+        verbose_name = _('certificado')
+        verbose_name_plural = _('certificados')
+
+
+class ArchivoCertificado(models.Model):
+    certificado = models.OneToOneField(Certificado, on_delete=models.CASCADE)
+    secciones = models.ManyToManyField(Seccion)
+    subsecciones = models.ManyToManyField(SubSeccion)
+    detalles = models.ManyToManyField(Detalle)
+
+
+class PedidoCompra(models.Model):
+    fecha_solicitud = models.DateField(_('fecha de solicitud'))
+    fecha_entrega = models.DateField(_('fecha de entrega'), null=True, blank=True)
+    ESTADOS = (
+        ('P', _('Pendiente')),
+        ('R', _('Recibido')),
+    )
+    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
+    materiales = models.ManyToManyField(Material, through='MaterialPedidoCompra')
+
+    class Meta:
+        verbose_name = _('pedido')
+        verbose_name_plural = _('pedidos')
+
+    def str(self):
+        return f'{self.estado}'
+
+
+class MaterialPedidoCompra(models.Model):
+    pedido_compra = models.ForeignKey(PedidoCompra, on_delete=models.CASCADE)
+    material = models.ForeignKey(Material, on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField()
+
+    class Meta:
+        verbose_name = _('material en pedido de compra')
+        verbose_name_plural = _('materiales en pedido de compra')
+
+    def str(self):
+        return f'{self.material} - {self.pedido_compra}'

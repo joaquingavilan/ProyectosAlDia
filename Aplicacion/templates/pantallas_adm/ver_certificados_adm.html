@@ -1,4 +1,4 @@
-{% extends 'base_ing.html' %} <!-- Asumiendo que ya tienes un template base para el ingeniero -->
+{% extends request.base_template %}
 {% load custom_filters %}
 
 {% block content %}
@@ -9,9 +9,6 @@
 </div>
 
     <div class="x_content">
-        <div class="d-flex justify-content-end mb-3">
-            <a href="{% url 'elaborar_certificado' %}" class="btn btn-primary">Elaborar nuevo certificado</a>
-        </div>
         <table class="table table-striped table-bordered">
             <thead>
                 <tr>
@@ -48,15 +45,42 @@
                         {{ certificado.monto_total| intcomma }}
                     </td>
                     <td>
-                        <a href="{% url 'ver_archivo_certificado' certificado.id %}" class="btn btn-primary btn-sm">Ver Certificado</a>
+                        <a href="{% url 'ver_certificado_adm' certificado.id %}" class="btn btn-primary btn-sm">Ver</a>
                         {% if certificado.estado == 'P' %}
                         <button class="btn btn-primary btn-sm marcar-enviado-btn" data-id="{{ certificado.id }}">Marcar como enviado</button>
+                        {% elif not certificado.comprobante_pago %}
+                            <button class="btn btn-primary btn-sm  registrar-pago-btn" data-id="{{ certificado.id }}">Registrar Pago</button>
+                        {% else %}
+                            <a href="{{ certificado.comprobante_pago.url }}" target="_blank">Ver Comprobante</a>
                         {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+</div>
+<div class="modal fade" id="modalRegistroPago" tabindex="-1" role="dialog" aria-labelledby="modalRegistroPagoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalRegistroPagoLabel">Registrar Pago</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="modalCertificado">Certificado ID: </p>
+                <div class="form-group">
+                    <label for="comprobantePago" class="form-label">Adjuntar comprobante de pago</label>
+                    <input type="file" class="form-control-file" id="comprobantePago" data-certificado-id="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="registrarPago(this)" data-certificado-id="">Registrar Pago</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -88,7 +112,6 @@ document.addEventListener('DOMContentLoaded', function() {
     pagoBtns.forEach(btn => {
         btn.addEventListener('click', function() {
             const certificadoId = this.getAttribute('data-id');
-    console.log(certificadoId)
 
             // Actualizar el contenido del modal
             document.getElementById('modalCertificado').textContent = "Certificado ID: " + certificadoId;
@@ -108,7 +131,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function registrarPago(buttonElem) {
     event.preventDefault();
     const idCertificado = buttonElem.getAttribute('data-certificado-id');
-    console.log(idCertificado)
     const inputFile = document.getElementById('comprobantePago');
 
     if (!inputFile.files.length) {

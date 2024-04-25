@@ -31,7 +31,8 @@
                         <!-- Aquí se cargarán los detalles del cronograma -->
                     </div>
                 </div>
-                <button type="button" id="guardar-certificado-btn" class="btn btn-success">Guardar Certificado</button>
+                <!-- Ocultamos inicialmente el botón -->
+                <button type="button" id="guardar-certificado-btn" class="btn btn-success" style="display: none;">Guardar Certificado</button>
             </div>
         </div>
     </div>
@@ -41,6 +42,16 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Función para actualizar la visibilidad del botón de guardar
+    function actualizarBotonGuardar() {
+        const detalles = document.querySelectorAll('#detalles-cronograma-container .seleccionar-fila');
+        const botonGuardar = document.getElementById('guardar-certificado-btn');
+        if (detalles.length > 0) {
+            botonGuardar.style.display = 'block';
+        } else {
+            botonGuardar.style.display = 'none';
+        }
+    }
     const cargarDetallesBtn = document.getElementById('cargar-detalles-btn');
     cargarDetallesBtn.addEventListener('click', function() {
         const obraId = document.getElementById('obra-selector').value;
@@ -80,8 +91,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     table.appendChild(tbody);
                     detallesContainer.appendChild(table);
+                    actualizarBotonGuardar();
                 } else {
-                    detallesContainer.innerHTML = '<p>No hay detalles para mostrar</p>';
+                    detallesContainer.innerHTML = '<p>No hay actividades realizadas en el cronograma que no hayan sido certificadas</p>';
                 }
             });
     });
@@ -106,7 +118,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const obraId = document.getElementById('obra-selector').value; // Captura el ID de la obra seleccionada
         const filasSeleccionadas = document.querySelectorAll('#detalles-cronograma-container .seleccionar-fila:checked');
         const idsCertificado = Array.from(filasSeleccionadas).map(cb => cb.getAttribute('data-id'));
-
+        if (idsCertificado.length === 0) {
+            alert('Debe seleccionar al menos una fila para poder guardar.');
+            return;
+        }
         // Crea un objeto que incluya tanto los IDs de los detalles como el ID de la obra
         const datosParaEnviar = {
             ids: idsCertificado,

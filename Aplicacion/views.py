@@ -28,8 +28,9 @@ from django.core import serializers
 from django.core.serializers import serialize
 from reportlab.lib.pagesizes import letter, landscape, A4
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.units import inch
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, Paragraph
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.forms import PasswordChangeForm
@@ -54,6 +55,13 @@ def inicio(request):
         return render(request, 'inicios/inicio_adm.html')
     elif request.user.groups.filter(name='INGENIERO').exists():
         return redirect(inicio_ingenieros)
+    elif request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        return redirect(inicio_deposito)
+
+
+def inicio_deposito(request):
+    nombre = request.user.first_name
+    return render(request, 'inicios/inicio_deposito.html', {'nombre': nombre})
 
 
 def inicio_ingenieros(request):
@@ -522,6 +530,12 @@ def registrar_proveedor(request):
                       {'rucs_json': rucs_json, 'emails_json': emails_json, 'ciudades': ciudades})
 
 
+def ver_pedidos_deposito(request):
+    pedidos_pendientes = Pedido.objects.all()
+    context = {'pedidos': pedidos_pendientes}
+    return render(request, 'pantallas_deposito/ver_pedidos_dep.html', context)
+
+
 def ver_proveedores(request):
     proveedores = Proveedor.objects.all()
     form_buscar = BuscadorProveedorForm()
@@ -545,7 +559,12 @@ def ver_proveedores(request):
                 else:
                     proveedores = proveedores.filter(nombre__icontains=termino_busqueda)
 
-    return render(request, 'ABM/proveedores/ver_proveedores.html',
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_proveedores_dep.html'
+    else:
+        template_name = 'ABM/proveedores/ver_proveedores.html'
+
+    return render(request, template_name,
                   {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json,
                    'emails_json': emails_json, 'ciudades': ciudades})
 
@@ -2198,67 +2217,6 @@ def finalizar_obra(request, obra_id):
             return JsonResponse({'status': 'error', 'message': str(e)})
 
 
-def elaborar_certificado(request):
-    obras = Obra.objects.filter(encargado=request.user, estado='E')
-    context = {
-        'obras': obras,
-    }
-
-    return render(request, 'pantallas_ing/elaborar_certificado.html', context)
-
-
-def cargar_detalles_certificado(request):
-    obra_id = request.GET.get('obra_id')
-    obra = get_object_or_404(Obra, id=obra_id)
-    proyecto_id = obra.proyecto.id
-
-    # Obtener los IDs de los detalles del cronograma que ya han sido certificados
-    detalles_certificados_ids = DetalleCertificado.objects.filter(
-        certificado__obra__proyecto__id=proyecto_id
-    ).values_list('detalle_cronograma_id', flat=True)
-
-    # Filtrar los detalles del cronograma que no han sido certificados
-    detalles = DetalleCronograma.objects.filter(
-        cronograma__archivo_presupuesto__presupuesto__proyecto__id=proyecto_id,
-        realizado=True
-    ).exclude(
-        id__in=detalles_certificados_ids
-    ).values(
-        'id', 'detalle__rubro', 'fecha_programada', 'fecha_culminacion',
-        'detalle__cantidad', 'detalle__precio_unitario', 'detalle__precio_total'
-    )
-
-    return JsonResponse(list(detalles), safe=False)
-
-
-@csrf_exempt
-def guardar_certificado(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        ids = data.get('ids')
-        obra_id = data.get('obra_id')
-
-        try:
-            obra = Obra.objects.get(id=obra_id)
-            certificado = Certificado.objects.create(obra=obra, monto_total=0)  # Inicializa monto_total en 0
-
-            monto_total = 0
-            for identificador in ids:
-                detalle_cronograma = DetalleCronograma.objects.get(id=identificador)
-                DetalleCertificado.objects.create(certificado=certificado, detalle_cronograma=detalle_cronograma)
-                monto_total += detalle_cronograma.detalle.precio_total  # Acumula el precio total de cada detalle
-
-            certificado.monto_total = monto_total  # Asigna el monto total acumulado al certificado
-            certificado.save()  # Guarda el certificado con el monto total actualizado
-
-            return JsonResponse({"status": "success"})
-        except Obra.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Obra no encontrada"}, status=404)
-        # Los demás excepts permanecen igual
-
-    return JsonResponse({"status": "error"}, status=400)
-
-
 def obtener_presupuesto_detalle(request, proyecto_id):
     try:
         # Buscamos el presupuesto basado en el proyecto_id
@@ -2363,21 +2321,6 @@ def obtener_monto_presupuesto(request):
     return JsonResponse(data)
 
 
-def ver_certificados_ing(request):
-    obras = Obra.objects.filter(encargado=request.user)
-    certificados = []
-    for obra in obras:
-        # Assuming you want to add all certificados of each obra to the list
-        # 'Certificado.objects.filter(obra=obra)' returns a QuerySet
-        # So you need to iterate through it or use 'extend' to add its elements to the certificados list
-        for certificado in Certificado.objects.filter(obra=obra):
-            certificados.append(certificado)
-
-    # Include 'certificados' in the context dictionary
-    return render(request, 'pantallas_ing/ver_certificados.html', {
-        'title': 'Mis Certificados',
-        'certificados': certificados  # Add this line
-    })
 
 
 def buscar_presupuestos_ingeniero(request):
@@ -2699,7 +2642,7 @@ def exportar_a_pdf(request, archivo_presupuesto_id, presupuesto_id):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{presupuesto.proyecto.nombre}-presupuesto.pdf"'
 
-    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    doc = SimpleDocTemplate(response, pagesize=landscape(letter), rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
     story = []
 
     # Add title
@@ -2765,7 +2708,6 @@ def exportar_a_pdf(request, archivo_presupuesto_id, presupuesto_id):
     doc.build(story)
 
     return response
-
 
 def exportar_a_excel(request, archivo_presupuesto_id, presupuesto_id):
     archivo_presupuesto = ArchivoPresupuesto.objects.get(id=archivo_presupuesto_id)
@@ -3079,14 +3021,13 @@ def ver_cronograma_adm(request, obra_id):
     archivo_presupuesto = ArchivoPresupuesto.objects.get(presupuesto=presupuesto)
     cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)
     detalles_cronograma = cronograma.detalles_cronograma.all()
-    detalles_fechas_n = cronograma.detalles_cronograma.filter(fecha__isnull=True)
-
+    detalles_fechas_n = cronograma.detalles_cronograma.filter(fecha_programada__isnull=True)
     if detalles_fechas_n.exists():
-        messages.error(request, "No se creó aún el cronograma")
+        messages.warning(request, "No se ha creado el cronograma aún")
         return redirect('ver_obras_adm')  # Ajusta el nombre de la vista según tu configuración de URL
 
     # Crear un diccionario que mapea los detalles a sus fechas en el cronograma
-    detalles_fechas = {detalle_crono.detalle: detalle_crono.fecha for detalle_crono in detalles_cronograma}
+    detalles_fechas = {detalle_crono.detalle: detalle_crono.fecha_programada for detalle_crono in detalles_cronograma}
 
     # Construir la estructura jerárquica de secciones y subsecciones
     estructura_presupuesto = defaultdict(lambda: defaultdict(list))
@@ -3265,6 +3206,163 @@ def obras_pendientes_de_asignacion(request):
     return JsonResponse({'obras': data})
 
 
+def ver_certificados_ing(request):
+    # Obtiene todas las obras donde el usuario es el encargado
+    obras = Obra.objects.filter(encargado=request.user)
+    certificados = []
+
+    for obra in obras:
+        # Obtiene el proyecto relacionado con la obra
+        proyecto = obra.proyecto
+        # Obtiene todos los presupuestos relacionados con el proyecto
+        presupuestos = Presupuesto.objects.filter(proyecto=proyecto)
+        # Para cada presupuesto, obtiene los certificados relacionados y los añade a la lista
+        for presupuesto in presupuestos:
+            for certificado in Certificado.objects.filter(presupuesto=presupuesto):
+                certificados.append(certificado)
+
+    # Renderiza la respuesta pasando la lista de certificados al contexto
+    return render(request, 'pantallas_ing/ver_certificados.html', {
+        'title': 'Certificados',
+        'certificados': certificados
+    })
+
+
+def ver_certificados_adm(request):
+    # Obtiene todas las obras donde el usuario es el encargado
+    obras = Obra.objects.all()
+    certificados = []
+    for obra in obras:
+        # Obtiene el proyecto relacionado con la obra
+        proyecto = obra.proyecto
+        # Obtiene todos los presupuestos relacionados con el proyecto
+        presupuestos = Presupuesto.objects.filter(proyecto=proyecto)
+        # Para cada presupuesto, obtiene los certificados relacionados y los añade a la lista
+        for presupuesto in presupuestos:
+            for certificado in Certificado.objects.filter(presupuesto=presupuesto):
+                certificados.append(certificado)
+
+    # Renderiza la respuesta pasando la lista de certificados al contexto
+    return render(request, 'pantallas_adm/ver_certificados_adm.html', {
+        'title': 'Certificados',
+        'certificados': certificados
+    })
+
+
+def ver_certificado_adm(request, pk):
+    archivo_certificado = get_object_or_404(ArchivoCertificado, certificado=pk)
+    certificado = Certificado.objects.get(id=pk)
+    # Estructura para mantener la jerarquía
+    archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=certificado.presupuesto)
+    estructura_certificado = {}
+    subtotal = certificado.subtotal
+    iva = certificado.iva
+    monto_total = certificado.monto_total
+    cliente = certificado.presupuesto.proyecto.cliente.nombre
+    proyecto = certificado.presupuesto.proyecto.nombre
+    # Iterar sobre los detalles asociados con el archivo de certificado
+    for detalle in archivo_certificado.detalles.all():
+        subseccion = detalle.subseccion
+        secciones_subseccion = set(subseccion.secciones.all())
+        secciones_presupuesto = set(archivo_presupuesto.secciones.all())
+        secciones_comunes = secciones_subseccion.intersection(secciones_presupuesto)
+        seccion = next(iter(secciones_comunes), None)
+        if seccion not in estructura_certificado:
+            estructura_certificado[seccion] = {}
+
+        if subseccion not in estructura_certificado[seccion]:
+            estructura_certificado[seccion][subseccion] = []
+
+        estructura_certificado[seccion][subseccion].append(detalle)
+
+    context = {
+        'estructura_certificado': estructura_certificado,
+        'subtotal': subtotal,
+        'monto_total': monto_total,
+        'iva': iva,
+        'proyecto': proyecto,
+        'cliente': cliente,
+        'certificado_id': certificado.id,
+        'archivo_certificado_id': archivo_certificado.id,
+        'comprobante': certificado.comprobante_pago
+    }
+
+    return render(request, 'pantallas_adm/ver_certificado_adm.html', context)
+
+
+def elaborar_certificado(request):
+    obras = Obra.objects.filter(encargado=request.user, estado='E')
+    context = {
+        'obras': obras,
+    }
+
+    return render(request, 'pantallas_ing/elaborar_certificado.html', context)
+
+
+def cargar_detalles_certificado(request):
+    obra_id = request.GET.get('obra_id')
+    obra = get_object_or_404(Obra, id=obra_id)
+    proyecto_id = obra.proyecto.id
+
+    # Obtener los IDs de los detalles que ya han sido certificados mediante ArchivoCertificado
+    detalles_certificados_ids = Detalle.objects.filter(
+        archivocertificado__certificado__presupuesto__proyecto__id=proyecto_id
+    ).values_list('id', flat=True)
+
+    # Filtrar los detalles del cronograma que no han sido certificados
+    detalles = DetalleCronograma.objects.filter(
+        cronograma__archivo_presupuesto__presupuesto__proyecto__id=proyecto_id,
+        realizado=True
+    ).exclude(
+        detalle_id__in=detalles_certificados_ids
+    ).values(
+        'id', 'detalle__rubro', 'fecha_programada', 'fecha_culminacion',
+        'detalle__cantidad', 'detalle__precio_unitario', 'detalle__precio_total'
+    )
+
+    return JsonResponse(list(detalles), safe=False)
+
+
+@csrf_exempt
+def guardar_certificado(request):
+    if request.method == 'POST':
+        ingeniero = request.user
+        data = json.loads(request.body)
+        ids = data.get('ids')
+        obra_id = data.get('obra_id')
+
+        try:
+            obra = Obra.objects.get(id=obra_id)
+            certificado = Certificado.objects.create(ingeniero=ingeniero, presupuesto=obra.proyecto.presupuesto, monto_total=0,subtotal=0, iva=0)  # Asocia directamente con el presupuesto de la obra
+            archivo_certificado = ArchivoCertificado.objects.create(certificado=certificado)  # Crea un archivo de certificado para asociar detalles
+            subtotal = Decimal('0.00')
+            tasa_iva = Decimal('0.10')  # 10% de IVA como Decimal
+
+            for identificador in ids:
+                detalle_cronograma = DetalleCronograma.objects.get(id=identificador)
+                archivo_certificado.detalles.add(detalle_cronograma.detalle)
+                subtotal += Decimal(str(detalle_cronograma.detalle.precio_total))
+
+            # Calcula el IVA como el 10% del subtotal (ajusta la tasa de IVA según corresponda)
+            iva = subtotal * tasa_iva
+
+            # Calcula el monto total sumando el subtotal y el IVA
+            monto_total = subtotal + iva
+
+            certificado.subtotal = subtotal
+            certificado.iva = iva
+            certificado.monto_total = monto_total
+            certificado.save()
+
+            return JsonResponse({"status": "success"})
+        except Obra.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Obra no encontrada"}, status=404)
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return JsonResponse({"status": "error"}, status=400)
+
+
 @csrf_exempt
 def marcar_certificado_enviado(request, certificado_id):
     try:
@@ -3275,7 +3373,7 @@ def marcar_certificado_enviado(request, certificado_id):
         certificado = Certificado.objects.get(id=certificado_id)
 
         # Cambiar el estado y la fecha de envío del certificado
-        certificado.estado = 'enviado'
+        certificado.estado = 'S'
         certificado.fecha_envio = date.today()
 
         # Guardar los cambios en la base de datos
@@ -3313,7 +3411,7 @@ def registrar_pago_certificado(request, certificado_id):
 
             # Actualizar la fecha de pago y el estado
             certificado.fecha_pago = timezone.now().date()
-            certificado.estado = 'pagado'
+            certificado.estado = 'A'
             certificado.save()
 
             return JsonResponse({'success': True, 'message': 'Pago registrado exitosamente.'})
@@ -3323,4 +3421,94 @@ def registrar_pago_certificado(request, certificado_id):
     except Certificado.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Certificado no encontrado.'}, status=404)
     except Exception as e:
+        logger.error(f"Error registrando pago: {str(e)}")  # Asegúrate de tener configurado un logger
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+def ver_archivo_certificado(request, pk):
+    archivo_certificado = get_object_or_404(ArchivoCertificado, certificado=pk)
+    certificado = Certificado.objects.get(id=pk)
+    # Estructura para mantener la jerarquía
+    archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=certificado.presupuesto)
+    estructura_certificado = {}
+    subtotal = certificado.subtotal
+    iva = certificado.iva
+    monto_total = certificado.monto_total
+    cliente = certificado.presupuesto.proyecto.cliente.nombre
+    proyecto = certificado.presupuesto.proyecto.nombre
+    # Iterar sobre los detalles asociados con el archivo de certificado
+    for detalle in archivo_certificado.detalles.all():
+        subseccion = detalle.subseccion
+        secciones_subseccion = set(subseccion.secciones.all())
+        secciones_presupuesto = set(archivo_presupuesto.secciones.all())
+        secciones_comunes = secciones_subseccion.intersection(secciones_presupuesto)
+        seccion = next(iter(secciones_comunes), None)
+        if seccion not in estructura_certificado:
+            estructura_certificado[seccion] = {}
+
+        if subseccion not in estructura_certificado[seccion]:
+            estructura_certificado[seccion][subseccion] = []
+
+        estructura_certificado[seccion][subseccion].append(detalle)
+
+    context = {
+        'estructura_certificado': estructura_certificado,
+        'subtotal': subtotal,
+        'monto_total': monto_total,
+        'iva': iva,
+        'proyecto': proyecto,
+        'cliente': cliente,
+        'certificado_id': certificado.id,
+        'archivo_certificado_id': archivo_certificado.id
+    }
+
+    return render(request, 'pantallas_ing/ver_certificado.html', context)
+
+
+@csrf_exempt
+def aceptar_devolucion(request, devolucion_id):
+    if request.method == "POST":
+        try:
+            nuevo_estado = 'D'
+            devolucion = Devolucion.objects.get(pk=devolucion_id)
+            devolucion.estado = nuevo_estado
+            devolucion.fecha_devolucion = date.today()
+            devolucion.save()
+            return HttpResponseRedirect(reverse('ver_devoluciones_dep'))
+        except Devolucion.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Devolución no encontrada'}, status=404)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+def ver_devolucion(request, devolucion_id):
+    devolucion = get_object_or_404(Devolucion, id=devolucion_id)
+    context = {
+        'devolucion': devolucion
+    }
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_devolucion_dep.html'
+    else:
+        template_name = 'pantallas_ing/ver_devoluciones.html'
+    return render(request, template_name, context)
+
+def ver_devoluciones(request):
+    devoluciones = Devolucion.objects.all()
+    # Determinar qué template renderizar en función del rol del usuario
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_devoluciones_dep.html'
+    else:
+        template_name = 'pantallas_ing/ver_devoluciones.html'
+    context = {
+        'devoluciones': devoluciones
+    }
+    return render(request, template_name, context)
+
+def devoluciones_pedidos_pendientes(request):
+    devoluciones_pendientes = Devolucion.objects.filter(estado='P').values('obra__nombre')
+    pedidos_pendientes = Pedido.objects.filter(estado='P').values('id')
+
+    data = {
+        'devoluciones': list(devoluciones_pendientes),
+        'pedidos': list(pedidos_pendientes)
+    }
+
+    return JsonResponse(data)

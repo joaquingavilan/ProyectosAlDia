@@ -1,0 +1,204 @@
+{% extends request.base_template %}
+{% load custom_filters %}
+{% block css %}
+<style>
+  /* Estilos personalizados */
+  .table td, .table th {
+    vertical-align: middle;
+    border: 1px solid #ddd; /* Añade bordes más definidos si es necesario */
+    text-align: center; /* Alinea el texto al centro, si lo prefieres */
+  }
+
+  /* Estilos existentes */
+  .table-hover .seccion-row { /* ... */ }
+  .table-hover .subseccion-row { /* ... */ }
+  .table-hover .detalle-row { /* ... */ }
+</style>
+{% endblock %}
+{% block content %}
+<div class="right_col" role="main">
+
+  <div class="">
+    <div class="row">
+      <div class="col-md-12 col-sm-12 ">
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Certificado del proyecto <strong>{{proyecto}}</strong> para el cliente <strong>{{cliente}}</strong></h2>
+              {% if not comprobante %}
+                <button class="btn btn-success pull-right registrar-pago-btn" data-id="{{ certificado_id }}" data-monto="{{ monto_total| intcomma  }}">Registrar Pago</button>
+              {% endif %}
+          </div>
+          </div>
+
+          <div class="x_content">
+            <table class="table table-hover table-bordered"> <!-- Modificación aquí -->
+              <thead>
+                <tr>
+                  <th>Sección</th>
+                  <th>Subsección</th>
+                  <th>Rubro</th>
+                  <th>Unidad Medida</th>
+                  <th>Cantidad</th>
+                  <th>Precio Unitario</th>
+                  <th>Precio Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for seccion, subsecciones in estructura_certificado.items %}
+                <!-- Sección -->
+                <tr class="seccion-row" data-tipo="seccion" data-id="{{ seccion.id }}">
+                  <td>{{ seccion.nombre }}</td>
+                  <td colspan="6"></td> <!-- Colspan para cubrir el resto de las columnas -->
+                </tr>
+
+                {% for subseccion, detalles in subsecciones.items %}
+                  <!-- Subsección -->
+                  <tr class="subseccion-row" data-tipo="subseccion" data-id="{{ subseccion.id }}" data-seccion-id="{{ seccion.id }}">
+                    <td></td> <!-- Columna vacía para alinear con la sección padre -->
+                    <td>{{ subseccion.nombre }}</td>
+                    <td colspan="5"></td> <!-- Colspan para cubrir el resto de las columnas -->
+                  </tr>
+
+                  {% for detalle in detalles %}
+                    <!-- Detalle -->
+                    <tr class="detalle-row" data-tipo="detalle" data-id="{{ detalle.id }}" data-subseccion-id="{{ subseccion.id }}">
+                      <td></td> <!-- Columna vacía para alinear con la sección y subsección padre -->
+                      <td></td> <!-- Columna vacía para alinear con la subsección padre -->
+                      <td>{{ detalle.rubro }}</td>
+                      <td>{{ detalle.unidad_medida.nombre }}</td>
+                      <td>{{ detalle.cantidad }}</td>
+                      <td>{{ detalle.precio_unitario|intcomma }}</td>
+                      <td>{{ detalle.precio_total|intcomma }}</td>
+                    </tr>
+                  {% endfor %}
+                {% endfor %}
+                {% endfor %}
+              </tbody>
+            </table>
+                      <!-- Nueva Tabla para Subtotal, IVA y Total -->
+            <div class="float-right"> <!-- Alinea la tabla a la derecha -->
+              <table class="table">
+                <tbody>
+                  <tr>
+                    <th>Subtotal</th>
+                    <td id="subtotal">{{subtotal|intcomma}}</td>
+                  </tr>
+                  <tr>
+                    <th>IVA</th>
+                    <td id="iva">{{iva|intcomma}}</td>
+                  </tr>
+                  <tr>
+                    <th>Total</th>
+                    <td id="total">{{monto_total|intcomma}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <a href="{% url 'ver_certificados_adm' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Certificados</a>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalRegistroPago" tabindex="-1" role="dialog" aria-labelledby="modalRegistroPagoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalRegistroPagoLabel">Registrar Pago</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="modalCertificado">Certificado ID: </p>
+                <div class="form-group">
+                    <label for="comprobantePago" class="form-label">Adjuntar comprobante de pago</label>
+                    <input type="file" class="form-control-file" id="comprobantePago" data-certificado-id="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="registrarPago(this)" data-certificado-id="">Registrar Pago</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const pagoBtns = document.querySelectorAll('.registrar-pago-btn');
+    pagoBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const certificadoId = this.getAttribute('data-id');
+            const montoTotal = this.getAttribute('data-monto'); // Asegúrate de tener este atributo en tu botón
+
+            // Actualizar el contenido del modal con los datos del certificado y el monto
+            document.getElementById('modalCertificado').textContent = "Certificado ID: " + certificadoId;
+
+            // Configurar el input de comprobante de pago
+            const inputComprobante = document.getElementById('comprobantePago');
+            inputComprobante.setAttribute('data-certificado-id', certificadoId);
+
+            // Configurar el atributo data-certificado-id del botón "Registrar Pago" del modal
+            const botonRegistrar = document.querySelector('#modalRegistroPago .btn-primary');
+            botonRegistrar.setAttribute('data-certificado-id', certificadoId);
+
+            // Mostrar el modal
+            $('#modalRegistroPago').modal('show');
+        });
+    });
+});
+function registrarPago(buttonElem) {
+    event.preventDefault();
+    const idCertificado = buttonElem.getAttribute('data-certificado-id');
+    const inputFile = document.getElementById('comprobantePago');
+
+    if (!inputFile.files.length) {
+        alert('Cargue el comprobante para registrar el pago');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('comprobantePago', inputFile.files[0]);
+    formData.append('pago', true);
+
+    fetch(`/registrar_pago_certificado/${idCertificado}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#modalRegistroPago').modal('hide');
+            location.reload();
+        } else {
+            alert('Hubo un error al registrar el pago');
+        }
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
