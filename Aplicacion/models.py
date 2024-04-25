@@ -255,10 +255,12 @@ class Devolucion(models.Model):
     fecha_devolucion = models.DateField(_('fecha de devolucion'), null=True, blank=True)
     ESTADOS = (
         ('P', _('Pendiente')),
-        ('E', _('Entregado')),
+        ('D', _('Devuelto')),
+        ('PD', _('Pendiente_de_Devolucion')),
+        ('R', _('Rechazado')),
     )
-    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
-    materiales = models.ManyToManyField('Material', through='MaterialDevuelto')
+    estado = models.CharField(_('estado'), max_length=2, choices=ESTADOS, default='P')
+    materiales = models.ManyToManyField('Material', through='MaterialDevuelto', null=True)
 
     class Meta:
         verbose_name = _('devolución')
