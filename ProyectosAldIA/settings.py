@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-sr)oknam1m)$iljw88j-*8xu^8u(hur#obu$_da#obt(gvbxpj
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
+ALLOWED_HOSTS = ['spirited-adaptation-production.up.railway.app']
 
 
 # Usamos la clase User para la autenticación de Usuarios
