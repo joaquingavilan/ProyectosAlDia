@@ -20,7 +20,6 @@ import openpyxl
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font, Border, Side, PatternFill
-import pandas as pd
 from django.core.files import File
 from django.views.decorators.csrf import csrf_exempt
 from decimal import Decimal
