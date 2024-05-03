@@ -3002,6 +3002,45 @@ def ver_pedido(request, pedido_id):
         pedido=pedido)  # Obtiene los materiales relacionados con el pedido
     return render(request, 'pantallas_ing/ver_pedido.html', {'pedido': pedido, 'materiales_pedido': materiales_pedido})
 
+def ver_pedido_deposito(request, pedido_id):
+    # Obtener el pedido
+    pedido = Pedido.objects.get(pk=pedido_id)
+
+    # Obtener los materiales requeridos para el pedido
+    materiales_requeridos = defaultdict(int)
+    for material_pedido in pedido.materialpedido_set.all():
+        cantidad_requerida = material_pedido.cantidad
+        materiales_requeridos[material_pedido.material] += cantidad_requerida
+
+    # Verificar si hay suficiente stock para cada material
+    materiales_disponibles = []
+    materiales_a_comprar = []
+    for material, cantidad_requerida in materiales_requeridos.items():
+        stock_disponible = material.unidades_stock - material.minimo
+        if stock_disponible >= cantidad_requerida:
+            materiales_disponibles.append(material)
+        else:
+            materiales_a_comprar.append(material)
+    context = {
+        'pedido': pedido,
+        'materiales_requeridos': materiales_requeridos,
+        'materiales_disponibles': materiales_disponibles,
+        'materiales_a_comprar': materiales_a_comprar
+    }
+    return render(request, 'pantallas_deposito/ver_pedido_dep.html', context)
+
+def entregar_pedido(request, pedido_id):
+    if request.method == "POST":
+        try:
+            pedido = Pedido.objects.get(pk=pedido_id)
+            pedido.estado = 'E'
+            pedido.fecha_entrega = date.today()
+            pedido.save()
+            return redirect('pantallas_deposito/ver_pedidos_dep')
+        except Pedido.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Pedido no encontrado'}, status=404)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
 
 def ver_pedido_adm(request, pedido_id):
     pedido = get_object_or_404(Pedido, id=pedido_id)

@@ -17,8 +17,6 @@
         <h2>Estado: {{pedido.get_estado_display}}</h2>
     </div>
 
-
-
     <div class="clearfix"></div>
 
     <div class="row">
@@ -35,35 +33,35 @@
                 <table class="table table-striped jambo_table bulk_action">
                       <thead>
                         <tr class="headings">
-                          <th class="column-title">Nombre del producto</th>
-                          <th class="column-title">Marca</th>
-                          <th class="column-title" style="width: 20%;">Fotografía</th> <!-- Aumentado el ancho -->
-                          <th class="column-title" style="width: 5%;">Cantidad</th> <!-- Reducido el ancho -->
-                          <th class="column-title" style="width: 15%;">Unidad de medida</th> <!-- Reducido el ancho -->
+                          <th class="column-title" style="width: 20%;">Nombre del producto</th>
+                          <th class="column-title" style="width: 20%;">Marca</th>
+                          <th class="column-title" style="width: 20%;">Fotografía</th>
+                          <th class="column-title" style="width: 10%;">Cantidad</th>
+                          <th class="column-title" style="width: 15%;">Unidad de medida</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {% for material_pedido in materiales_pedido %}
-                        <tr class="even pointer">
-                          <td>{{ material_pedido.material.nombre }}</td>
-                          <td>{{ material_pedido.material.marca }}</td>
-                          <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" class="img-fluid" alt="{{ material_pedido.material.nombre }}" style="max-width: 150px;"></a></td> <!-- Ajustado el max-width de la imagen -->
-                          <td>
-                            <div class="input-group">
-                              <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="{{ material_pedido.cantidad }}" readonly>
-                            </div>
-                          </td>
-                          <td>{{ material_pedido.material.medida }}</td>
-                        </tr>
+                        {% for material_pedido in pedido.materialpedido_set.all %}
+                            <tr class="even pointer">
+                                <td>{{ material_pedido.material.nombre }}</td>
+                                <td>{{ material_pedido.material.marca }}</td>
+                                <td><a href="/{{ material_pedido.material.fotografia }}" target="_blank"><img src="/{{ material_pedido.material.fotografia }}" class="img-fluid" alt="{{ material_pedido.material.nombre }}" style="max-width: 150px;"></a></td>
+                                <td>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="{{ material_pedido.cantidad }}" readonly>
+                                    </div>
+                                </td>
+                                <td>{{ material_pedido.material.medida }}</td>
+                            </tr>
                         {% endfor %}
-                      </tbody>
+                    </tbody>
                     </table>
                 </div>
                   <td class="text-center">
                         <div class="d-flex justify-content-between align-items-center">
                             <a href="{% url 'ver_pedidos_dep' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Pedidos</a>
                             {% if pedido.estado == 'P' %}
-                                {% if not faltantes %}
+                                {% if not materiales_a_comprar %}
                                     <div>
                                         <form method="post" action="{% url 'entregar_pedido' pedido_id=pedido.id %}">
                                             {% csrf_token %}
@@ -72,7 +70,7 @@
                                     </div>
                                 {% else %}
                                     <div>
-                                        <form method="post" action="{% url 'entregar_pedido' materiales_faltantes=materiales %}">
+                                        <form method="post" action="{% url 'ver_materiales_faltantes' %}">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-danger mr-2">Solicitar materiales faltantes</button>
                                         </form>
