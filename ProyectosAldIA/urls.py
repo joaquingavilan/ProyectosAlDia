@@ -188,4 +188,5 @@ urlpatterns = [
     path('ver_devolucion_dep/<int:devolucion_id>/', views.ver_devolucion, name='ver_devolucion_dep'),
     path('aceptar_devolucion_dep/<int:devolucion_id>/', views.aceptar_devolucion, name='aceptar_devolucion_dep'),
     path('ver_pedidos_dep/', views.ver_pedidos_deposito, name='ver_pedidos_dep'),
+    path('ver_materiales_faltantes', views.ver_materiales_faltantes, name='ver_materiales_faltantes')
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

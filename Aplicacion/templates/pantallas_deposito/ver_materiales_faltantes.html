@@ -1,0 +1,92 @@
+{% extends request.base_template %}
+
+{% block content %}
+<div class="center_col" role="main">
+    <div class="page-title" style="width: 100%;">
+        <div class="title_left w-100" style="display: flex; align-items: center">
+            <h1 style="margin: 0; flex-grow: 1;">Materiales Faltantes</h1>
+        </div>
+    </div>
+
+    <div class="clearfix"></div>
+    <div class="d-flex justify-content-end">
+        <div class="ml-auto">
+            <button id="solicitarCompraMateriales" class="btn btn-success"><i class="fa fa-plus-circle"></i> Agregar Materiales</button>
+        </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12 col-sm-12 ">
+        <br>
+        <div class="x_panel">
+          <div class="x_title">
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+        <br />
+              {% if materiales_faltantes %}
+                <div class="table-responsive">
+                    <table class="table table-striped jambo_table bulk_action">
+                          <thead>
+                            <tr class="headings">
+                              <th class="column-title">Nombre del producto</th>
+                              <th class="column-title">Marca</th>
+                              <th class="column-title">Fecha de solicitud</th> <!-- Aumentado el ancho -->
+                              <th class="column-title" style="width: 10%;">Cantidad</th> <!-- Reducido el ancho -->
+                              <th class="column-title">Unidad de medida</th> <!-- Reducido el ancho -->
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for pedido_compra in materiales_faltantes %}
+                                {% for material_pedido_compra in pedido_compra.materialpedidocompra_set.all %}
+                                    <tr class="even pointer">
+                                        <td>{{ material_pedido_compra.material.nombre }}</td>
+                                        <td>{{ material_pedido_compra.material.marca }}</td>
+                                        <td>{{ material_pedido_compra.pedido_compra.fecha_solicitud }}</td> <!-- Corregido aquí -->
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido_compra.material.id }}" name="cantidad_{{ material_pedido_compra.material.id }}" value="{{ material_pedido_compra.cantidad }}" readonly>
+                                            </div>
+                                        </td>
+                                        <td>{{ material_pedido_compra.material.medida }}</td>
+                                        {% if material_pedido_compra.material in materiales_no_disponibles %}
+                                            <td><a href="{% url 'ver_pedido' pedido.id %}" class="btn btn-danger btn-sm">Solicitar Compra</a></td>
+                                        {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                    </div>
+                      <td class="text-center">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
+                                {% if pedido.estado == 'P' %}
+                                    {% if not faltantes %}
+                                        <div>
+                                            <form method="post" action="{% url 'entregar_pedido' pedido_id=pedido.id %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-success mr-2">Entregar Pedido</button>
+                                            </form>
+                                        </div>
+                                    {% else %}
+                                        <div>
+                                            <form method="post" action="{% url 'entregar_pedido' materiales_faltantes=materiales %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-danger mr-2">Solicitar materiales faltantes</button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                      </td>
+                    </div>
+                </div>
+              {% else %}
+                <div class="alert alert-light">
+                    No se encuentran materiales faltantes.
+                </div>
+              {% endif %}
+      </div>
+    </div>
+</div>
+{% endblock %}
