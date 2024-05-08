@@ -14,7 +14,7 @@ from datetime import date, datetime
 from io import BytesIO
 from django.contrib import messages
 from django.forms import formset_factory
-from django.http import JsonResponse, HttpResponse, FileResponse
+from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 import openpyxl
 from openpyxl import Workbook, load_workbook
@@ -997,7 +997,7 @@ def ver_obras_terminadas(request):
 
 def ver_pedidos_obra(request, obra_id):
     obra = Obra.objects.get(pk=obra_id)
-    pedidos_entregados = Pedido.objects.filter(obra=obra) #agregar , estado='E'
+    pedidos_entregados = Pedido.objects.filter(obra=obra, estado='E')
     devoluciones = Devolucion.objects.filter(
         pedido__in=pedidos_entregados)  # Obtiene las devoluciones relacionadas con los pedidos entregados
 
@@ -1047,19 +1047,7 @@ def confirmar_devolucion(request):
         return redirect('ver_pedidos_obra', obra_id=pedido.obra.id)
     return redirect('ver_ingenieros')
 
-def ver_devolucion(request, devolucion_id):
-    devolucion = get_object_or_404(Devolucion, id=devolucion_id)
-    context = {
-        'devolucion': devolucion
-    }
-    return render(request, 'pantallas_ing/ver_devolucion.html', context)
 
-def ver_devoluciones(request):
-    devoluciones = Devolucion.objects.all()
-    context = {
-        'devoluciones': devoluciones
-    }
-    return render(request, 'pantallas_ing/ver_devoluciones.html', context)
 
 # vistas para filtros
 
@@ -3614,7 +3602,7 @@ def ver_devolucion(request, devolucion_id):
     if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
         template_name = 'pantallas_deposito/ver_devolucion_dep.html'
     else:
-        template_name = 'pantallas_ing/ver_devoluciones.html'
+        template_name = 'pantallas_ing/ver_devolucion.html'
     return render(request, template_name, context)
 
 def ver_devoluciones(request):

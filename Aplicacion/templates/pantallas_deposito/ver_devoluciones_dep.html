@@ -36,7 +36,7 @@
                                 <td>{{devolucion.get_estado_display}}</td>
                                 <td>{{devolucion.fecha_solicitud}}</td>
                                 <td>{{devolucion.materiales.count}}</td>
-                                <td><a href="{% url 'ver_devolucion' devolucion_id=devolucion.id %}" class="btn btn-info">Ver Devolución</a></td>
+                                <td><a href="{% url 'ver_devolucion_dep' devolucion_id=devolucion.id %}" class="btn btn-info">Ver Devolución</a></td>
                             </tr>
                     {% endif %}
                 {% endfor %}
