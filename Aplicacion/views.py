@@ -1279,7 +1279,53 @@ def ver_materiales_faltantes(request):
 
     # Obtener los materiales que están en los pedidos y no están en stock
     materiales_faltantes = Material.objects.filter(pk__in=[material.pk for material, _ in materiales_a_comprar])
-    return render(request, 'pantallas_deposito/ver_materiales_faltantes.html', {'materiales_faltantes': materiales_faltantes})
+    return render(request, 'pantallas_deposito/ver_materiales_faltantes.html',
+                  {'materiales_faltantes': materiales_faltantes})
+
+def agregar_pedido_compra(request):
+    if request.method == 'POST':
+        nombre_producto = request.POST.get('nombre_producto')
+        marca_id = request.POST.get('marca')
+        otra_marca = request.POST.get('otra_marca')
+        unidad_medida_id = request.POST.get('unidad_medida')
+        otra_unidad_medida = request.POST.get('otra_unidad_medida')
+        cantidad = request.POST.get('cantidad')
+
+        pedido_compra = PedidoCompra.objects.create(
+            fecha_solicitud=date.today(),
+            fecha_entrega=None,
+            estado='P'
+        )
+
+        if marca_id == "otra":
+            marca_nueva = Marca.objects.create(nombre=otra_marca)
+            marca = marca_nueva
+        else:
+            marca = Marca.objects.get(id=marca_id)
+
+        if unidad_medida_id == "otra":
+            unidad_medida_nueva = UnidadMedida.objects.create(descripcion=otra_unidad_medida)
+            unidad_medida = unidad_medida_nueva
+        else:
+            unidad_medida = UnidadMedida.objects.get(id=unidad_medida_id)
+
+        material = Material.objects.create(
+            nombre=nombre_producto,
+            marca=marca,
+            medida=unidad_medida
+        )
+
+        material_pedido_compra = MaterialPedidoCompra.objects.create(
+            pedido_compra=pedido_compra,
+            material=material,
+            cantidad=cantidad
+        )
+        print(f'se creo el pedido compra {material_pedido_compra}')
+
+        return redirect('pantallas_deposito/ver_materiales_faltantes')
+
+    return render(request, 'pantallas_deposito/ver_materiales_faltantes.html')
+
 
 def exportar_excel(request):
     # Crear un nuevo libro de Excel y una nueva hoja
@@ -2587,6 +2633,15 @@ def associate_subseccion(request):
 def get_unidad_medida(request):
     unidad_medidas = UnidadMedida.objects.all().values('id', 'descripcion')
     return JsonResponse(list(unidad_medidas), safe=False)
+
+def obtener_marcas_y_unidades(request):
+    marcas = Marca.objects.all().values('id', 'nombre')
+    unidades_medida = UnidadMedida.objects.all().values('id', 'descripcion')
+    data = {
+        'marcas': list(marcas),
+        'unidades_medida': list(unidades_medida)
+    }
+    return JsonResponse(data)
 
 
 def guardar_presupuesto(request):

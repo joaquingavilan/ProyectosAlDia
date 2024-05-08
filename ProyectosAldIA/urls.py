@@ -191,4 +191,6 @@ urlpatterns = [
     path('ver_pedido_dep/<int:pedido_id>', views.ver_pedido_deposito, name='ver_pedido_dep'),
     path('entregar_pedido/<int:pedido_id>', views.entregar_pedido, name='entregar_pedido'),
     path('ver_materiales_faltantes', views.ver_materiales_faltantes, name='ver_materiales_faltantes'),
+    path('agregar_pedido_compra', views.agregar_pedido_compra, name='agregar_pedido_compra'),
+    path('obtener_marcas_y_unidades/', views.obtener_marcas_y_unidades, name='obtener_marcas_y_unidades'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

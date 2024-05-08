@@ -1,5 +1,7 @@
 {% extends request.base_template %}
 
+{% load static %}
+
 {% block content %}
 <div class="center_col" role="main">
     <div class="page-title" style="width: 100%;">
@@ -11,18 +13,18 @@
     <div class="clearfix"></div>
     <div class="d-flex justify-content-end">
         <div class="ml-auto">
-            <button id="solicitarCompraMateriales" class="btn btn-success"><i class="fa fa-plus-circle"></i> Agregar Materiales</button>
+            <button id="agregarMateriales" class="btn btn-success"><i class="fa fa-plus-circle"></i> Agregar Materiales</button>
         </div>
     </div>
     <div class="row">
       <div class="col-md-12 col-sm-12 ">
-        <br>
         <div class="x_panel">
           <div class="x_title">
             <div class="clearfix"></div>
           </div>
+
           <div class="x_content">
-        <br />
+
               {% if materiales_faltantes %}
                 <div class="table-responsive">
                     <table class="table table-striped jambo_table bulk_action">
@@ -60,23 +62,12 @@
                       <td class="text-center">
                             <div class="d-flex justify-content-between align-items-center">
                                 <a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
-                                {% if pedido.estado == 'P' %}
-                                    {% if not faltantes %}
-                                        <div>
-                                            <form method="post" action="{% url 'entregar_pedido' pedido_id=pedido.id %}">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-success mr-2">Entregar Pedido</button>
-                                            </form>
-                                        </div>
-                                    {% else %}
-                                        <div>
-                                            <form method="post" action="{% url 'entregar_pedido' materiales_faltantes=materiales %}">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-danger mr-2">Solicitar materiales faltantes</button>
-                                            </form>
-                                        </div>
-                                    {% endif %}
-                                {% endif %}
+                                <div>
+                                    <form method="post" action="{% url 'inicio_deposito' %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger mr-2"> Solicitar Compra de Materiales</button>
+                                    </form>
+                                </div>
                             </div>
                       </td>
                     </div>
@@ -86,7 +77,166 @@
                     No se encuentran materiales faltantes.
                 </div>
               {% endif %}
+          <!-- Modal para agregar materiales -->
+            <div class="modal fade" id="agregarMaterialesModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="addMaterialModalLabel">Agregar Materiales</h5>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <!-- Aquí va tu formulario para agregar materiales -->
+                    <form id="agregarMaterialesForm">
+                      <!-- Campos del formulario -->
+                        <input type="hidden" id="nombreProductoId">
+                            <div class="mb-3">
+                                <label for="nombre_producto" class="form-label">Nombre del Producto</label>
+                                <input type="text" class="form-control" id="nombre_producto" name="nombre_producto">
+                            </div>
+                            <div class="mb-3">
+                                <label for="marca" class="form-label">Marca</label>
+                                <select class="form-select" id="marca" name="marca">
+                                    <option value="">Selecciona una marca existente</option>
+                                    {% for marca in marcas %}
+                                        <option value="{{ marca.id }}">{{ marca.nombre }}</option>
+                                    {% endfor %}
+                                    <option value="otra">Otra</option>
+                                </select>
+                            </div>
+                            <div id="otraMarca" style="display: none;">
+                                <label for="otra_marca" class="form-label">Ingresa otra marca</label>
+                                <input type="text" class="form-control" id="otra_marca" name="otra_marca">
+                            </div>
+                            <div class="mb-3">
+                                <label for="unidad_medida" class="form-label">Unidad de medida</label>
+                                <select class="form-select" id="unidad_medida" name="unidad_medida">
+                                    <option value="">Selecciona una unidad de medida existente</option>
+                                    {% for unidad_medida in unidades_medida %}
+                                        <option value="{{ unidad_medida.id }}">{{ unidad_medida.descripcion }}</option>
+                                    {% endfor %}
+                                    <option value="otra">Otra</option>
+                                </select>
+                            </div>
+                            <div id="otraUnidadMedida" style="display: none;">
+                                <label for="otra_unidad_medida" class="form-label">Ingresa otra unidad de medida</label>
+                                <input type="text" class="form-control" id="otra_unidad_medida" name="otra_unidad_medida">
+                            </div>
+                            <div class="mb-3">
+                                <label for="cantidad" class="form-label">Cantidad</label>
+                                <input type="number" class="form-control" id="cantidad" name="cantidad">
+                            </div>
+                    </form>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="agregarBtn">Agregar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
       </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Función para cargar las marcas y unidades de medida al abrir el modal
+    function cargarMarcasYUnidades() {
+        // Petición AJAX para obtener las marcas y unidades de medida
+        $.ajax({
+            url: "{% url 'obtener_marcas_y_unidades' %}",
+            type: "GET",
+            success: function(data) {
+                // Actualizar selectores de marca
+                $("#marca").empty();
+                $("#marca").append('<option value="">Selecciona una marca existente</option>');
+                data.marcas.forEach(function(marca) {
+                    $("#marca").append('<option value="' + marca.id + '">' + marca.nombre + '</option>');
+                });
+                $("#marca").append('<option value="otra">Otra</option>');
+
+                // Actualizar selectores de unidad de medida
+                $("#unidad_medida").empty();
+                $("#unidad_medida").append('<option value="">Selecciona una unidad de medida existente</option>');
+                data.unidades_medida.forEach(function(unidad) {
+                    $("#unidad_medida").append('<option value="' + unidad.id + '">' + unidad.descripcion + '</option>');
+                });
+                $("#unidad_medida").append('<option value="otra">Otra</option>');
+            },
+            error: function(error) {
+                console.error("Error al cargar las marcas y unidades de medida:", error);
+            }
+        });
+    }
+
+    $('#agregarMaterialesModal').on('show.bs.modal', function (event) {
+        // Limpiar los campos del formulario en el modal
+        $(this).find("input[type=text], input[type=number], select").val("");
+
+        // Ocultar los campos "otraMarca" y "otraUnidadMedida"
+        $('#otraMarca').hide();
+        $('#otraUnidadMedida').hide();
+    });
+
+    // Cuando se abra el modal, cargar las marcas y unidades de medida
+    $('#agregarMaterialesModal').on('shown.bs.modal', function () {
+        cargarMarcasYUnidades();
+    });
+
+    // Obtener el botón "Agregar Materiales"
+    let agregarMaterialesBtn = document.getElementById("agregarMateriales");
+
+    console.log('acaaa');
+
+    // Agregar evento click al botón
+    agregarMaterialesBtn.addEventListener("click", function() {
+        // Mostrar el modal
+        let agregarMaterialesModal = new bootstrap.Modal(document.getElementById('agregarMaterialesModal'));
+        console.log('se oprimio el boton')
+        agregarMaterialesModal.show();
+    });
+
+    document.getElementById("marca").addEventListener("change", function() {
+        if (this.value === "otra") {
+            document.getElementById("otraMarca").style.display = "block";
+        } else {
+            document.getElementById("otraMarca").style.display = "none";
+        }
+    });
+
+    document.getElementById("unidad_medida").addEventListener("change", function() {
+        if (this.value === "otra") {
+            document.getElementById("otraUnidadMedida").style.display = "block";
+        } else {
+            document.getElementById("otraUnidadMedida").style.display = "none";
+        }
+    });
+
+    // Agregar evento click al botón "Agregar"
+    document.getElementById("agregarBtn").addEventListener("click", function() {
+        // Obtener los datos del formulario
+        let formData = new FormData(document.getElementById("agregarMaterialesForm"));
+
+        // Enviar los datos al servidor
+        fetch("{% url 'agregar_pedido_compra' %}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                // Redirigir o mostrar un mensaje de éxito
+                window.location.href = "{% url 'ver_materiales_faltantes' %}";
+            } else {
+                console.error("Error al crear el pedido de compra");
+            }
+        })
+        .catch(error => console.error("Error al crear el pedido de compra:", error));
+    });
+
+</script>
 {% endblock %}
