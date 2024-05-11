@@ -22,3 +22,6 @@ admin.site.register(Marca)
 admin.site.register(Ciudad)
 admin.site.register(Certificado)
 admin.site.register(ArchivoCertificado)
+admin.site.register(MaterialPedidoCompra)
+admin.site.register(PedidoCompra)
+

@@ -3079,7 +3079,7 @@ def entregar_pedido(request, pedido_id):
             pedido.estado = 'E'
             pedido.fecha_entrega = date.today()
             pedido.save()
-            return redirect('pantallas_deposito/ver_pedidos_dep')
+            return redirect('ver_pedidos_dep')
         except Pedido.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Pedido no encontrado'}, status=404)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
@@ -3584,14 +3584,31 @@ def ver_archivo_certificado(request, pk):
 def aceptar_devolucion(request, devolucion_id):
     if request.method == "POST":
         try:
-            nuevo_estado = 'D'
             devolucion = Devolucion.objects.get(pk=devolucion_id)
-            devolucion.estado = nuevo_estado
+            devolucion.estado = 'D'
             devolucion.fecha_devolucion = date.today()
             devolucion.save()
             return HttpResponseRedirect(reverse('ver_devoluciones_dep'))
         except Devolucion.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Devolución no encontrada'}, status=404)
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+@csrf_exempt
+def rechazar_devolucion(request, devolucion_id):
+    if request.method == "POST":
+        try:
+            devolucion = Devolucion.objects.get(pk=devolucion_id)
+            devolucion.estado = 'R'
+            observaciones = request.POST.get('observaciones')
+            print("Observaciones enviadas:", observaciones)  # Imprimir las observaciones enviadas
+            devolucion.observaciones = observaciones
+            devolucion.save()
+            print("Observaciones guardadas:", devolucion.observaciones)  # Imprimir las observaciones guardadas
+            return HttpResponseRedirect(reverse('ver_devoluciones_dep'))
+        except Devolucion.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Devolución no encontrada'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 def ver_devolucion(request, devolucion_id):
@@ -3615,6 +3632,8 @@ def ver_devoluciones(request):
     context = {
         'devoluciones': devoluciones
     }
+    print(template_name)
+    print(devoluciones)
     return render(request, template_name, context)
 
 def devoluciones_pedidos_pendientes(request):

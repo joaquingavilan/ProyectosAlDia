@@ -253,13 +253,13 @@ class Devolucion(models.Model):
     obra = models.ForeignKey('Obra', on_delete=models.CASCADE, verbose_name=_('obra'))
     fecha_solicitud = models.DateField(_('fecha de solicitud'))
     fecha_devolucion = models.DateField(_('fecha de devolucion'), null=True, blank=True)
+    observaciones = models.TextField(blank=True)
     ESTADOS = (
         ('P', _('Pendiente')),
         ('D', _('Devuelto')),
-        ('PD', _('Pendiente_de_Devolucion')),
         ('R', _('Rechazado')),
     )
-    estado = models.CharField(_('estado'), max_length=2, choices=ESTADOS, default='P')
+    estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
     materiales = models.ManyToManyField('Material', through='MaterialDevuelto', null=True)
 
     class Meta:
@@ -291,7 +291,7 @@ class Certificado(models.Model):
     monto_total = models.DecimalField(_('monto total'), max_digits=15, decimal_places=0, null=True)
     fecha_pago = models.DateField(_('fecha de pago del certificado'), null=True, blank=True)
     fecha_envio = models.DateField(_('fecha de envio del certificado'), null=True, blank=True)
-    fecha_creacion = models.DateTimeField(_('fecha de creación del certificado'), auto_now_add=True)
+    fecha_creacion = models.DateTimeField(_('fecha de creación del certificado'), null=True, blank=True)
     comprobante_pago = models.FileField(upload_to='comprobantes/', blank=True, null=True)
     ESTADOS = (
         ('P', _('Pendiente de envio')),

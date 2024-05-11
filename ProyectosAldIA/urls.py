@@ -187,6 +187,7 @@ urlpatterns = [
     path('devoluciones_pedidos_pendientes', views.devoluciones_pedidos_pendientes, name='devoluciones_pedidos_pendientes'),
     path('ver_devolucion_dep/<int:devolucion_id>/', views.ver_devolucion, name='ver_devolucion_dep'),
     path('aceptar_devolucion_dep/<int:devolucion_id>/', views.aceptar_devolucion, name='aceptar_devolucion_dep'),
+    path('rechazar_devolucion/<int:devolucion_id>/', views.rechazar_devolucion, name='rechazar_devolucion'),
     path('ver_pedidos_dep/', views.ver_pedidos_deposito, name='ver_pedidos_dep'),
     path('ver_pedido_dep/<int:pedido_id>', views.ver_pedido_deposito, name='ver_pedido_dep'),
     path('entregar_pedido/<int:pedido_id>', views.entregar_pedido, name='entregar_pedido'),

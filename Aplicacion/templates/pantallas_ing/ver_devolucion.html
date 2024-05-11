@@ -3,11 +3,13 @@
 
 {% block content %}
     <div style="text-align: center; margin-bottom: 1rem;">
-        <h1 style="display: inline-block; margin: 0;">Devoluciones de la Obra <strong>{{ devolucion.obra.proyecto.nombre }}</strong></h1>
+        <h1 style="display: inline-block; margin: 0;">Devolución del pedido <strong>#{{ devolucion.pedido.id }}</strong> de la Obra <strong>{{ devolucion.obra.proyecto.nombre }}</strong></h1>
     </div>
     <div>
         <h2>Fecha de solicitud: {{devolucion.fecha_solicitud}}</h2>
-        <h2>Fecha de Entrega: {{devolucion.fecha_devolucion}}</h2>
+        {% if devolucion.fecha_devolucion is not None %}
+            <h2>Fecha de Devolución: {{devolucion.fecha_devolucion}}</h2>
+        {% endif %}
         <h2>Estado: {{devolucion.get_estado_display}}</h2>
     </div>
 
@@ -32,6 +34,9 @@
                           <th class="column-title" style="width: 20%;">Fotografía</th> <!-- Aumentado el ancho -->
                           <th class="column-title" style="width: 10%;">Cantidad devuelta</th> <!-- Reducido el ancho -->
                           <th class="column-title" style="width: 10%;">Unidad de medida</th> <!-- Reducido el ancho -->
+                          {% if devolucion.observaciones is not None %}
+                            <th class="column-title" style="width: 20%;">Observaciones</th>
+                          {% endif %}
                         </tr>
                       </thead>
                       <tbody>
@@ -42,6 +47,9 @@
                                 <td><img src="{{ material_devuelto.material.foto.url }}" alt="Foto" style="max-width: 100%; height: auto;"></td>
                                 <td>{{ material_devuelto.cantidad }}</td>
                                 <td>{{ material_devuelto.material.medida }}</td>
+                                {% if devolucion.observaciones is not None %}
+                                    <td>{{ devolucion.observaciones }}</td>
+                                {% endif %}
                             </tr>
                         {% endfor %}
                       </tbody>
