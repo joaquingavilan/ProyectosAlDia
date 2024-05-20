@@ -46,7 +46,7 @@
                                         <td>{{ material_pedido_compra.pedido_compra.fecha_solicitud }}</td> <!-- Corregido aquí -->
                                         <td>
                                             <div class="input-group">
-                                                <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido_compra.material.id }}" name="cantidad_{{ material_pedido_compra.material.id }}" value="{{ material_pedido_compra.cantidad }}" readonly>
+                                                <input type="text" class="form-control input-number text-center" id="cantidad_{{ material_pedido.material.id }}" name="cantidad_{{ material_pedido.material.id }}" value="{{ material_pedido_compra.cantidad }}" readonly>
                                             </div>
                                         </td>
                                         <td>{{ material_pedido_compra.material.medida }}</td>
@@ -136,6 +136,46 @@
               </div>
             </div>
       </div>
+    </div>
+    <div>
+        {% if pedidos_compra_pendientes %}
+            <div class="title_left w-100" style="display: flex; align-items: center">
+                <h1 style="margin: 0; flex-grow: 1;">Pedidos de Compra Pendientes</h1>
+            </div>
+            {% for pedido in pedidos_compra_pendientes %}
+                <div class="table-responsive">
+                    <table class="table table-striped jambo_table bulk_action">
+                          <thead>
+                            <tr class="headings">
+                              <th class="column-title">Nombre del producto</th>
+                              <th class="column-title">Marca</th>
+                              <th class="column-title">Fecha de solicitud</th> <!-- Aumentado el ancho -->
+                              <th class="column-title" style="width: 10%;">Cantidad</th> <!-- Reducido el ancho -->
+                              <th class="column-title">Unidad de medida</th> <!-- Reducido el ancho -->
+                            </tr>
+                          </thead>
+                          <tbody>
+                                {% for material_pedido in pedido.materialpedidocompra_set.all %}
+                                    <tr class="even pointer">
+                                        <td>{{ material_pedido.material.nombre }}</td>
+                                        <td>{{ material_pedido.material.marca }}</td>
+                                        <td>{{ material_pedido.pedido_compra.fecha_solicitud }}</td> <!-- Corregido aquí -->
+                                        <td>{{ material_pedido.cantidad }}</td>
+                                        <td>{{ material_pedido.material.medida }}</td>
+                                    </tr>
+                                {% endfor %}
+                          </tbody>
+                        </table>
+                    </div>
+                      <td class="text-center">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
+                            </div>
+                      </td>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
     </div>
 </div>
 {% endblock %}

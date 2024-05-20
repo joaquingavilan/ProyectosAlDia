@@ -1233,7 +1233,6 @@ def ver_materiales_stock(request, cantidad):
     page_obj = paginator.get_page(page_number)
     return render(request, 'ABM/materiales/ver_materiales_filtrados.html',
                   {'materiales': materiales, 'page_obj': page_obj})
-from django.db.models import Q
 
 def ver_materiales_faltantes(request):
     # Paso 1: Obtener los materiales requeridos para los pedidos pendientes
@@ -1244,31 +1243,38 @@ def ver_materiales_faltantes(request):
             cantidad_requerida = material_pedido.cantidad + material_pedido.material.minimo
             materiales_requeridos[material_pedido.material] += cantidad_requerida
 
-    # Paso 2: Verificar si hay suficiente stock para cada material
+    # Paso 2: Verificar si hay suficiente stock para cada material y si ya hay un pedido pendiente
     materiales_a_comprar = []
     for material, cantidad_requerida in materiales_requeridos.items():
         stock_disponible = material.unidades_stock - material.minimo
         if stock_disponible < cantidad_requerida:
-            # Si no hay suficiente stock, agregar el material a la lista de compra
-            materiales_a_comprar.append((material, cantidad_requerida))
+            # Verificar si ya existe un pedido pendiente para el material faltante
+            pedido_compra_existente = PedidoCompra.objects.filter(materialpedidocompra__material=material, estado='P').first()
+            if not pedido_compra_existente:
+                # Si no hay suficiente stock y no hay un pedido pendiente, agregar el material a la lista de compra
+                materiales_a_comprar.append((material, cantidad_requerida))
 
-    # Paso 3: Actualizar el stock una vez que se reciban los materiales comprados
+    # Paso 3: Crear pedidos de compra para materiales faltantes
     for material, cantidad_comprar in materiales_a_comprar:
-        # Verificar si ya existe un pedido pendiente para el material faltante
-        pedido_compra_existente = PedidoCompra.objects.filter(materiales=material, estado='P').first()
-        if not pedido_compra_existente:
-            # Crear un pedido de compra para el material faltante
-            pedido_compra = PedidoCompra.objects.create(fecha_solicitud=date.today(), estado='P')
-            # Registrar el material y la cantidad en el pedido de compra
-            MaterialPedidoCompra.objects.create(pedido_compra=pedido_compra, material=material, cantidad=cantidad_comprar)
-            # Actualizar el estado del material a "falta_stock"
-            material.falta_stock = True
-            material.save()
+        # Crear un pedido de compra para el material faltante
+        pedido_compra = PedidoCompra.objects.create(fecha_solicitud=date.today(), estado='P')
+        # Registrar el material y la cantidad en el pedido de compra
+        MaterialPedidoCompra.objects.create(pedido_compra=pedido_compra, material=material, cantidad=cantidad_comprar)
+        # Actualizar el estado del material a "falta_stock"
+        material.falta_stock = True
+        material.save()
 
     # Obtener los materiales que están en los pedidos y no están en stock
     materiales_faltantes = Material.objects.filter(pk__in=[material.pk for material, _ in materiales_a_comprar])
-    return render(request, 'pantallas_deposito/ver_materiales_faltantes.html',
-                  {'materiales_faltantes': materiales_faltantes})
+
+    # Obtener los pedidos de compra pendientes
+    pedidos_compra_pendientes = PedidoCompra.objects.filter(estado='P')
+    print(materiales_faltantes)
+    print(pedidos_compra_pendientes)
+    return render(request, 'pantallas_deposito/ver_materiales_faltantes.html', {
+        'materiales_faltantes': materiales_faltantes,
+        'pedidos_compra_pendientes': pedidos_compra_pendientes,
+    })
 
 def agregar_pedido_compra(request):
     if request.method == 'POST':
