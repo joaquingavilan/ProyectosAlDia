@@ -70,10 +70,7 @@
                                     </div>
                                 {% else %}
                                     <div>
-                                        <form method="post" action="{% url 'ver_materiales_faltantes' %}">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-danger mr-2">Solicitar materiales faltantes</button>
-                                        </form>
+                                        <a href="{% url 'pedido_compra' %}" class="btn btn-danger"> Solicitar Materiales faltantes</a>
                                     </div>
                                 {% endif %}
                             {% endif %}

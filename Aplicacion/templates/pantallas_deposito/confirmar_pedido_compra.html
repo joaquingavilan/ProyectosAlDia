@@ -1,0 +1,100 @@
+{% extends request.base_template %}
+
+{% block content %}
+<div class="center_col" role="main">
+    <div class="page-title">
+      <div class="title_left">
+        <h1>Confirmar Pedido Compra</h1>
+      </div>
+    </div>
+
+    <div class="clearfix"></div>
+
+    <div class="row">
+      <div class="col-md-12 col-sm-12 ">
+        <div class="x_panel">
+          <div class="x_content">
+            <br />
+
+            <form method="POST" action="{% url 'confirmar_pedido_compra' %}" class="form-horizontal form-label-left">
+                {% csrf_token %}
+                <input type="hidden" name="obra" value="{{ obra.id }}">
+
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th class="column-title">Nombre del producto</th>
+                                <th class="column-title">Marca</th>
+                                <th class="column-title" style="width: 20%;">Fotografía</th>
+                                <th class="column-title" style="width: 15%;">Cantidad</th>
+                                <th class="column-title" style="width: 15%;">Unidad de medida</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in materiales_pedido %}
+                            <tr>
+                                <td>{{ item.material.nombre }}</td>
+                                <td>{{ item.material.marca.nombre }}</td>
+                                <td>
+                                    {% if item.material.fotografia %}
+                                    <img src="{{ item.material.fotografia.url }}" alt="{{ item.material.nombre }}" style="width: 100px; height: auto;">
+                                    {% else %}
+                                    No disponible
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.cantidad }}</td>
+                                <td>{{ item.material.medida.nombre }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-md-12 col-sm-12 text-right">
+                        <button type="submit" class="btn btn-success">Realizar Pedido</button>
+                    </div>
+                </div>
+            </form>
+
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+  <script>
+    // Función para incrementar la cantidad del material
+    function incrementQuantity(materialId, event) {
+      event.preventDefault(); // Evitar la acción predeterminada del botón
+      const input = document.getElementById(`cantidad_${materialId}`);
+      const minimo = parseInt(document.getElementById(`minimo_${materialId}`).value);
+      let cantidad = parseInt(input.value);
+      cantidad += minimo;  // Se incrementa en múltiplos del mínimo
+      input.value = cantidad;
+    }
+
+    // Función para decrementar la cantidad del material
+    function decrementQuantity(materialId, event) {
+      event.preventDefault(); // Evitar la acción predeterminada del botón
+      const input = document.getElementById(`cantidad_${materialId}`);
+      const minimo = parseInt(document.getElementById(`minimo_${materialId}`).value);
+      let cantidad = parseInt(input.value);
+      cantidad -= minimo;  // Se decrementa en múltiplos del mínimo
+      if (cantidad < 0) {
+        cantidad = 0;
+      }
+      input.value = cantidad;
+    }
+
+    // Función para eliminar el material del pedido
+    function eliminarMaterial(materialId) {
+      const input = document.getElementById(`cantidad_${materialId}`);
+      input.value = 0;
+      const fila = input.closest('tr');
+      fila.remove();
+    }
+  </script>
+{% endblock %}

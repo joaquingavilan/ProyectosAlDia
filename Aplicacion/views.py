@@ -41,6 +41,7 @@ from datetime import timedelta
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.files.storage import FileSystemStorage
 from django.utils.text import get_valid_filename
+from django.db.models import F, Case, When, IntegerField, Value
 
 logger = logging.getLogger(__name__)
 
@@ -530,7 +531,7 @@ def registrar_proveedor(request):
 
 
 def ver_pedidos_deposito(request):
-    pedidos_pendientes = Pedido.objects.all()
+    pedidos_pendientes = Pedido.objects.all().order_by('-estado')
     context = {'pedidos': pedidos_pendientes}
     return render(request, 'pantallas_deposito/ver_pedidos_dep.html', context)
 
@@ -956,6 +957,42 @@ def confirmar_pedido(request):
         # Redirigir a una página de éxito o realizar alguna acción adicional
         return redirect('inicio_ingenieros')  # Reemplaza 'pagina_de_exito' con la URL a
 
+def confirmar_pedido_compra(request):
+    if request.method == 'POST':
+        # Obtener los materiales seleccionados del formulario
+        materiales_pedido = []
+        for key, value in request.POST.items():
+            if key.startswith('cantidad_') and int(value) > 0:
+                material_id = key.split('_')[1]
+                material = get_object_or_404(Material, id=material_id)
+                cantidad = int(value)
+                materiales_pedido.append({'material': material, 'cantidad': cantidad})
+
+
+        # Crear el objeto PedidoCompra y guardar en la base de datos
+        pedido_compra = PedidoCompra.objects.create(
+            fecha_solicitud=date.today(),
+            fecha_entrega=None,
+            estado='P'
+        )
+
+        # Crear los objetos MaterialPedidoCompra y guardar en la base de datos
+        for material_pedido in materiales_pedido:
+            material = material_pedido['material']
+            cantidad = material_pedido['cantidad']
+            MaterialPedidoCompra.objects.create(pedido_compra=pedido_compra, material=material, cantidad=cantidad)
+
+        # Pasar el pedido y los materiales al contexto
+        context = {
+            'pedido_compra': pedido_compra,
+            'materiales_pedido': materiales_pedido,
+        }
+
+        # Redirigir a la página de confirmación con los datos necesarios
+        return render(request, 'pantallas_deposito/confirmar_pedido_compra.html', context)
+
+    # Si el método no es POST, redirigir a una página de error o a la lista de materiales
+    return redirect('ver_pedidos_compras')
 
 def ver_pedidos(request):
     # Obtener todos los pedidos del usuario actualmente logueado
@@ -965,6 +1002,87 @@ def ver_pedidos(request):
         'pedidos': pedidos
     }
     return render(request, 'pantallas_ing/ver_pedidos.html', context)
+
+def ver_pedidos_compras(request):
+    pedidos = PedidoCompra.objects.filter(estado='P').select_related()
+
+    pedidos_con_materiales = []
+    for pedido in pedidos:
+        materiales = MaterialPedidoCompra.objects.filter(pedido_compra=pedido).select_related('material')
+        pedidos_con_materiales.append({
+            'pedido': pedido,
+            'materiales': materiales,
+        })
+
+    context = {
+        'pedidos_con_materiales': pedidos_con_materiales
+    }
+    return render(request, 'pantallas_deposito/ver_pedidos_compras.html', context)
+
+def ver_pedido_compras(request, pedido_id):
+    pedido = get_object_or_404(PedidoCompra, pk=pedido_id)
+    materiales = MaterialPedidoCompra.objects.filter(pedido_compra=pedido).select_related('material')
+
+    context = {
+        'pedido': pedido,
+        'materiales': materiales
+    }
+    return render(request, 'pantallas_deposito/ver_pedido_compras.html', context)
+
+def pedido_compra(request):
+    # Obtener materiales con cantidad total en pedidos pendientes
+    materiales_pedidos_pendientes = MaterialPedido.objects.filter(
+        pedido__estado='P'
+    ).values(
+        'material'
+    ).annotate(
+        total_cantidad=Sum('cantidad')
+    ).filter(
+        total_cantidad__gt=F('material__unidades_stock')
+    )
+
+    materiales_ids = [mp['material'] for mp in materiales_pedidos_pendientes]
+
+    # Anotar los materiales con un campo indicando si están por debajo del stock mínimo
+    # o si están en pedidos pendientes con cantidad superior al stock
+    materiales = Material.objects.annotate(
+        below_minimum=Case(
+            When(unidades_stock__lt=F('minimo'), then=1),
+            default=0,
+            output_field=IntegerField(),
+        ),
+        in_pending_order=Case(
+            When(id__in=materiales_ids, then=1),
+            default=0,
+            output_field=IntegerField(),
+        )
+    ).order_by('-below_minimum', '-in_pending_order', 'nombre')  # Ordenar primero por los campos anotados y luego por nombre
+
+    if request.method == 'POST':
+        materiales_pedido = []
+        for key, value in request.POST.items():
+            if key.startswith('material_'):
+                material_id = int(key.split('_')[1])
+                material = get_object_or_404(Material, id=material_id)
+                cantidad = int(value)
+                materiales_pedido.append({'material': material, 'cantidad': cantidad})
+
+        # Pasar el pedido y los materiales al contexto
+        context = {
+            'pedido_compra': pedido_compra,
+            'materiales_pedido': materiales_pedido,
+        }
+        return render(request, 'pantallas_deposito/confirmar_pedido_compra.html', context)
+
+    # Paginación de materiales
+    paginator = Paginator(materiales, 12)  # Muestra 12 materiales por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+    }
+    return render(request, 'pantallas_deposito/pedido_compra.html', context)
 
 
 def ver_pedidos_adm(request, obra_id):
@@ -3082,12 +3200,27 @@ def entregar_pedido(request, pedido_id):
     if request.method == "POST":
         try:
             pedido = Pedido.objects.get(pk=pedido_id)
+            materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)
+
+            # Actualizar el stock de cada material en el pedido
+            for material_pedido in materiales_pedido:
+                material = material_pedido.material
+                if material.unidades_stock >= material_pedido.cantidad:
+                    material.unidades_stock -= material_pedido.cantidad
+                else:
+                    return JsonResponse({'status': 'error', 'message': f'Stock insuficiente para el material {material.nombre}'}, status=400)
+                material.save()
+
+            # Actualizar el estado del pedido
             pedido.estado = 'E'
             pedido.fecha_entrega = date.today()
             pedido.save()
+
             return redirect('ver_pedidos_dep')
         except Pedido.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Pedido no encontrado'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 
@@ -3591,12 +3724,24 @@ def aceptar_devolucion(request, devolucion_id):
     if request.method == "POST":
         try:
             devolucion = Devolucion.objects.get(pk=devolucion_id)
+            materiales_devueltos = MaterialDevuelto.objects.filter(devolucion=devolucion)
+
+            # Actualizar el stock de cada material devuelto
+            for material_devuelto in materiales_devueltos:
+                material = material_devuelto.material
+                material.unidades_stock += material_devuelto.cantidad
+                material.save()
+
+            # Actualizar el estado de la devolución
             devolucion.estado = 'D'
             devolucion.fecha_devolucion = date.today()
             devolucion.save()
+
             return HttpResponseRedirect(reverse('ver_devoluciones_dep'))
         except Devolucion.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Devolución no encontrada'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 @csrf_exempt
@@ -3628,13 +3773,23 @@ def ver_devolucion(request, devolucion_id):
         template_name = 'pantallas_ing/ver_devolucion.html'
     return render(request, template_name, context)
 
+
 def ver_devoluciones(request):
-    devoluciones = Devolucion.objects.all()
+    devoluciones = Devolucion.objects.all().annotate(
+        is_pending=Case(
+            When(estado='P', then=Value(0)),
+            When(estado='D', then=Value(1)),  # Ajusta según los estados que tengas
+            When(estado='R', then=Value(2)),
+            output_field=IntegerField(),
+        )
+    ).order_by('is_pending', 'fecha_devolucion')  # Ordena primero por estado y luego por fecha de devolución
+
     # Determinar qué template renderizar en función del rol del usuario
     if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
         template_name = 'pantallas_deposito/ver_devoluciones_dep.html'
     else:
         template_name = 'pantallas_ing/ver_devoluciones.html'
+
     context = {
         'devoluciones': devoluciones
     }

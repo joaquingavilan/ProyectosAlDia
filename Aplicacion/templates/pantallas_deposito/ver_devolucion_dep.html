@@ -3,7 +3,7 @@
 {% load static %}
 {% block content %}
     <div style="text-align: center; margin-bottom: 1rem;">
-        <h1 style="display: inline-block; margin: 0;">Devolución del pedido <strong>#{{ devolucion.pedido.id }} de la Obra <strong>{{ devolucion.obra.proyecto.nombre }}</strong></h1>
+        <h1 style="display: inline-block; margin: 0;">Devolución del pedido <strong>#{{ devolucion.pedido.id }}</strong> de la Obra <strong>{{ devolucion.obra.proyecto.nombre }}</strong></h1>
     </div>
     <div>
         <h2>Solicitado por: {{devolucion.ingeniero.get_full_name}}</h2>
@@ -35,7 +35,7 @@
                           <th class="column-title" style="width: 20%;">Fotografía</th> <!-- Aumentado el ancho -->
                           <th class="column-title" style="width: 10%;">Cantidad devuelta</th> <!-- Reducido el ancho -->
                           <th class="column-title" style="width: 10%;">Unidad de medida</th> <!-- Reducido el ancho -->
-                          {% if devolucion.observaciones is not None %}
+                          {% if devolucion.observaciones %}
                             <th class="column-title" style="width: 20%;">Observaciones</th>
                           {% endif %}
                         </tr>
@@ -48,7 +48,7 @@
                                 <td><img src="{{ material_devuelto.material.foto.url }}" alt="Foto" style="max-width: 100%; height: auto;"></td>
                                 <td>{{ material_devuelto.cantidad }}</td>
                                 <td>{{ material_devuelto.material.medida }}</td>
-                                {% if devolucion.observaciones is not None %}
+                                {% if devolucion.observaciones %}
                                     <td>{{ devolucion.observaciones }}</td>
                                 {% endif %}
                             </tr>
