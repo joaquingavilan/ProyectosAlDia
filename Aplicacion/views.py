@@ -531,7 +531,7 @@ def registrar_proveedor(request):
 
 
 def ver_pedidos_deposito(request):
-    pedidos_pendientes = Pedido.objects.all().order_by('-estado')
+    pedidos_pendientes = Pedido.objects.all().order_by('-estado', '-fecha_solicitud')
     context = {'pedidos': pedidos_pendientes}
     return render(request, 'pantallas_deposito/ver_pedidos_dep.html', context)
 
@@ -1050,27 +1050,42 @@ def pedido_compra(request):
         cantidad__gt=F('material__unidades_stock')
     ).select_related('material', 'pedido')
 
+    # Excluir materiales que ya están en pedidos de compra pendientes
+    materiales_en_pedidos_compra_pendientes = MaterialPedidoCompra.objects.filter(
+        pedido_compra__estado='P'
+    ).values_list('material_id', flat=True).distinct()
+
     # Crear una lista de materiales faltantes
     materiales_faltantes = []
 
     # Agregar materiales con stock menor al mínimo
-    for material in materiales_bajo_minimo:
+    for material in materiales_bajo_minimo.exclude(id__in=materiales_en_pedidos_compra_pendientes):
+        cantidad_faltante = material.minimo - material.unidades_stock
         materiales_faltantes.append({
             'material': material,
-            'cantidad_faltante': material.minimo - material.unidades_stock
+            'cantidad_faltante': cantidad_faltante
         })
+        print(f"Material: {material.nombre}, Cantidad faltante: {cantidad_faltante}")
 
     # Agregar materiales en pedidos pendientes con cantidad solicitada mayor al stock
-    for material_pedido in materiales_en_pedidos_pendientes:
+    for material_pedido in materiales_en_pedidos_pendientes.exclude(material_id__in=materiales_en_pedidos_compra_pendientes):
+        cantidad_faltante = material_pedido.cantidad - material_pedido.material.unidades_stock
         materiales_faltantes.append({
             'material': material_pedido.material,
-            'cantidad_faltante': material_pedido.cantidad - material_pedido.material.unidades_stock
+            'cantidad_faltante': cantidad_faltante
         })
+        print(f"Material Pedido: {material_pedido.material.nombre}, Cantidad faltante: {cantidad_faltante}")
 
     # Paginación de materiales
     paginator = Paginator(materiales_faltantes, 12)  # Muestra 12 materiales por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+    }
+
+    return render(request, 'pantallas_deposito/pedido_compra.html', context)
 
     context = {
         'page_obj': page_obj,
@@ -3775,7 +3790,7 @@ def ver_devoluciones(request):
             When(estado='R', then=Value(2)),
             output_field=IntegerField(),
         )
-    ).order_by('is_pending', 'fecha_devolucion')  # Ordena primero por estado y luego por fecha de devolución
+    ).order_by('is_pending', '-fecha_solicitud')  # Ordena primero por estado y luego por fecha de devolución
 
     # Determinar qué template renderizar en función del rol del usuario
     if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
