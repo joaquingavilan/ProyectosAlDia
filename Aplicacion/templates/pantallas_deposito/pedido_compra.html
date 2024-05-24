@@ -16,19 +16,19 @@
     {% csrf_token %}
 
     <div class="row">
-        {% for material in page_obj %}
+        {% for item in page_obj %}
         <div class="col-xl-2 col-lg-2 col-md-2 col-sm-6 mb-4">
             <div id="material-card-{{ material.id }}" class="card h-100 d-flex flex-column">
                 <img src="/{{ material.fotografia }}" class="img-fluid" alt="{{ material.nombre }}" style="width: auto; height: 150px; object-fit: cover;">
                 <div class="card-body d-flex flex-column justify-content-between">
                     <div>
-                        <h5 class="card-title text-center">{{ material.nombre }}</h5>
-                        <p class="card-text text-center">{{ material.marca }}</p>
-                        <p class="card-text text-center">{{ material.medida }}</p>
-                        {% if material.unidades_stock < material.minimo %}
-                            <p class="text-danger text-center"><strong>Stock bajo: {{ material.unidades_stock }}</strong></p>
+                        <h5 class="card-title text-center">{{ item.material.nombre }}</h5>
+                        <p class="card-text text-center">{{ item.material.marca }}</p>
+                        <p class="card-text text-center">{{ item.material.medida }}</p>
+                        {% if item.material.unidades_stock <= item.material.minimo %}
+                            <p class="text-danger text-center"><strong>Stock bajo: {{ item.material.unidades_stock }}</strong></p>
                         {% else %}
-                            <p class="text-center">Stock: {{ material.unidades_stock }}</p>
+                            <p class="text-center">Stock: {{ item.material.unidades_stock }}</p>
                         {% endif %}
                     </div>
                     <input type="hidden" id="minimo_{{ material.id }}" value="{{ material.minimo }}">

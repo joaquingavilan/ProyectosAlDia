@@ -13,7 +13,7 @@ import re, locale, json, os
 from datetime import date, datetime
 from io import BytesIO
 from django.contrib import messages
-from django.forms import formset_factory
+from django.forms import formset_factory, BooleanField
 from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 import openpyxl
@@ -989,7 +989,7 @@ def confirmar_pedido_compra(request):
         }
 
         # Redirigir a la página de confirmación con los datos necesarios
-        return render(request, 'pantallas_deposito/confirmar_pedido_compra.html', context)
+        return render(request, 'pantallas_deposito/ver_pedidos_compras.html', context)
 
     # Si el método no es POST, redirigir a una página de error o a la lista de materiales
     return redirect('ver_pedidos_compras')
@@ -1003,20 +1003,31 @@ def ver_pedidos(request):
     }
     return render(request, 'pantallas_ing/ver_pedidos.html', context)
 
+
 def ver_pedidos_compras(request):
-    pedidos = PedidoCompra.objects.filter(estado='P').select_related()
+    # Filtrar pedidos pendientes que tengan al menos un material con cantidad mayor a cero
+    pedidos = PedidoCompra.objects.filter(
+        estado='P',
+        materialpedidocompra__cantidad__gt=0
+    ).distinct()
 
     pedidos_con_materiales = []
     for pedido in pedidos:
-        materiales = MaterialPedidoCompra.objects.filter(pedido_compra=pedido).select_related('material')
-        pedidos_con_materiales.append({
-            'pedido': pedido,
-            'materiales': materiales,
-        })
+        # Obtener materiales con cantidad mayor a cero para cada pedido
+        materiales = MaterialPedidoCompra.objects.filter(pedido_compra=pedido, cantidad__gt=0).select_related(
+            'material')
+
+        # Asegurarse de que solo se incluyan pedidos que realmente tienen materiales
+        if materiales.exists():
+            pedidos_con_materiales.append({
+                'pedido': pedido,
+                'materiales': materiales,
+            })
 
     context = {
         'pedidos_con_materiales': pedidos_con_materiales
     }
+    print(pedidos_con_materiales)
     return render(request, 'pantallas_deposito/ver_pedidos_compras.html', context)
 
 def ver_pedido_compras(request, pedido_id):
@@ -1030,52 +1041,34 @@ def ver_pedido_compras(request, pedido_id):
     return render(request, 'pantallas_deposito/ver_pedido_compras.html', context)
 
 def pedido_compra(request):
-    # Obtener materiales con cantidad total en pedidos pendientes
-    materiales_pedidos_pendientes = MaterialPedido.objects.filter(
-        pedido__estado='P'
-    ).values(
-        'material'
-    ).annotate(
-        total_cantidad=Sum('cantidad')
-    ).filter(
-        total_cantidad__gt=F('material__unidades_stock')
-    )
+    # Materiales con stock menor al mínimo
+    materiales_bajo_minimo = Material.objects.filter(unidades_stock__lte=F('minimo'))
 
-    materiales_ids = [mp['material'] for mp in materiales_pedidos_pendientes]
+    # Materiales en pedidos pendientes con cantidad solicitada mayor al stock
+    materiales_en_pedidos_pendientes = MaterialPedido.objects.filter(
+        pedido__estado='P',
+        cantidad__gt=F('material__unidades_stock')
+    ).select_related('material', 'pedido')
 
-    # Anotar los materiales con un campo indicando si están por debajo del stock mínimo
-    # o si están en pedidos pendientes con cantidad superior al stock
-    materiales = Material.objects.annotate(
-        below_minimum=Case(
-            When(unidades_stock__lt=F('minimo'), then=1),
-            default=0,
-            output_field=IntegerField(),
-        ),
-        in_pending_order=Case(
-            When(id__in=materiales_ids, then=1),
-            default=0,
-            output_field=IntegerField(),
-        )
-    ).order_by('-below_minimum', '-in_pending_order', 'nombre')  # Ordenar primero por los campos anotados y luego por nombre
+    # Crear una lista de materiales faltantes
+    materiales_faltantes = []
 
-    if request.method == 'POST':
-        materiales_pedido = []
-        for key, value in request.POST.items():
-            if key.startswith('material_'):
-                material_id = int(key.split('_')[1])
-                material = get_object_or_404(Material, id=material_id)
-                cantidad = int(value)
-                materiales_pedido.append({'material': material, 'cantidad': cantidad})
+    # Agregar materiales con stock menor al mínimo
+    for material in materiales_bajo_minimo:
+        materiales_faltantes.append({
+            'material': material,
+            'cantidad_faltante': material.minimo - material.unidades_stock
+        })
 
-        # Pasar el pedido y los materiales al contexto
-        context = {
-            'pedido_compra': pedido_compra,
-            'materiales_pedido': materiales_pedido,
-        }
-        return render(request, 'pantallas_deposito/confirmar_pedido_compra.html', context)
+    # Agregar materiales en pedidos pendientes con cantidad solicitada mayor al stock
+    for material_pedido in materiales_en_pedidos_pendientes:
+        materiales_faltantes.append({
+            'material': material_pedido.material,
+            'cantidad_faltante': material_pedido.cantidad - material_pedido.material.unidades_stock
+        })
 
     # Paginación de materiales
-    paginator = Paginator(materiales, 12)  # Muestra 12 materiales por página
+    paginator = Paginator(materiales_faltantes, 12)  # Muestra 12 materiales por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
