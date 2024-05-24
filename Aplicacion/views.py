@@ -988,8 +988,8 @@ def confirmar_pedido_compra(request):
             'materiales_pedido': materiales_pedido,
         }
 
-        # Redirigir a la página de confirmación con los datos necesarios
-        return render(request, 'pantallas_deposito/ver_pedidos_compras.html', context)
+        # Redirigir a la vista que muestra los pedidos
+        return redirect('ver_pedidos_compras')
 
     # Si el método no es POST, redirigir a una página de error o a la lista de materiales
     return redirect('ver_pedidos_compras')
