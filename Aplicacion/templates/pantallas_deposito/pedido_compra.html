@@ -7,7 +7,7 @@
 </div>
 <div id="search-results" style="display:none; width: 100%; max-width: 400px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); padding: 10px; position: absolute; z-index: 1;">
 </div>
-<form id="formPedidoMateriales" method="POST" action="{% url 'confirmar_pedido_compra' %}" class="mt-2"> <!-- Reducido de mt-4 a mt-2 -->
+<form id="formPedidoMateriales" method="POST" action="{% url 'confirmar_pedido_compra' %}" class="mt-2">
     {% if page_obj %}
         <div class="d-flex justify-content-end">
             <div class="ml-auto">
@@ -43,9 +43,6 @@
                         </div>
                     </div>
                 </div>
-                <script>
-                    console.log("Material ID: {{ item.material.id }}, Nombre: {{ item.material.nombre }}, Cantidad Faltante: {{ item.cantidad_faltante }}");
-                </script>
             </div>
             {% endfor %}
         {% else %}
@@ -56,38 +53,37 @@
         {% endif %}
     </div>
 
-{% if page_obj.paginator.num_pages > 1 %}
-<nav aria-label="Page navigation" class="mt-4">
-  <ul class="pagination justify-content-center">
-    {% if page_obj.has_previous %}
-    <li class="page-item">
-      <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-        <span class="sr-only">Anterior</span>
-      </a>
-    </li>
-    {% endif %}
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav aria-label="Page navigation" class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+            <span aria-hidden="true">&laquo;</span>
+            <span class="sr-only">Anterior</span>
+          </a>
+        </li>
+        {% endif %}
 
-    {% for num in page_obj.paginator.page_range %}
-    {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-      <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-    </li>
-    {% endif %}
-    {% endfor %}
+        {% for num in page_obj.paginator.page_range %}
+        {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+          <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
 
-    {% if page_obj.has_next %}
-    <li class="page-item">
-      <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-        <span class="sr-only">Siguiente</span>
-      </a>
-    </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+            <span aria-hidden="true">&raquo;</span>
+            <span class="sr-only">Siguiente</span>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
     {% endif %}
-  </ul>
-</nav>
-{% endif %}
-
 </form>
 <br>
 {% if page_obj %}
@@ -100,6 +96,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let carrito = {};
+
+    // Inicializar el carrito con los valores de cantidad_faltante de cada material
+    {% for item in page_obj %}
+        carrito['{{ item.material.id }}'] = {{ item.cantidad_faltante }};
+    {% endfor %}
 
     document.getElementById('solicitarMateriales').addEventListener('click', function(event) {
         const form = document.getElementById('formPedidoMateriales');
