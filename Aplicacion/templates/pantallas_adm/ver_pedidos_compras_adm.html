@@ -48,7 +48,7 @@
                                 </ul>
                             </td>
                             <td>
-                                <a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver Pedido</a>
+                                <a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver detalles</a>
                             </td>
                         </tr>
                     {% endif %}
@@ -71,8 +71,7 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <p id="modalPedido">Pedido #</p>
-                    <p id="modalMaterial">Material adquirido:</p>
+                    <p id="modalPedido">Registro de compra del Pedido #</p>
                     <div class="form-group">
                         <label for="comprobante" class="form-label">Adjuntar comprobante</label>
                         <input type="file" class="form-control-file" id="comprobante" data-pedido-id="">
@@ -92,10 +91,9 @@
 
 {% block extra_js %}
 <script>
-function mostrarModalCompra(pedidoId, nombreMaterial) {
+function mostrarModalCompra(pedidoId) {
     // Actualizar el contenido del modal
-    document.getElementById('modalPedido').textContent = "Pedido: " + pedidoId;
-    document.getElementById('modalMaterial').textContent = "Material adquirido: " + nombreMaterial;
+    document.getElementById('modalPedido').textContent = "Registro de compra del Pedido #" + pedidoId;
 
     const inputComprobante = document.getElementById('comprobante');
     inputComprobante.setAttribute('data-pedido-id', pedidoId);

@@ -1010,7 +1010,7 @@ def actualizar_pedido_compra(request, pedido_id):
 
             fecha_entrega = request.FILES.get('fecha_entrega')
             if comprobante:
-                pedido.comprobante = comprobante
+                pedido.fecha_entrega = fecha_entrega
 
             pedido.save()
 
@@ -1018,7 +1018,7 @@ def actualizar_pedido_compra(request, pedido_id):
             materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)
             for material_pedido in materiales_pedido:
                 material = material_pedido.material
-                material.stock += material_pedido.cantidad
+                material.unidades_stock += material_pedido.cantidad
                 material.save()
 
             return JsonResponse({
@@ -1072,11 +1072,16 @@ def ver_pedido_compras(request, pedido_id):
     pedido = get_object_or_404(PedidoCompra, pk=pedido_id)
     materiales = MaterialPedidoCompra.objects.filter(pedido_compra=pedido).select_related('material')
 
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_pedido_compras.html'
+    else:
+        template_name = 'pantallas_adm/ver_compra_adm.html'
+
     context = {
         'pedido': pedido,
         'materiales': materiales
     }
-    return render(request, 'pantallas_deposito/ver_pedido_compras.html', context)
+    return render(request, template_name, context)
 
 def pedido_compra(request):
     # Materiales con stock menor al mínimo
