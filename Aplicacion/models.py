@@ -318,6 +318,7 @@ class ArchivoCertificado(models.Model):
 class PedidoCompra(models.Model):
     fecha_solicitud = models.DateField(_('fecha de solicitud'))
     fecha_entrega = models.DateField(_('fecha de entrega'), null=True, blank=True)
+    comprobante = models.ImageField(upload_to='comprobantes/compra', blank=True, null=True)
     ESTADOS = (
         ('P', _('Pendiente')),
         ('R', _('Recibido')),

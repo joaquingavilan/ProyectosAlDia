@@ -994,6 +994,44 @@ def confirmar_pedido_compra(request):
     # Si el método no es POST, redirigir a una página de error o a la lista de materiales
     return redirect('ver_pedidos_compras')
 
+@csrf_exempt
+def actualizar_pedido_compra(request, pedido_id):
+    if request.method == "POST":
+        try:
+            pedido = get_object_or_404(PedidoCompra, pk=pedido_id)
+            estado = request.POST.get('estado')
+            if estado:
+                pedido.estado = estado
+
+            # Si se ha enviado un archivo de comprobante, lo guardamos
+            comprobante = request.FILES.get('comprobante')
+            if comprobante:
+                pedido.comprobante = comprobante
+
+            fecha_entrega = request.FILES.get('fecha_entrega')
+            if comprobante:
+                pedido.comprobante = comprobante
+
+            pedido.save()
+
+            # Actualizar el stock de los materiales asociados con el pedido
+            materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)
+            for material_pedido in materiales_pedido:
+                material = material_pedido.material
+                material.stock += material_pedido.cantidad
+                material.save()
+
+            return JsonResponse({
+                'status': 'success',
+                'nuevo_estado': pedido.get_estado_display(),
+                'fecha_entrega': pedido.fecha_entrega.strftime(
+                    '%d/%m/%Y') if pedido.fecha_entrega else None
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
 def ver_pedidos(request):
     # Obtener todos los pedidos del usuario actualmente logueado
     pedidos = Pedido.objects.filter(solicitante=request.user)
@@ -1087,10 +1125,26 @@ def pedido_compra(request):
 
     return render(request, 'pantallas_deposito/pedido_compra.html', context)
 
+def ver_pedidos_compras_adm(request):
+    pedidos = PedidoCompra.objects.all()
+    pedidos_con_materiales = []
+    for pedido in pedidos:
+        # Obtener materiales con cantidad mayor a cero para cada pedido
+        materiales = MaterialPedidoCompra.objects.filter(pedido_compra=pedido, cantidad__gt=0).select_related(
+            'material')
+
+        # Asegurarse de que solo se incluyan pedidos que realmente tienen materiales
+        if materiales.exists():
+            pedidos_con_materiales.append({
+                'pedido': pedido,
+                'materiales': materiales,
+            })
     context = {
-        'page_obj': page_obj,
+        'pedidos_con_materiales': pedidos_con_materiales
     }
-    return render(request, 'pantallas_deposito/pedido_compra.html', context)
+    print(pedidos)
+    print(pedidos_con_materiales)
+    return render(request, 'pantallas_adm/ver_pedidos_compras_adm.html', context)
 
 
 def ver_pedidos_adm(request, obra_id):

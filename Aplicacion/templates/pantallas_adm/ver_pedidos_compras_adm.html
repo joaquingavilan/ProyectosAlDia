@@ -1,0 +1,166 @@
+{% extends request.base_template %}
+{% load custom_filters %}
+
+{% block content %}
+    <div style="text-align: center; margin-bottom: 1rem;">
+        <h1 style="display: inline-block; margin: 0;">Pedidos de Compra de Materiales</h1>
+    </div>
+
+    {% if pedidos_con_materiales %}
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>ID pedido</th>
+                    <th>Estado del pedido</th>
+                    <th>Fecha de solicitud</th>
+                    <th>Cantidad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido_info in pedidos_con_materiales %}
+                    {% if pedido_info.pedido.estado == 'P' %}
+                        <tr class="table-danger">
+                            <td>{{ pedido_info.pedido.id }}</td>
+                            <td>{{ pedido_info.pedido.get_estado_display }}</td>
+                            <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
+                            <td>
+                                <ul>
+                                    {% for material_pedido in pedido_info.materiales %}
+                                        {{ material_pedido.cantidad }}
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-success" onclick="mostrarModalCompra({{ pedido_info.pedido.id }})">Comprar</button>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td>{{ pedido_info.pedido.id }}</td>
+                            <td>{{ pedido_info.pedido.get_estado_display }}</td>
+                            <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
+                            <td>
+                                <ul>
+                                    {% for material_pedido in pedido_info.materiales %}
+                                        {{ material_pedido.cantidad }}
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td>
+                                <a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver Pedido</a>
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="alert alert-light">
+            No se encontraron pedidos de compras realizados.
+        </div>
+    {% endif %}
+
+    <div class="modal fade" id="modalCompra" tabindex="-1" role="dialog" aria-labelledby="modalCompraLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCompraLabel">Registrar Compra</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="modalPedido">Pedido #</p>
+                    <p id="modalMaterial">Material adquirido:</p>
+                    <div class="form-group">
+                        <label for="comprobante" class="form-label">Adjuntar comprobante</label>
+                        <input type="file" class="form-control-file" id="comprobante" data-pedido-id="">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="botonRegistrarCompra">Confirmar Compra</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a href="{% url 'inicio_adm' %}" class="btn btn-primary">Inicio</a>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function mostrarModalCompra(pedidoId, nombreMaterial) {
+    // Actualizar el contenido del modal
+    document.getElementById('modalPedido').textContent = "Pedido: " + pedidoId;
+    document.getElementById('modalMaterial').textContent = "Material adquirido: " + nombreMaterial;
+
+    const inputComprobante = document.getElementById('comprobante');
+    inputComprobante.setAttribute('data-pedido-id', pedidoId);
+
+    // Configurar el atributo data-pedido-id del botón "Registrar"
+    const botonRegistrar = document.getElementById('botonRegistrarCompra');
+    botonRegistrar.setAttribute('data-pedido-id', pedidoId);
+
+    // Mostrar el modal
+    $('#modalCompra').modal('show');
+}
+
+document.getElementById('botonRegistrarCompra').addEventListener('click', function() {
+    const idPedido = this.getAttribute('data-pedido-id');
+    const inputFile = document.getElementById('comprobante');
+
+    if (!inputFile.files.length) {
+        alert('Cargue el comprobante para registrar la compra');
+        return;
+    }
+
+    // Obtener la fecha de hoy
+    const hoy = new Date();
+    const fecha_entrega = hoy.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
+    const formData = new FormData();
+    formData.append('comprobante', inputFile.files[0]);
+    formData.append('estado', 'R'); // O el estado que corresponda
+    formData.append('fecha_entrega', fecha_entrega); // Añadir la fecha de hoy
+
+    fetch(`/actualizar_pedido_compra/${idPedido}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Cerrar el modal
+            $('#modalCompra').modal('hide');
+            location.reload();  // Recargar la página o hacer las actualizaciones necesarias en el DOM
+        } else {
+            alert('Hubo un error al registrar la compra: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Hubo un error en la solicitud: ' + error.message);
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

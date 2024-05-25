@@ -198,4 +198,6 @@ urlpatterns = [
     path('ver_pedido_compras/<int:pedido_id>', views.ver_pedido_compras, name='ver_pedido_compras'),
     path('pedido_compra/', views.pedido_compra, name='pedido_compra'),
     path('confirmar_pedido_compra', views.confirmar_pedido_compra, name='confirmar_pedido_compra'),
+    path('ver_pedidos_compras_adm', views.ver_pedidos_compras_adm, name='ver_pedidos_compras_adm'),
+    path('actualizar_pedido_compra/<int:pedido_id>/', views.actualizar_pedido_compra,name='actualizar_pedido_compra'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
