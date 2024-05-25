@@ -19,21 +19,39 @@
             </thead>
             <tbody>
                 {% for pedido_info in pedidos_con_materiales %}
-                    <tr>
-                        <td>{{ pedido_info.pedido.id }}</td>
-                        <td>{{ pedido_info.pedido.get_estado_display }}</td>
-                        <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
-                        <td>
-                            <ul>
-                                {% for material_pedido in pedido_info.materiales %}
-                                    {{ material_pedido.cantidad }}
-                                {% endfor %}
-                            </ul>
-                        </td>
-                        <td>
-                            <a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver Pedido</a>
-                        </td>
-                    </tr>
+                    {% if pedido_info.pedido.estado == 'P' %}
+                        <tr class="table-danger">
+                            <td>{{ pedido_info.pedido.id }}</td>
+                            <td>{{ pedido_info.pedido.get_estado_display }}</td>
+                            <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
+                            <td>
+                                <ul>
+                                    {% for material_pedido in pedido_info.materiales %}
+                                        {{ material_pedido.cantidad }}
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td>
+                                <a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver pedido</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td>{{ pedido_info.pedido.id }}</td>
+                            <td>{{ pedido_info.pedido.get_estado_display }}</td>
+                            <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
+                            <td>
+                                <ul>
+                                    {% for material_pedido in pedido_info.materiales %}
+                                        {{ material_pedido.cantidad }}
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td>
+                                <a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver pedido</a>
+                            </td>
+                        </tr>
+                    {% endif %}
                 {% endfor %}
             </tbody>
         </table>

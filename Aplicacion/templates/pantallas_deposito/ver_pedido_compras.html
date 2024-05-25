@@ -20,6 +20,7 @@
                     <th class="column-title">Marca</th>
                     <th class="column-title">Unidad de medida</th>
                     <th class="column-title">Cantidad Solicitada</th>
+                    <th class="column-title">Comprobante</th>
                 </tr>
             </thead>
             <tbody>
@@ -29,6 +30,34 @@
                         <td>{{ material_pedido.material.marca }}</td>
                         <td>{{ material_pedido.material.medida }}</td>
                         <td>{{ material_pedido.cantidad }}</td>
+                        <td>
+                        {% if pedido.comprobante %}
+                            <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#modalComprobante{{ material_pedido.id }}">
+                                Ver
+                            </button>
+                            <!-- Modal -->
+                            <div class="modal fade" id="modalComprobante{{ material_pedido.id }}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="exampleModalLabel">Comprobante de {{ material_pedido.material.nombre }}</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <img src="{{ material_pedido.comprobante.url }}" class="img-fluid" alt="Comprobante de {{ material_pedido.material.nombre }}">
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            No disponible
+                        {% endif %}
+                    </td>
                     </tr>
                 {% endfor %}
             </tbody>

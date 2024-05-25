@@ -1044,10 +1044,7 @@ def ver_pedidos(request):
 
 def ver_pedidos_compras(request):
     # Filtrar pedidos pendientes que tengan al menos un material con cantidad mayor a cero
-    pedidos = PedidoCompra.objects.filter(
-        estado='P',
-        materialpedidocompra__cantidad__gt=0
-    ).distinct()
+    pedidos = PedidoCompra.objects.all()
 
     pedidos_con_materiales = []
     for pedido in pedidos:
