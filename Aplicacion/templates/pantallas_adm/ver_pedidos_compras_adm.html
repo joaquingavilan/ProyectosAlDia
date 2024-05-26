@@ -131,8 +131,15 @@ document.getElementById('botonRegistrarCompra').addEventListener('click', functi
         },
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        // Verifica si la respuesta es JSON válida
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Respuesta del servidor:', data); // Agregar esta línea para depuración
         if (data.status === 'success') {
             // Cerrar el modal
             $('#modalCompra').modal('hide');
@@ -142,6 +149,7 @@ document.getElementById('botonRegistrarCompra').addEventListener('click', functi
         }
     })
     .catch(error => {
+        console.error('Hubo un error en la solicitud:', error); // Agregar esta línea para depuración
         alert('Hubo un error en la solicitud: ' + error.message);
     });
 });

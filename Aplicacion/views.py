@@ -1008,8 +1008,8 @@ def actualizar_pedido_compra(request, pedido_id):
             if comprobante:
                 pedido.comprobante = comprobante
 
-            fecha_entrega = request.FILES.get('fecha_entrega')
-            if comprobante:
+            fecha_entrega = request.POST.get('fecha_entrega')
+            if fecha_entrega:
                 pedido.fecha_entrega = fecha_entrega
 
             pedido.save()
@@ -1024,8 +1024,7 @@ def actualizar_pedido_compra(request, pedido_id):
             return JsonResponse({
                 'status': 'success',
                 'nuevo_estado': pedido.get_estado_display(),
-                'fecha_entrega': pedido.fecha_entrega.strftime(
-                    '%d/%m/%Y') if pedido.fecha_entrega else None
+                'fecha_entrega': pedido.fecha_entrega.strftime('%d/%m/%Y') if pedido.fecha_entrega else None
             })
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
@@ -1044,7 +1043,7 @@ def ver_pedidos(request):
 
 def ver_pedidos_compras(request):
     # Filtrar pedidos pendientes que tengan al menos un material con cantidad mayor a cero
-    pedidos = PedidoCompra.objects.all()
+    pedidos = PedidoCompra.objects.all().order_by('estado')
 
     pedidos_con_materiales = []
     for pedido in pedidos:
@@ -1128,7 +1127,7 @@ def pedido_compra(request):
     return render(request, 'pantallas_deposito/pedido_compra.html', context)
 
 def ver_pedidos_compras_adm(request):
-    pedidos = PedidoCompra.objects.all()
+    pedidos = PedidoCompra.objects.all().order_by('estado')
     pedidos_con_materiales = []
     for pedido in pedidos:
         # Obtener materiales con cantidad mayor a cero para cada pedido
