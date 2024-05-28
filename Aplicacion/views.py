@@ -52,7 +52,7 @@ def inicio(request):
     if request.user.groups.filter(name='GERENTE').exists():
         return render(request, 'Inicios/inicio.html')
     elif request.user.groups.filter(name='ADMINISTRADOR').exists():
-        return render(request, 'inicios/inicio_adm.html')
+        return render(request, 'Inicios/inicio_adm.html')
     elif request.user.groups.filter(name='INGENIERO').exists():
         return redirect(inicio_ingenieros)
     elif request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
@@ -61,17 +61,17 @@ def inicio(request):
 
 def inicio_deposito(request):
     nombre = request.user.first_name
-    return render(request, 'inicios/inicio_deposito.html', {'nombre': nombre})
+    return render(request, 'Inicios/inicio_deposito.html', {'nombre': nombre})
 
 
 def inicio_ingenieros(request):
     nombre = request.user.first_name
-    return render(request, 'inicios/inicio_ingenieros.html', {'nombre': nombre})
+    return render(request, 'Inicios/inicio_ingenieros.html', {'nombre': nombre})
 
 
 def inicio_adm(request):
     nombre = request.user.first_name
-    return render(request, 'inicios/inicio_adm.html', {'nombre': nombre})
+    return render(request, 'Inicios/inicio_adm.html', {'nombre': nombre})
 
 
 # VISTAS PARA USUARIOS
