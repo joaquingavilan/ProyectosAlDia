@@ -28,6 +28,7 @@ SECRET_KEY = 'django-insecure-sr)oknam1m)$iljw88j-*8xu^8u(hur#obu$_da#obt(gvbxpj
 DEBUG = True
 
 ALLOWED_HOSTS = ['spirited-adaptation-production.up.railway.app']
+CSRF_TRUSTED_ORIGINS = ['https://spirited-adaptation-production.up.railway.app']
 
 
 # Usamos la clase User para la autenticación de Usuarios
