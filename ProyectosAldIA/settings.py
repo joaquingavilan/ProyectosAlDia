@@ -15,7 +15,7 @@ from django.utils.translation import gettext_lazy as _
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -70,7 +70,7 @@ ROOT_URLCONF = 'ProyectosAldIA.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'Aplicacion', 'templates')],
+        'DIRS': [os.path.join(BASE_DIR, '..', 'Aplicacion', 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
