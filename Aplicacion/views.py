@@ -50,7 +50,7 @@ def inicio(request):
     verificar_obras_agendadas()
     cargar_distritos()
     if request.user.groups.filter(name='GERENTE').exists():
-        return render(request, 'inicios/inicio.html')
+        return render(request, 'Inicios/inicio.html')
     elif request.user.groups.filter(name='ADMINISTRADOR').exists():
         return render(request, 'inicios/inicio_adm.html')
     elif request.user.groups.filter(name='INGENIERO').exists():
