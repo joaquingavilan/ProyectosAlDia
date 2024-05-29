@@ -3870,3 +3870,41 @@ def devoluciones_pedidos_pendientes(request):
     }
 
     return JsonResponse(data)
+
+
+def ver_inventario(request):
+    materiales = Material.objects.all()
+    form_buscar = BuscadorMaterialForm()
+
+    # Configuración de la paginación
+    paginator = Paginator(materiales, 10)  # Muestra 10 materiales por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Lógica para eliminar el material
+    material_id = request.GET.get('eliminar_material_id')
+    if material_id:
+        material = get_object_or_404(Material, id=material_id)
+
+        # Verificamos si el material está siendo utilizado en pedidos
+        pedidos_asociados = Pedido.objects.filter(materiales=material)
+
+        # Verificamos si las obras asociadas a esos pedidos están activas
+        obras_activas_asociadas = Obra.objects.filter(pedido__in=pedidos_asociados, estado='E')
+
+        if obras_activas_asociadas.exists():
+            # Si hay obras activas que hacen referencia al material, mostramos un mensaje de error
+            messages.error(request, 'No se puede eliminar el material porque está siendo utilizado en obras activas.')
+        else:
+            material.delete()
+            messages.success(request, 'Material eliminado exitosamente.')
+
+    if request.method == 'GET':
+        form_buscar = BuscadorMaterialForm(request.GET)
+        if form_buscar.is_valid():
+            termino_busqueda = form_buscar.cleaned_data['termino_busqueda']
+            if termino_busqueda:
+                materiales = materiales.filter(nombre__icontains=termino_busqueda)
+
+    return render(request, 'pantallas_deposito/ver_inventario.html',
+                  {'materiales': materiales, 'form_buscar': form_buscar, 'page_obj': page_obj})
