@@ -1008,14 +1008,12 @@ def actualizar_pedido_compra(request, pedido_id):
             if comprobante:
                 pedido.comprobante = comprobante
 
-            fecha_entrega = request.POST.get('fecha_entrega')
-            if fecha_entrega:
-                pedido.fecha_entrega = fecha_entrega
+            pedido.fecha_entrega = date.today()
 
             pedido.save()
 
             # Actualizar el stock de los materiales asociados con el pedido
-            materiales_pedido = MaterialPedido.objects.filter(pedido=pedido)
+            materiales_pedido = MaterialPedidoCompra.objects.filter(pedido_compra=pedido)
             for material_pedido in materiales_pedido:
                 material = material_pedido.material
                 material.unidades_stock += material_pedido.cantidad
