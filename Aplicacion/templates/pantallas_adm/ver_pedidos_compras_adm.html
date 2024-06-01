@@ -91,82 +91,84 @@
 
 {% block extra_js %}
 <script>
-function mostrarModalCompra(pedidoId) {
-    // Actualizar el contenido del modal
-    document.getElementById('modalPedido').textContent = "Registro de compra del Pedido #" + pedidoId;
+document.addEventListener('DOMContentLoaded', function() {
+    function mostrarModalCompra(pedidoId) {
+        // Actualizar el contenido del modal
+        document.getElementById('modalPedido').textContent = "Registro de compra del Pedido #" + pedidoId;
 
-    const inputComprobante = document.getElementById('comprobante');
-    inputComprobante.setAttribute('data-pedido-id', pedidoId);
+        const inputComprobante = document.getElementById('comprobante');
+        inputComprobante.setAttribute('data-pedido-id', pedidoId);
 
-    // Configurar el atributo data-pedido-id del botón "Registrar"
-    const botonRegistrar = document.getElementById('botonRegistrarCompra');
-    botonRegistrar.setAttribute('data-pedido-id', pedidoId);
+        // Configurar el atributo data-pedido-id del botón "Registrar"
+        const botonRegistrar = document.getElementById('botonRegistrarCompra');
+        botonRegistrar.setAttribute('data-pedido-id', pedidoId);
 
-    // Mostrar el modal
-    $('#modalCompra').modal('show');
-}
-
-document.getElementById('botonRegistrarCompra').addEventListener('click', function() {
-    const idPedido = this.getAttribute('data-pedido-id');
-    const inputFile = document.getElementById('comprobante');
-
-    if (!inputFile.files.length) {
-        alert('Cargue el comprobante para registrar la compra');
-        return;
+        // Mostrar el modal
+        $('#modalCompra').modal('show');
     }
 
-    // Obtener la fecha de hoy
-    const hoy = new Date();
-    const fecha_entrega = hoy.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    document.getElementById('botonRegistrarCompra').addEventListener('click', function() {
+        const idPedido = this.getAttribute('data-pedido-id');
+        const inputFile = document.getElementById('comprobante');
 
-    const formData = new FormData();
-    formData.append('comprobante', inputFile.files[0]);
-    formData.append('estado', 'R'); // O el estado que corresponda
-    formData.append('fecha_entrega', fecha_entrega); // Añadir la fecha de hoy
+        if (!inputFile.files.length) {
+            alert('Cargue el comprobante para registrar la compra');
+            return;
+        }
 
-    fetch(`/actualizar_pedido_compra/${idPedido}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: formData
-    })
-    .then(response => {
-        // Verifica si la respuesta es JSON válida
-        if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor');
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Respuesta del servidor:', data); // Agregar esta línea para depuración
-        if (data.status === 'success') {
-            // Cerrar el modal
-            $('#modalCompra').modal('hide');
-            location.reload();  // Recargar la página o hacer las actualizaciones necesarias en el DOM
-        } else {
-            alert('Hubo un error al registrar la compra: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Hubo un error en la solicitud:', error); // Agregar esta línea para depuración
-        alert('Hubo un error en la solicitud: ' + error.message);
+        // Obtener la fecha de hoy
+        const hoy = new Date();
+        const fecha_entrega = hoy.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
+        const formData = new FormData();
+        formData.append('comprobante', inputFile.files[0]);
+        formData.append('estado', 'R'); // O el estado que corresponda
+        formData.append('fecha_entrega', fecha_entrega); // Añadir la fecha de hoy
+
+        fetch(`/actualizar_pedido_compra/${idPedido}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: formData
+        })
+        .then(response => {
+            // Verifica si la respuesta es JSON válida
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Respuesta del servidor:', data); // Agregar esta línea para depuración
+            if (data.status === 'success') {
+                // Cerrar el modal
+                $('#modalCompra').modal('hide');
+                location.reload();  // Recargar la página o hacer las actualizaciones necesarias en el DOM
+            } else {
+                alert('Hubo un error al registrar la compra: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Hubo un error en la solicitud:', error); // Agregar esta línea para depuración
+            alert('Hubo un error en la solicitud: ' + error.message);
+        });
     });
-});
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
             }
         }
+        return cookieValue;
     }
-    return cookieValue;
-}
+});
 </script>
 {% endblock %}
