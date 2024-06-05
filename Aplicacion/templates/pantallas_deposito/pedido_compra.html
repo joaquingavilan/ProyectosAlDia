@@ -8,7 +8,7 @@
 <div id="search-results" style="display:none; width: 100%; max-width: 400px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); padding: 10px; position: absolute; z-index: 1;">
 </div>
 <form id="formPedidoMateriales" method="POST" action="{% url 'confirmar_pedido_compra' %}" class="mt-2">
-    {% if page_obj %}
+    {% if page_obj and page_obj.object_list %}
         <div class="d-flex justify-content-end">
             <div class="ml-auto">
                 <button id="solicitarMateriales" class="btn btn-primary">Solicitar Materiales</button>
@@ -18,7 +18,7 @@
     {% csrf_token %}
 
     <div class="row">
-        {% if page_obj %}
+        {% if page_obj and page_obj.object_list %}
             {% for item in page_obj %}
             <div class="col-xl-2 col-lg-2 col-md-2 col-sm-6 mb-4">
                 <div id="material-card-{{ item.material.id }}" class="card h-100 d-flex flex-column">
@@ -53,7 +53,7 @@
         {% endif %}
     </div>
 
-    {% if page_obj.paginator.num_pages > 1 %}
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
     <nav aria-label="Page navigation" class="mt-4">
       <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
@@ -86,7 +86,7 @@
     {% endif %}
 </form>
 <br>
-{% if page_obj %}
+{% if page_obj and page_obj.object_list %}
     <a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
 {% endif %}
 

@@ -1080,48 +1080,72 @@ def ver_pedido_compras(request, pedido_id):
 def pedido_compra(request):
     # Materiales con stock menor al mínimo
     materiales_bajo_minimo = Material.objects.filter(unidades_stock__lte=F('minimo'))
+    print("Materiales bajo mínimo:")
+    for material in materiales_bajo_minimo:
+        print(f"{material.nombre} - Stock: {material.unidades_stock}, Mínimo: {material.minimo}")
 
     # Materiales en pedidos pendientes con cantidad solicitada mayor al stock
     materiales_en_pedidos_pendientes = MaterialPedido.objects.filter(
         pedido__estado='P',
         cantidad__gt=F('material__unidades_stock')
     ).select_related('material', 'pedido')
+    print("Materiales en pedidos pendientes:")
+    for material_pedido in materiales_en_pedidos_pendientes:
+        print(f"{material_pedido.material.nombre} - Cantidad pedida: {material_pedido.cantidad}, Stock: {material_pedido.material.unidades_stock}")
 
     # Excluir materiales que ya están en pedidos de compra pendientes
     materiales_en_pedidos_compra_pendientes = MaterialPedidoCompra.objects.filter(
         pedido_compra__estado='P'
     ).values_list('material_id', flat=True).distinct()
+    print("Materiales en pedidos de compra pendientes:")
+    for material_id in materiales_en_pedidos_compra_pendientes:
+        print(f"Material ID: {material_id}")
 
-    # Crear una lista de materiales faltantes
-    materiales_faltantes = []
+    # Crear un diccionario para almacenar las cantidades faltantes por material
+    materiales_faltantes = {}
 
     # Agregar materiales con stock menor al mínimo
-    for material in materiales_bajo_minimo.exclude(id__in=materiales_en_pedidos_compra_pendientes):
+    for material in materiales_bajo_minimo:
         cantidad_faltante = material.minimo - material.unidades_stock
-        materiales_faltantes.append({
-            'material': material,
-            'cantidad_faltante': cantidad_faltante
-        })
-        print(f"Material: {material.nombre}, Cantidad faltante: {cantidad_faltante}")
+        if material.id not in materiales_faltantes:
+            materiales_faltantes[material.id] = {
+                'material': material,
+                'cantidad_faltante': 0
+            }
+        materiales_faltantes[material.id]['cantidad_faltante'] += cantidad_faltante
+        print(f"Material agregado por bajo stock: {material.nombre}, Cantidad faltante: {cantidad_faltante}")
 
     # Agregar materiales en pedidos pendientes con cantidad solicitada mayor al stock
-    for material_pedido in materiales_en_pedidos_pendientes.exclude(material_id__in=materiales_en_pedidos_compra_pendientes):
+    for material_pedido in materiales_en_pedidos_pendientes:
         cantidad_faltante = material_pedido.cantidad - material_pedido.material.unidades_stock
-        materiales_faltantes.append({
-            'material': material_pedido.material,
-            'cantidad_faltante': cantidad_faltante
-        })
-        print(f"Material Pedido: {material_pedido.material.nombre}, Cantidad faltante: {cantidad_faltante}")
+        if material_pedido.material.id not in materiales_faltantes:
+            materiales_faltantes[material_pedido.material.id] = {
+                'material': material_pedido.material,
+                'cantidad_faltante': 0
+            }
+        materiales_faltantes[material_pedido.material.id]['cantidad_faltante'] += cantidad_faltante
+        print(f"Material agregado por pedido pendiente: {material_pedido.material.nombre}, Cantidad faltante: {cantidad_faltante}")
+
+    # Convertir el diccionario a una lista
+    materiales_faltantes_list = list(materiales_faltantes.values())
+    print("Materiales faltantes:")
+    for item in materiales_faltantes_list:
+        print(f"- {item['material'].nombre}, Cantidad faltante total: {item['cantidad_faltante']}")
+
+    # Verificar si la lista de materiales faltantes está vacía
+    if not materiales_faltantes_list:
+        print("No hay materiales faltantes para mostrar.")
 
     # Paginación de materiales
-    paginator = Paginator(materiales_faltantes, 12)  # Muestra 12 materiales por página
+    paginator = Paginator(materiales_faltantes_list, 12)  # Muestra 12 materiales por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     context = {
         'page_obj': page_obj,
     }
-
+    print("Contexto:")
+    print(context)
     return render(request, 'pantallas_deposito/pedido_compra.html', context)
 
 def ver_pedidos_compras_adm(request):

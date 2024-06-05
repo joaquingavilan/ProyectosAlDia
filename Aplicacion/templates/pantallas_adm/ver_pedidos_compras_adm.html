@@ -92,7 +92,8 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    function mostrarModalCompra(pedidoId) {
+    // Define the function in the global scope
+    window.mostrarModalCompra = function(pedidoId) {
         // Actualizar el contenido del modal
         document.getElementById('modalPedido').textContent = "Registro de compra del Pedido #" + pedidoId;
 
