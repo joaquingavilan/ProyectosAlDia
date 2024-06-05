@@ -39,16 +39,14 @@
                         <i class="fa fa-line-chart" style="color: #5A738E;"></i> Proyectos Al Día
                     </h1>
                 </div>
+                {% if not login_page %}
                 <div style="margin-right: 20px;">
                     <a href="{% url 'salir' %}" style="text-decoration: none; color: #5A738E; font-size: 20px;">
                         <i class="fa fa-sign-out"></i> Cerrar Sesión
                     </a>
                 </div>
-
+                {% endif %}
             </div>
-
-
-
 
             <!-- Page Content -->
             <div class="right_col" role="main">
@@ -71,7 +69,6 @@
 
     <!-- jQuery UI -->
     <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
-
 
     <!-- Bootstrap JS -->
     <script src="{% static 'vendors/bootstrap/dist/js/bootstrap.bundle.min.js' %}"></script>

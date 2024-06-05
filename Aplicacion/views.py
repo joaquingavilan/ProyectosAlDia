@@ -114,7 +114,7 @@ def loguear_usuario(request):
             error = 'Nombre de usuario o contraseña incorrectos.'
     else:
         error = ''
-    return render(request, 'ABM/usuarios/login.html', {'error': error})
+    return render(request, 'ABM/usuarios/login.html', {'error': error, 'login_page': True} )
 
 
 @login_required
