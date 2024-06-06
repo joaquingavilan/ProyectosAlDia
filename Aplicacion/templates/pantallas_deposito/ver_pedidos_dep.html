@@ -20,29 +20,25 @@
             </thead>
             <tbody>
                 {% for pedido in pedidos %}
-                    {% if pedido.get_estado_display == 'Pendiente' %}
-                        <tr class="table-danger">
-                            <td>{{ pedido.id }}</td>
-                            <td>{{ pedido.obra.proyecto.nombre }}</td>
+                    <tr>
+                        <td>{{ pedido.id }}</td>
+                        <td>{{ pedido.obra.proyecto.nombre }}</td>
+                        {% if pedido.get_estado_display == 'Pendiente' %}
+                            <td class="table-danger">{{pedido.get_estado_display}}</td>
+                        {% else %}
                             <td>{{pedido.get_estado_display}}</td>
-                            <td>{{ pedido.fecha_solicitud }}</td>
-                            <td>{{ pedido.materialpedido_set.count }}</td>
+                        {% endif %}
+                        <td>{{ pedido.fecha_solicitud }}</td>
+                        <td>{{ pedido.materialpedido_set.count }}</td>
+                        {% if pedido.get_estado_display == 'Pendiente' %}
                             <td>
                                 <a href="{% url 'ver_pedido_dep' pedido.id %}" class="btn btn-danger btn-sm">Ver Pedido</a>
                             </td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td>{{ pedido.id }}</td>
-                            <td>{{ pedido.obra.proyecto.nombre }}</td>
-                            <td>{{pedido.get_estado_display}}</td>
-                            <td>{{pedido.fecha_solicitud }}</td>
-                            <td>{{ pedido.materialpedido_set.count }}</td>
+                        {% else %}
                             <td>
                                 <a href="{% url 'ver_pedido_dep' pedido.id %}" class="btn btn-info btn-sm">Ver Pedido</a>
                             </td>
-                        </tr>
-                    {% endif %}
+                        {% endif %}
                 {% endfor %}
             </tbody>
         </table>
