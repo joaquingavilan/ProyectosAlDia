@@ -61,7 +61,24 @@ def inicio(request):
 
 def inicio_deposito(request):
     nombre = request.user.first_name
-    return render(request, 'Inicios/inicio_deposito.html', {'nombre': nombre})
+
+    # Contar los pedidos pendientes
+    pedidos_pendientes = Pedido.objects.filter(estado='P').count()
+
+    # Contar las devoluciones pendientes
+    devoluciones_pendientes = Devolucion.objects.filter(estado='P').count()
+
+    # Contar los pedidos de compras pendientes
+    pedidos_compras_pendientes = PedidoCompra.objects.filter(estado='P').count()
+
+    context = {
+        'nombre': nombre,
+        'pedidos_pendientes': pedidos_pendientes,
+        'devoluciones_pendientes': devoluciones_pendientes,
+        'pedidos_compras_pendientes': pedidos_compras_pendientes,
+    }
+
+    return render(request, 'Inicios/inicio_deposito.html', context)
 
 
 def inicio_ingenieros(request):
@@ -3895,7 +3912,7 @@ def devoluciones_pedidos_pendientes(request):
 
 
 def ver_inventario(request):
-    materiales = Material.objects.all()
+    materiales = Material.objects.all().order_by('nombre')
     form_buscar = BuscadorMaterialForm()
 
     # Configuración de la paginación
@@ -3927,6 +3944,9 @@ def ver_inventario(request):
             termino_busqueda = form_buscar.cleaned_data['termino_busqueda']
             if termino_busqueda:
                 materiales = materiales.filter(nombre__icontains=termino_busqueda)
+                paginator = Paginator(materiales, 10)  # Actualiza la paginación con los resultados filtrados
+                page_number = request.GET.get('page')
+                page_obj = paginator.get_page(page_number)
 
     return render(request, 'pantallas_deposito/ver_inventario.html',
                   {'materiales': materiales, 'form_buscar': form_buscar, 'page_obj': page_obj})

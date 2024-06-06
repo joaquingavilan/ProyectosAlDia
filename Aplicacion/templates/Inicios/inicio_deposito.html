@@ -1,4 +1,4 @@
-{% extends 'base_deposito.html'%}
+{% extends 'base_deposito.html' %}
 
 {% block content %}
     <div class="page-title">
@@ -16,30 +16,59 @@
                     <h2>Panel de Notificaciones</h2>
                     <div class="clearfix"></div>
                 </div>
-                <!-- Tablero 1 -->
-            <div class="col-md-6">
-                <div class="card" id="tablero1">
-                    <div class="card-body">
-                        <h5 class="card-title">Entrega de Pedidos pendientes</h5>
-                        <div id="tablaContenedor">
-                            <!-- La tabla se generará aquí -->
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Tablero 2 (el doble de ancho) -->
-            <div class="col-md-6">
-                <div class="card" id="tablero2">
-                    <div class="card-body">
-                        <h5 class="card-title">Recepción de devoluciones pendientes</h5>
-                        <div id="tablaActividadesContenedor">
-                            <!-- La tabla se generará aquí -->
+                <!-- Tablero 1 -->
+                <div class="col-md-4">
+                    <div class="card" id="tablero1">
+                        <div class="card-body">
+                            <h5 class="card-title">Entrega de Pedidos</h5>
+                            {% if pedidos_pendientes > 0 %}
+                                <a href="{% url 'ver_pedidos_dep' %}" class="btn btn-danger mt-2" role="button">
+                                    Pendientes <span class="badge badge-light">{{ pedidos_pendientes }}</span>
+                                </a>
+                            {% endif %}
+                            <div id="tablaContenedor">
+                                <!-- La tabla se generará aquí -->
+                            </div>
                         </div>
-                        <p id="mensajeActividadesVacias" style="display: none;">No hay actividades en los próximos 7 días.</p>
                     </div>
                 </div>
-            </div>
+
+                <!-- Tablero 2 -->
+                <div class="col-md-4">
+                    <div class="card" id="tablero2">
+                        <div class="card-body">
+                            <h5 class="card-title">Recepción de devoluciones
+                                {% if devoluciones_pendientes > 0 %}
+                                    <a href="{% url 'ver_devoluciones' %}" class="btn btn-danger mt-2" role="button">
+                                        Pendientes <span class="badge badge-light">{{ devoluciones_pendientes }}</span>
+                                    </a>
+                                {% endif %}
+                            </h5>
+                            <div id="tablaActividadesContenedor">
+                                <!-- La tabla se generará aquí -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tablero 3 -->
+                <div class="col-md-4">
+                    <div class="card" id="tablero3">
+                        <div class="card-body">
+                            <h5 class="card-title">Pedidos de Compras de materiales
+                                {% if pedidos_compras_pendientes > 0 %}
+                                    <a href="{% url 'ver_pedidos_compras' %}" class="btn btn-danger mt-2" role="button">
+                                        Pendientes <span class="badge badge-light">{{ pedidos_compras_pendientes }}</span>
+                                    </a>
+                                {% endif %}
+                            </h5>
+                            <div id="tablaPedidosComprasContenedor">
+                                <!-- La tabla se generará aquí -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             </div>
         </div>
@@ -48,11 +77,10 @@
 
 {% block sidebar %}
     <!-- Contenido de la barra lateral -->
-    <!-- Menú de la barra lateral -->
     <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
         <div class="menu_section">
             <ul class="nav side-menu">
-                <li><a href="{% url 'inicio' %}"><i class="fa fa-home"></i> Inicio </a></li> <!-- Aquí está el nuevo enlace -->
+                <li><a href="{% url 'inicio' %}"><i class="fa fa-home"></i> Inicio </a></li>
                 <li><a href="{% url 'ver_inventario' %}"><i class="fa fa-list-ol"></i> Inventario </a></li>
                 <li><a href="{% url 'ver_pedidos_compras' %}"><i class="fa fa-cart-plus"></i> Pedido de Compras </a></li>
                 <li><a href="{% url 'ver_pedidos_dep' %}"><i class="fa fa-clipboard"></i> Pedido de materiales </a></li>
@@ -63,18 +91,18 @@
 {% endblock %}
 
 {% block top_navigation %}
-<div class="nav toggle">
-    <a id="menu_toggle"><i class="fa fa-bars"></i></a>
-</div>
-<div class="nav_menu">
-    <nav>
-        <ul class="nav navbar-nav navbar-right">
-            <li class="">
-                <a href="{% url 'salir' %}" class="user-profile">
-                    <i class="fa fa-sign-out"></i> Cerrar sesión
-                </a>
-            </li>
-        </ul>
-    </nav>
-</div>
+    <div class="nav toggle">
+        <a id="menu_toggle"><i class="fa fa-bars"></i></a>
+    </div>
+    <div class="nav_menu">
+        <nav>
+            <ul class="nav navbar-nav navbar-right">
+                <li class="">
+                    <a href="{% url 'salir' %}" class="user-profile">
+                        <i class="fa fa-sign-out"></i> Cerrar sesión
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
 {% endblock %}
