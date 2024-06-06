@@ -1403,7 +1403,7 @@ def ver_proyectos_ciudad(request, ciudad):
 
 
 def obtener_materiales_marca(request):
-    marcas = Material.objects.values_list('marca', flat=True).distinct()
+    marcas = Material.objects.values_list('marca__nombre', flat=True).distinct().order_by('marca__nombre')
     return JsonResponse(list(marcas), safe=False)
 
 
@@ -1419,12 +1419,17 @@ def obtener_materiales_stock(request):
     return JsonResponse(list(cantidades), safe=False)
 
 
-def ver_materiales_marca(request, marca):
+def ver_materiales_marca(request, marca_nombre):
+    # Buscar el objeto Marca correspondiente al nombre recibido en la URL
+    marca = get_object_or_404(Marca, nombre=marca_nombre)
+    # Filtrar los materiales por la marca encontrada
     materiales = Material.objects.filter(marca=marca)
+
     # Configuración de la paginación
     paginator = Paginator(materiales, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
     return render(request, 'ABM/materiales/ver_materiales_filtrados.html',
                   {'materiales': materiales, 'page_obj': page_obj})
 
