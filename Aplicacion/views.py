@@ -1096,25 +1096,25 @@ def ver_pedido_compras(request, pedido_id):
 
 def pedido_compra(request):
     # Materiales con stock menor al mínimo
-    materiales_bajo_minimo = Material.objects.filter(unidades_stock__lte=F('minimo'))
-    print("Materiales bajo mínimo:")
+    materiales_bajo_minimo = Material.objects.filter(unidades_stock__lt=F('minimo'))
+    print("Materiales con stock menor al mínimo:")
     for material in materiales_bajo_minimo:
-        print(f"{material.nombre} - Stock: {material.unidades_stock}, Mínimo: {material.minimo}")
+        print(f"Material ID: {material.id}, Nombre: {material.nombre}, Stock: {material.unidades_stock}, Mínimo: {material.minimo}")
 
-    # Materiales en pedidos pendientes con cantidad solicitada mayor al stock
+    # Materiales en pedidos pendientes con cantidad solicitada mayor o igual al stock
     materiales_en_pedidos_pendientes = MaterialPedido.objects.filter(
         pedido__estado='P',
-        cantidad__gt=F('material__unidades_stock')
-    ).select_related('material', 'pedido')
+        cantidad__gte=F('material__unidades_stock')
+    ).select_related('material')
     print("Materiales en pedidos pendientes:")
     for material_pedido in materiales_en_pedidos_pendientes:
-        print(f"{material_pedido.material.nombre} - Cantidad pedida: {material_pedido.cantidad}, Stock: {material_pedido.material.unidades_stock}")
+        print(f"Material ID: {material_pedido.material.id}, Nombre: {material_pedido.material.nombre}, Cantidad pedida: {material_pedido.cantidad}, Stock: {material_pedido.material.unidades_stock}")
 
     # Excluir materiales que ya están en pedidos de compra pendientes
     materiales_en_pedidos_compra_pendientes = MaterialPedidoCompra.objects.filter(
         pedido_compra__estado='P'
     ).values_list('material_id', flat=True).distinct()
-    print("Materiales en pedidos de compra pendientes:")
+    print("Materiales en pedidos de compra pendientes (IDs):")
     for material_id in materiales_en_pedidos_compra_pendientes:
         print(f"Material ID: {material_id}")
 
@@ -1124,30 +1124,41 @@ def pedido_compra(request):
     # Agregar materiales con stock menor al mínimo
     for material in materiales_bajo_minimo:
         cantidad_faltante = material.minimo - material.unidades_stock
-        if material.id not in materiales_faltantes:
-            materiales_faltantes[material.id] = {
-                'material': material,
-                'cantidad_faltante': 0
-            }
-        materiales_faltantes[material.id]['cantidad_faltante'] += cantidad_faltante
-        print(f"Material agregado por bajo stock: {material.nombre}, Cantidad faltante: {cantidad_faltante}")
+        if material.id not in materiales_en_pedidos_compra_pendientes:
+            if material.id not in materiales_faltantes:
+                materiales_faltantes[material.id] = {
+                    'material': material,
+                    'cantidad_faltante': 0,
+                    'pedidos_pendientes': []
+                }
+            materiales_faltantes[material.id]['cantidad_faltante'] += cantidad_faltante
+            print(f"Material agregado por bajo stock: {material.nombre}, Cantidad faltante: {cantidad_faltante}")
 
-    # Agregar materiales en pedidos pendientes con cantidad solicitada mayor al stock
+    # Agregar materiales en pedidos pendientes con cantidad solicitada mayor o igual al stock
     for material_pedido in materiales_en_pedidos_pendientes:
         cantidad_faltante = material_pedido.cantidad - material_pedido.material.unidades_stock
-        if material_pedido.material.id not in materiales_faltantes:
-            materiales_faltantes[material_pedido.material.id] = {
-                'material': material_pedido.material,
-                'cantidad_faltante': 0
-            }
-        materiales_faltantes[material_pedido.material.id]['cantidad_faltante'] += cantidad_faltante
-        print(f"Material agregado por pedido pendiente: {material_pedido.material.nombre}, Cantidad faltante: {cantidad_faltante}")
+        if material_pedido.material.id not in materiales_en_pedidos_compra_pendientes:
+            if material_pedido.material.id not in materiales_faltantes:
+                materiales_faltantes[material_pedido.material.id] = {
+                    'material': material_pedido.material,
+                    'cantidad_faltante': 0,
+                    'pedidos_pendientes': []
+                }
+            materiales_faltantes[material_pedido.material.id]['cantidad_faltante'] += cantidad_faltante
+            materiales_faltantes[material_pedido.material.id]['pedidos_pendientes'].append({
+                'pedido_id': material_pedido.pedido_id,
+                'cantidad_pedida': material_pedido.cantidad
+            })
+            print(f"Material agregado por pedido pendiente: {material_pedido.material.nombre}, Cantidad faltante: {cantidad_faltante}, Pedido ID: {material_pedido.pedido_id}, Cantidad pedida: {material_pedido.cantidad}")
 
     # Convertir el diccionario a una lista
     materiales_faltantes_list = list(materiales_faltantes.values())
     print("Materiales faltantes:")
     for item in materiales_faltantes_list:
         print(f"- {item['material'].nombre}, Cantidad faltante total: {item['cantidad_faltante']}")
+        print("  Pedidos pendientes:")
+        for pedido in item['pedidos_pendientes']:
+            print(f"    Pedido ID: {pedido['pedido_id']}, Cantidad pedida: {pedido['cantidad_pedida']}")
 
     # Verificar si la lista de materiales faltantes está vacía
     if not materiales_faltantes_list:
@@ -1161,6 +1172,7 @@ def pedido_compra(request):
     context = {
         'page_obj': page_obj,
     }
+
     print("Contexto:")
     print(context)
     return render(request, 'pantallas_deposito/pedido_compra.html', context)
