@@ -3,7 +3,19 @@
 {% block content %}
     <div style="text-align: center; margin-bottom: 1rem;">
         <h1 style="display: inline-block; margin: 0;">Pedidos de Compra de Materiales</h1>
-        <a href="{% url 'pedido_compra' %}" class="btn btn-primary btn-lg" style="float: right;">Solicitar nueva Compra</a>
+    </div>
+    <div class="row mb-4 d-flex align-items-center">
+        <div class="col-md-3">
+            <h2>Filtro por estados:</h2>
+            <select id="filtroCampo" class="custom-select">
+                <option value="" disabled selected>Seleccione un estado...</option>
+                <option value="P">Pendiente</option>
+                <option value="R">Recibido</option>
+            </select>
+        </div>
+        <div class="col-md-9 d-flex justify-content-end">
+            <a href="{% url 'pedido_compra' %}" class="btn btn-primary btn-lg">Solicitar nueva Compra</a>
+        </div>
     </div>
 
     {% if pedidos_con_materiales %}
@@ -19,7 +31,7 @@
             </thead>
             <tbody>
                 {% for pedido_info in pedidos_con_materiales %}
-                    <tr>
+                    <tr data-estado="{{ pedido_info.pedido.estado }}">
                         <td>{{ pedido_info.pedido.id }}</td>
                         {% if pedido_info.pedido.estado == 'P' %}
                             <td class="table-danger">{{ pedido_info.pedido.get_estado_display }}</td>
@@ -47,4 +59,26 @@
 
     <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filtroCampo = document.getElementById('filtroCampo');
+
+    filtroCampo.addEventListener('change', function() {
+        const estadoSeleccionado = filtroCampo.value;
+        const filas = document.querySelectorAll('tbody tr');
+
+        filas.forEach(fila => {
+            const estadoFila = fila.getAttribute('data-estado');
+            if (estadoSeleccionado === "" || estadoSeleccionado === estadoFila) {
+                fila.style.display = '';
+            } else {
+                fila.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
