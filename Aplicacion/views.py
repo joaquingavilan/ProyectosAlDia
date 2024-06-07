@@ -1048,7 +1048,7 @@ def actualizar_pedido_compra(request, pedido_id):
 
 def ver_pedidos(request):
     # Obtener todos los pedidos del usuario actualmente logueado
-    pedidos = Pedido.objects.filter(solicitante=request.user)
+    pedidos = Pedido.objects.filter(solicitante=request.user).order_by('-estado', 'fecha_solicitud')
 
     context = {
         'pedidos': pedidos
@@ -1442,8 +1442,12 @@ def ver_materiales_marca(request, marca_nombre):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html',
-                  {'materiales': materiales, 'page_obj': page_obj})
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_materiales_filtrados_dep.html'
+    else:
+        template_name = 'ABM/materiales/ver_materiales_filtrados.html'
+
+    return render(request, template_name,{'materiales': materiales, 'page_obj': page_obj, 'filtro': 'marca'})
 
 
 def ver_materiales_proveedores(request, proveedor):
@@ -1453,8 +1457,13 @@ def ver_materiales_proveedores(request, proveedor):
     paginator = Paginator(materiales, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html',
-                  {'materiales': materiales, 'page_obj': page_obj})
+
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_materiales_filtrados_dep.html'
+    else:
+        template_name = 'ABM/materiales/ver_materiales_filtrados.html'
+
+    return render(request, template_name, {'materiales': materiales, 'page_obj': page_obj, 'filtro': 'proveedor'})
 
 
 def ver_materiales_stock(request, cantidad):
@@ -1468,8 +1477,13 @@ def ver_materiales_stock(request, cantidad):
     paginator = Paginator(materiales, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/materiales/ver_materiales_filtrados.html',
-                  {'materiales': materiales, 'page_obj': page_obj})
+
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_materiales_filtrados_dep.html'
+    else:
+        template_name = 'ABM/materiales/ver_materiales_filtrados.html'
+
+    return render(request, template_name, {'materiales': materiales, 'page_obj': page_obj, 'filtro': 'unidades en stock'})
 
 def ver_materiales_faltantes(request):
     # Paso 1: Obtener los materiales requeridos para los pedidos pendientes
