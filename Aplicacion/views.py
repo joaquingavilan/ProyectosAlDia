@@ -42,20 +42,481 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.core.files.storage import FileSystemStorage
 from django.utils.text import get_valid_filename
 from django.db.models import F, Case, When, IntegerField, Value
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+import plotly
+import plotly.graph_objs as go
+import plotly.io as pio
+from django.utils.safestring import mark_safe
+import io
+import urllib, base64
+import base64
+from io import BytesIO
+import pandas as pd
+import plotly.express as px
+from datetime import datetime
+from django.core.serializers.json import DjangoJSONEncoder
+
 
 logger = logging.getLogger(__name__)
+
+from django.db import connection
+
+
+def plot_estado_ingenieros_json(ingenieros):
+    data = {
+        'nombres': [ingeniero.nombre_ingeniero for ingeniero in ingenieros],
+        'obras_ejecucion': [ingeniero.cantidad_obras_ejecucion for ingeniero in ingenieros],
+        'presupuestos_elaboracion': [ingeniero.cantidad_presupuestos_elaboracion for ingeniero in ingenieros],
+    }
+    return data
+
+
+def plot_certificados_pendientes():
+    certificados = HechoCertificado.objects.filter(fecha_envio__isnull=False, estado='S')
+    proyectos_dict = {proyecto.proyecto_id: proyecto.nombre for proyecto in DimProyecto.objects.all()}
+    presupuestos_dict = {presupuesto.id: presupuesto.proyecto_id for presupuesto in HechoPresupuesto.objects.all()}
+
+    # Reestructurar datos para manejar múltiples certificados por proyecto
+    proyectos_certificados = {}
+    for certificado in certificados:
+        presupuesto_id = certificado.presupuesto_id
+        proyecto_id = presupuestos_dict[presupuesto_id]
+        proyecto_nombre = proyectos_dict[proyecto_id]
+
+        if proyecto_nombre not in proyectos_certificados:
+            proyectos_certificados[proyecto_nombre] = []
+
+        proyectos_certificados[proyecto_nombre].append({
+            'id': certificado.id,
+            'monto': float(certificado.monto_total)
+        })
+
+    graph_data = {
+        'proyectos': list(proyectos_certificados.keys()),
+        'certificados_proyecto': proyectos_certificados
+    }
+
+    return graph_data
+
+
+
+
+def actualizar_dimensiones():
+    with connection.cursor() as cursor:
+        # Realizamos todas las consultas primero
+        cursor.execute("""
+            SELECT 
+                m.id, m.nombre, m.marca_id, m.medida_id, 
+                m.minimo, m.unidades_stock, m.fotografia, m.id_proveedor_id
+            FROM 
+                public."Aplicacion_material" m
+        """)
+        materiales = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT 
+                c.id, c.nombre, c.ruc, c.email, c.ciudad_id, c.direccion
+            FROM 
+                public."Aplicacion_cliente" c
+        """)
+        clientes = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT 
+                c.id, c.nombre
+            FROM 
+                public."Aplicacion_ciudad" c
+        """)
+        ciudades = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT 
+                u.id, u.username, u.first_name, u.last_name, u.email, 
+                u.is_staff, u.is_active, u.date_joined
+            FROM 
+                public.auth_user u
+        """)
+        usuarios = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT 
+                p.id, p.nombre, p.ruc, p.email, p.ciudad_id, 
+                p.direccion, p.pagina_web, p.observaciones, p.telefono
+            FROM 
+                public."Aplicacion_proveedor" p
+        """)
+        proveedores = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT 
+                p.id, p.nombre, p.cliente_id, p.ciudad_id
+            FROM 
+                public."Aplicacion_proyecto" p
+        """)
+        proyectos = cursor.fetchall()
+
+        # Iniciamos una transacción
+        with connection.cursor() as cursor:
+            cursor.execute('BEGIN;')
+
+            # Truncar tablas de dimensiones
+            cursor.execute('TRUNCATE TABLE dim_material RESTART IDENTITY CASCADE;')
+            cursor.execute('TRUNCATE TABLE dim_cliente RESTART IDENTITY CASCADE;')
+            cursor.execute('TRUNCATE TABLE dim_ciudad RESTART IDENTITY CASCADE;')
+            cursor.execute('TRUNCATE TABLE dim_usuario RESTART IDENTITY CASCADE;')
+            cursor.execute('TRUNCATE TABLE dim_proveedor RESTART IDENTITY CASCADE;')
+            cursor.execute('TRUNCATE TABLE dim_proyecto RESTART IDENTITY CASCADE;')
+
+            # Insertar o actualizar materiales
+            for material in materiales:
+                material_id, nombre, marca_id, medida_id, minimo, unidades_stock, fotografia, id_proveedor_id = material
+                cursor.execute("""
+                    INSERT INTO dim_material (
+                        material_id, nombre, marca_id, medida_id, minimo, 
+                        unidades_stock, fotografia, id_proveedor_id
+                    ) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (material_id) DO UPDATE SET
+                        nombre = EXCLUDED.nombre,
+                        marca_id = EXCLUDED.marca_id,
+                        medida_id = EXCLUDED.medida_id,
+                        minimo = EXCLUDED.minimo,
+                        unidades_stock = EXCLUDED.unidades_stock,
+                        fotografia = EXCLUDED.fotografia,
+                        id_proveedor_id = EXCLUDED.id_proveedor_id;
+                """, [
+                    material_id, nombre, marca_id, medida_id, minimo,
+                    unidades_stock, fotografia, id_proveedor_id
+                ])
+
+            # Insertar o actualizar clientes
+            for cliente in clientes:
+                cliente_id, nombre, ruc, email, ciudad_id, direccion = cliente
+                cursor.execute("""
+                    INSERT INTO dim_cliente (
+                        cliente_id, nombre, ruc, email, ciudad_id, direccion
+                    ) 
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (cliente_id) DO UPDATE SET
+                        nombre = EXCLUDED.nombre,
+                        ruc = EXCLUDED.ruc,
+                        email = EXCLUDED.email,
+                        ciudad_id = EXCLUDED.ciudad_id,
+                        direccion = EXCLUDED.direccion;
+                """, [
+                    cliente_id, nombre, ruc, email, ciudad_id, direccion
+                ])
+
+            # Insertar o actualizar ciudades
+            for ciudad in ciudades:
+                ciudad_id, nombre = ciudad
+                cursor.execute("""
+                    INSERT INTO dim_ciudad (
+                        ciudad_id, nombre
+                    ) 
+                    VALUES (%s, %s)
+                    ON CONFLICT (ciudad_id) DO UPDATE SET
+                        nombre = EXCLUDED.nombre;
+                """, [
+                    ciudad_id, nombre
+                ])
+
+            # Insertar o actualizar usuarios
+            for usuario in usuarios:
+                usuario_id, username, first_name, last_name, email, is_staff, is_active, date_joined = usuario
+                cursor.execute("""
+                    INSERT INTO dim_usuario (
+                        usuario_id, username, first_name, last_name, email, 
+                        is_staff, is_active, date_joined
+                    ) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (usuario_id) DO UPDATE SET
+                        username = EXCLUDED.username,
+                        first_name = EXCLUDED.first_name,
+                        last_name = EXCLUDED.last_name,
+                        email = EXCLUDED.email,
+                        is_staff = EXCLUDED.is_staff,
+                        is_active = EXCLUDED.is_active,
+                        date_joined = EXCLUDED.date_joined;
+                """, [
+                    usuario_id, username, first_name, last_name, email,
+                    is_staff, is_active, date_joined
+                ])
+
+            # Insertar o actualizar proveedores
+            for proveedor in proveedores:
+                proveedor_id, nombre, ruc, email, ciudad_id, direccion, pagina_web, observaciones, telefono = proveedor
+                cursor.execute("""
+                    INSERT INTO dim_proveedor (
+                        proveedor_id, nombre, ruc, email, ciudad_id, direccion, 
+                        pagina_web, observaciones, telefono
+                    ) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (proveedor_id) DO UPDATE SET
+                        nombre = EXCLUDED.nombre,
+                        ruc = EXCLUDED.ruc,
+                        email = EXCLUDED.email,
+                        ciudad_id = EXCLUDED.ciudad_id,
+                        direccion = EXCLUDED.direccion,
+                        pagina_web = EXCLUDED.pagina_web,
+                        observaciones = EXCLUDED.observaciones,
+                        telefono = EXCLUDED.telefono;
+                """, [
+                    proveedor_id, nombre, ruc, email, ciudad_id, direccion,
+                    pagina_web, observaciones, telefono
+                ])
+
+            # Insertar o actualizar proyectos
+            for proyecto in proyectos:
+                proyecto_id, nombre, cliente_id, ciudad_id = proyecto
+                cursor.execute("""
+                    INSERT INTO dim_proyecto (
+                        proyecto_id, nombre, cliente_id, ciudad_id
+                    ) 
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (proyecto_id) DO UPDATE SET
+                        nombre = EXCLUDED.nombre,
+                        cliente_id = EXCLUDED.cliente_id,
+                        ciudad_id = EXCLUDED.ciudad_id;
+                """, [
+                    proyecto_id, nombre, cliente_id, ciudad_id
+                ])
+
+            cursor.execute('COMMIT;')
+
+
+def actualizar_hechos():
+    with connection.cursor() as cursor:
+        # Bloque de consultas
+
+        # Consulta para HechoEstadoIngeniero
+        cursor.execute("""
+            SELECT 
+                u.id AS ingeniero_id,
+                u.username AS nombre_ingeniero,
+                COALESCE(obras_en_ejecucion.cantidad, 0) AS cantidad_obras_ejecucion,
+                COALESCE(presupuestos_en_elaboracion.cantidad, 0) AS cantidad_presupuestos_elaboracion
+            FROM public.auth_user u
+            LEFT JOIN (
+                SELECT 
+                    encargado_id,
+                    COUNT(*) AS cantidad
+                FROM public."Aplicacion_obra"
+                WHERE estado = 'E'
+                GROUP BY encargado_id
+            ) obras_en_ejecucion ON u.id = obras_en_ejecucion.encargado_id
+            LEFT JOIN (
+                SELECT 
+                    encargado_id,
+                    COUNT(*) AS cantidad
+                FROM public."Aplicacion_presupuesto"
+                WHERE estado = 'E'
+                GROUP BY encargado_id
+            ) presupuestos_en_elaboracion ON u.id = presupuestos_en_elaboracion.encargado_id
+            WHERE u.id IN (
+                SELECT user_id
+                FROM public.auth_user_groups
+                WHERE group_id = (SELECT id FROM public.auth_group WHERE name = 'INGENIERO')
+            );
+        """)
+        hechos_estado_ingeniero = cursor.fetchall()
+
+        # Consulta para HechoCertificado
+        cursor.execute("""
+            SELECT 
+                c.id, c.ingeniero_id, c.presupuesto_id, c.estado,
+                c.fecha_creacion, c.fecha_envio, c.fecha_pago, c.iva,
+                c.monto_total, c.subtotal
+            FROM public."Aplicacion_certificado" c
+        """)
+        hechos_certificado = cursor.fetchall()
+
+        # Consulta para HechoPresupuesto
+        cursor.execute("""
+            SELECT 
+                p.id, p.monto_total, p.estado, p.encargado_id, p.proyecto_id, p.anticipo,
+                p.monto_anticipo, p.fecha_pago_anticipo, p.comprobante_anticipo,
+                p.iva, p.subtotal
+            FROM public."Aplicacion_presupuesto" p
+        """)
+        hechos_presupuesto = cursor.fetchall()
+        # Consulta para obtener la cantidad total de materiales por obra
+        cursor.execute("""
+            SELECT
+                p.obra_id,
+                mp.material_id,
+                SUM(mp.cantidad) AS cantidad_total,
+                pr.nombre AS obra_nombre,
+                m.nombre AS material_nombre
+            FROM
+                public."Aplicacion_pedido" p
+            JOIN
+                public."Aplicacion_materialpedido" mp ON p.id = mp.pedido_id
+            JOIN
+                public."Aplicacion_obra" o ON p.obra_id = o.id
+            JOIN
+                public."Aplicacion_proyecto" pr ON o.proyecto_id = pr.id
+            JOIN
+                public."Aplicacion_material" m ON mp.material_id = m.id
+            GROUP BY
+                p.obra_id, mp.material_id, pr.nombre, m.nombre;
+        """)
+        hechos_materiales = cursor.fetchall()
+        # Consulta para HechoCronograma
+        cursor.execute("""
+            SELECT 
+                c.id AS cronograma_id,
+                dc.id AS detalle_id,
+                dc.fecha_programada,
+                dc.fecha_culminacion
+            FROM public."Aplicacion_cronograma" c
+            JOIN public."Aplicacion_detallecronograma" dc ON c.id = dc.cronograma_id
+        """)
+        hechos_cronograma = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT 
+                o.id AS id_obra,
+                o.encargado_id AS id_encargado,
+                o.estado,
+                o.fecha_inicio,
+                o.fecha_fin,
+                o.plazo
+            FROM public."Aplicacion_obra" o
+        """)
+        hechos_obras = cursor.fetchall()
+
+        # Iniciamos una transacción
+        cursor.execute('BEGIN;')
+        # Truncar las tablas de hechos antes de insertar nuevos datos
+        cursor.execute("TRUNCATE TABLE datamart.hecho_estado_ingeniero;")
+        cursor.execute("TRUNCATE TABLE datamart.hecho_certificado;")
+        cursor.execute("TRUNCATE TABLE datamart.hecho_presupuesto;")
+        cursor.execute("TRUNCATE TABLE datamart.hechomaterialporobra;")
+        cursor.execute("TRUNCATE TABLE datamart.hechocronograma;")
+        cursor.execute("TRUNCATE TABLE datamart.hecho_obra;")
+
+        # Inserciones para HechoEstadoIngeniero
+        for hecho in hechos_estado_ingeniero:
+            ingeniero_id, nombre_ingeniero, cantidad_obras_ejecucion, cantidad_presupuestos_elaboracion = hecho
+
+            cursor.execute("""
+                        INSERT INTO datamart.hecho_estado_ingeniero (
+                            ingeniero_id, nombre_ingeniero, cantidad_obras_ejecucion, cantidad_presupuestos_elaboracion
+                        ) 
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (ingeniero_id) DO UPDATE SET
+                            nombre_ingeniero = EXCLUDED.nombre_ingeniero,
+                            cantidad_obras_ejecucion = EXCLUDED.cantidad_obras_ejecucion,
+                            cantidad_presupuestos_elaboracion = EXCLUDED.cantidad_presupuestos_elaboracion;
+                    """, [
+                ingeniero_id, nombre_ingeniero, cantidad_obras_ejecucion, cantidad_presupuestos_elaboracion
+            ])
+
+        # Inserciones para HechoCertificado
+        for hecho in hechos_certificado:
+            id, ingeniero_id, presupuesto_id, estado, fecha_creacion, fecha_envio, fecha_pago, iva, monto_total, subtotal = hecho
+
+            cursor.execute("""
+                    INSERT INTO datamart.hecho_certificado (
+                        id, ingeniero_id, presupuesto_id, estado, fecha_creacion, 
+                        fecha_envio, fecha_pago, iva, monto_total, subtotal
+                    ) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                """, [
+                id, ingeniero_id, presupuesto_id, estado, fecha_creacion,
+                fecha_envio, fecha_pago, iva, monto_total, subtotal
+            ])
+        # Inserciones para HechoPresupuesto
+        for hecho in hechos_presupuesto:
+            id, monto_total, estado, encargado_id, proyecto_id, anticipo, monto_anticipo, fecha_pago_anticipo, comprobante_anticipo, iva, subtotal = hecho
+
+            cursor.execute("""
+                        INSERT INTO datamart.hecho_presupuesto (
+                            id, monto_total, estado, encargado_id, proyecto_id, anticipo,
+                            monto_anticipo, fecha_pago_anticipo, comprobante_anticipo,
+                            iva, subtotal
+                        ) 
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                    """, [
+                id, monto_total, estado, encargado_id, proyecto_id, anticipo,
+                monto_anticipo, fecha_pago_anticipo, comprobante_anticipo,
+                iva, subtotal
+            ])
+        # Inserciones para HechoMaterialPorObra
+        for hecho in hechos_materiales:
+            obra_id, material_id, cantidad_total, obra_nombre, material_nombre = hecho
+
+            cursor.execute("""
+                        INSERT INTO datamart.hechomaterialporobra (
+                            obra_id, material_id, cantidad_total, obra_nombre, material_nombre
+                        ) 
+                        VALUES (%s, %s, %s, %s, %s);
+                    """, [
+                obra_id, material_id, cantidad_total, obra_nombre, material_nombre
+            ])
+        # Inserciones para HechoCronograma
+        for hecho in hechos_cronograma:
+            cronograma_id, detalle_id, fecha_programada, fecha_culminacion = hecho
+            cursor.execute("""
+                INSERT INTO datamart.hechocronograma (
+                    cronograma_id, detalle_id, fecha_programada, fecha_culminacion
+                ) 
+                VALUES (%s, %s, %s, %s);
+            """, [
+                cronograma_id, detalle_id, fecha_programada, fecha_culminacion
+            ])
+        # Inserciones para HechoObra
+        for hecho in hechos_obras:
+            id_obra, id_encargado, estado, fecha_inicio, fecha_fin, plazo = hecho
+            cursor.execute("""
+                INSERT INTO datamart.hecho_obra (
+                    id_obra, id_encargado, estado, fecha_inicio, fecha_fin, plazo
+                ) 
+                VALUES (%s, %s, %s, %s, %s, %s);
+            """, [
+                id_obra, id_encargado, estado, fecha_inicio, fecha_fin, plazo
+            ])
+        # Finalizamos la transacción
+        cursor.execute('COMMIT;')
 
 
 def inicio(request):
     verificar_obras_agendadas()
     cargar_distritos()
+
     if request.user.groups.filter(name='GERENTE').exists():
-        return render(request, 'Inicios/inicio.html')
+        actualizar_dimensiones()
+        actualizar_hechos()
+        ingenieros = HechoEstadoIngeniero.objects.all()
+        graph_data_estado_ingenieros = plot_estado_ingenieros_json(ingenieros)
+        graph_data_certificados_pendientes = plot_certificados_pendientes()
+        obras_activas = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
+        clientes, ingenieros_encargados = get_ingenieros_clientes_obras_activas()
+        # Paginación
+        paginator = Paginator(obras_activas, 5)  # Mostrar 5 obras por página
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context = {'graph_data_estado_ingenieros': json.dumps(graph_data_estado_ingenieros),
+                   'graph_data_certificados_pendientes': json.dumps(graph_data_certificados_pendientes),
+                   'clientes': clientes,
+                   'ingenieros_encargados': ingenieros_encargados,
+                   'page_obj': page_obj,
+                   }
+        return render(request, 'Inicios/inicio.html', context)
+
     elif request.user.groups.filter(name='ADMINISTRADOR').exists():
         return render(request, 'Inicios/inicio_adm.html')
+
     elif request.user.groups.filter(name='INGENIERO').exists():
         return redirect(inicio_ingenieros)
+
     elif request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        return redirect(inicio_deposito)
+    else:
+        # Redirigir a una página de error o una página predeterminada
         return redirect(inicio_deposito)
 
 
@@ -375,7 +836,6 @@ def registrar_ingeniero(request):
 
                 return redirect('ver_ingenieros')
         else:
-            print(form.errors)
             return redirect('ver_ingenieros')
 
     else:
@@ -2191,7 +2651,12 @@ def ver_obras_adm(request):
         'meses_fin': meses_fin,
         'page_obj': page_obj
     }
-    return render(request, 'pantallas_adm/ver_obras_adm.html', context)
+    template_name = 'pantallas_adm/ver_obras_adm.html'
+
+    return render(request, template_name, context)
+
+
+
 
 
 def ver_obra_adm(request, obra_id):
@@ -3677,6 +4142,50 @@ def ver_certificado_adm(request, pk):
     return render(request, 'pantallas_adm/ver_certificado_adm.html', context)
 
 
+def ver_certificado_gerente(request, pk):
+    archivo_certificado = get_object_or_404(ArchivoCertificado, certificado=pk)
+    certificado = Certificado.objects.get(id=pk)
+    # Estructura para mantener la jerarquía
+    archivo_presupuesto = get_object_or_404(ArchivoPresupuesto, presupuesto=certificado.presupuesto)
+    estructura_certificado = {}
+    subtotal = certificado.subtotal
+    iva = certificado.iva
+    monto_total = certificado.monto_total
+    cliente = certificado.presupuesto.proyecto.cliente.nombre
+    proyecto = certificado.presupuesto.proyecto
+    proyecto_nombre = proyecto.nombre
+    obra = Obra.objects.get(proyecto=proyecto)
+    # Iterar sobre los detalles asociados con el archivo de certificado
+    for detalle in archivo_certificado.detalles.all():
+        subseccion = detalle.subseccion
+        secciones_subseccion = set(subseccion.secciones.all())
+        secciones_presupuesto = set(archivo_presupuesto.secciones.all())
+        secciones_comunes = secciones_subseccion.intersection(secciones_presupuesto)
+        seccion = next(iter(secciones_comunes), None)
+        if seccion not in estructura_certificado:
+            estructura_certificado[seccion] = {}
+
+        if subseccion not in estructura_certificado[seccion]:
+            estructura_certificado[seccion][subseccion] = []
+
+        estructura_certificado[seccion][subseccion].append(detalle)
+
+    context = {
+        'estructura_certificado': estructura_certificado,
+        'subtotal': subtotal,
+        'monto_total': monto_total,
+        'iva': iva,
+        'proyecto_nombre': proyecto_nombre,
+        'cliente': cliente,
+        'certificado_id': certificado.id,
+        'archivo_certificado_id': archivo_certificado.id,
+        'comprobante': certificado.comprobante_pago,
+        'obra': obra
+    }
+
+    return render(request, 'pantallas_gerente/ver_certificado_gerente.html', context)
+
+
 def elaborar_certificado(request):
     obras = Obra.objects.filter(encargado=request.user, estado='E')
     context = {
@@ -3902,9 +4411,14 @@ def ver_devolucion(request, devolucion_id):
     }
     if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
         template_name = 'pantallas_deposito/ver_devolucion_dep.html'
+    elif request.user.groups.filter(name='GERENTE').exists():
+        template_name = 'pantallas_gerente/ver_devolucion_gerente.html'
     else:
         template_name = 'pantallas_ing/ver_devolucion.html'
     return render(request, template_name, context)
+
+
+
 
 
 def ver_devoluciones(request):
@@ -3981,3 +4495,584 @@ def ver_inventario(request):
 
     return render(request, 'pantallas_deposito/ver_inventario.html',
                   {'materiales': materiales, 'form_buscar': form_buscar, 'page_obj': page_obj})
+
+
+def get_obras_activas(request):
+    cliente_id = request.GET.get('cliente')
+    ingeniero_id = request.GET.get('ingeniero')
+    page_number = request.GET.get('page', 1)
+
+    obras_activas = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
+    print(obras_activas)
+    if cliente_id:
+        obras_activas = obras_activas.filter(proyecto__cliente_id=cliente_id)
+    if ingeniero_id:
+        obras_activas = obras_activas.filter(encargado_id=ingeniero_id)
+
+    paginator = Paginator(obras_activas, 10)
+    page_obj = paginator.get_page(page_number)
+
+    obras_data = []
+    for obra in page_obj:
+        obras_data.append({
+            'id': obra.id,
+            'proyecto': {
+                'nombre': obra.proyecto.nombre,
+                'cliente': {
+                    'nombre': obra.proyecto.cliente.nombre
+                }
+            },
+            'encargado': {
+                'get_full_name': obra.encargado.get_full_name()
+            }
+        })
+
+    data = {
+        'obras': obras_data,
+        'page_obj': {
+            'number': page_obj.number,
+            'paginator': {
+                'num_pages': paginator.num_pages,
+            },
+            'has_previous': page_obj.has_previous(),
+            'previous_page_number': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'has_next': page_obj.has_next(),
+            'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
+        }
+    }
+
+    return JsonResponse(data)
+
+
+def get_ingenieros_clientes_obras_activas():
+    # Filtrar obras activas
+    obras_activas = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
+
+    # Obtener clientes únicos de las obras activas
+    clientes_ids = obras_activas.values_list('proyecto__cliente_id', flat=True).distinct()
+    clientes = Cliente.objects.filter(id__in=clientes_ids)
+
+    # Obtener ingenieros encargados únicos de las obras activas
+    ingenieros_ids = obras_activas.values_list('encargado_id', flat=True).distinct()
+    ingenieros_encargados = User.objects.filter(id__in=ingenieros_ids)
+
+    return clientes, ingenieros_encargados
+
+
+def generar_grafico_materiales(hechos_materiales):
+    df = pd.DataFrame(list(hechos_materiales.values('material_id', 'material_nombre', 'cantidad_total')))
+
+    fig = go.Figure()
+
+    for material in df['material_nombre'].unique():
+        df_material = df[df['material_nombre'] == material]
+        fig.add_trace(go.Bar(
+            x=df_material['material_nombre'],
+            y=df_material['cantidad_total'],
+            name=material
+        ))
+
+    # Convertir el gráfico a JSON
+    graph_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    return graph_json
+
+
+def generar_grafico_certificados(hechos_certificados):
+    # Convertir los datos a un DataFrame
+    df = pd.DataFrame(list(hechos_certificados.values('id','fecha_envio', 'monto_total')))
+
+    # Filtrar filas con valores nulos
+    df = df.dropna(subset=['fecha_envio', 'monto_total'])
+
+    # Asegurarse de que las fechas están en el formato correcto
+    df['fecha_envio'] = pd.to_datetime(df['fecha_envio'])
+
+    # Crear el gráfico de líneas
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=df['fecha_envio'],
+        y=df['monto_total'],
+        mode='markers',
+        name='Montos de Certificados',
+        marker=dict(size=15),
+        customdata=df['id']  # Agregar el ID del certificado a customdata
+    ))
+
+    fig.update_layout(
+        title='Certificados por Fecha de Envio y Monto',
+        xaxis_title='Fecha de Envio',
+        yaxis_title='Monto Total',
+        xaxis=dict(
+            tickformat='%d %b %Y',  # Formato para mostrar solo la fecha en formato amigable
+            tickmode='array',
+            tickvals=df['fecha_envio'].dt.date.unique(),  # Mostrar solo fechas únicas
+            ticktext=[date.strftime('%d %b %Y') for date in df['fecha_envio'].dt.date.unique()]
+        )
+    )
+    # Convertir el gráfico a JSON
+    graph_json = pio.to_json(fig)
+    return graph_json
+
+
+def generar_grafico_cronograma(hechos_cronograma):
+    # Leer los datos en un DataFrame de pandas
+    df = pd.DataFrame(list(hechos_cronograma.values('detalle_id', 'fecha_programada', 'fecha_culminacion')))
+    df.rename(columns={'detalle_id': 'detalle_id_cronograma'}, inplace=True)
+
+    # Obtener los datos del modelo DetalleCronograma
+    detalles_cronograma = DetalleCronograma.objects.all().values('id', 'detalle_id')
+    df_detalles_cronograma = pd.DataFrame(list(detalles_cronograma))
+    df_detalles_cronograma.rename(columns={'id': 'detalle_id_cronograma'}, inplace=True)
+
+    # Obtener los datos del modelo Detalle
+    detalles = Detalle.objects.all().values('id', 'rubro')
+    df_detalles = pd.DataFrame(list(detalles))
+    df_detalles.rename(columns={'id': 'detalle_id'}, inplace=True)
+    # Realizar la unión entre los DataFrames de detalles_cronograma y detalles
+    df_completo = df_detalles_cronograma.merge(df_detalles, on='detalle_id', how='left')
+    # Realizar la unión entre el DataFrame original y el DataFrame completo
+    df = df.merge(df_completo, on='detalle_id_cronograma', how='left')
+    df.drop(['detalle_id'], axis=1, inplace=True)
+    df.rename(columns={'detalle_id_cronograma': 'detalle_id'}, inplace=True)
+
+    print(df)
+
+    # Crear el gráfico de líneas
+    fig = go.Figure()
+    if not df.empty:
+        # Añadir los puntos de las fechas programadas
+        fig.add_trace(go.Scatter(
+            x=df['fecha_programada'],
+            y=df['detalle_id'],
+            mode='markers',
+            name='Fechas Programadas',
+            text=df['rubro'],
+            marker=dict(
+                symbol='circle',
+                color='blue',
+                size=10,
+                opacity=0.6
+            ),
+            hovertemplate='<b>Rubro:</b> %{text}<extra></extra>'
+        ))
+
+    # Filtrar solo las filas donde fecha_culminacion no es None
+    df_culminacion = df.dropna(subset=['fecha_culminacion'])
+
+    if not df_culminacion.empty:
+        # Añadir los puntos de las fechas de culminación
+        fig.add_trace(go.Scatter(
+            x=df_culminacion['fecha_culminacion'],
+            y=df_culminacion['detalle_id'],
+            mode='markers',
+            name='Fechas de Culminación',
+            text=df_culminacion['rubro'],
+            marker=dict(
+                symbol='triangle-up',
+                color=['orange' if x > y else 'green' if x == y else 'red' for x, y in zip(df_culminacion['fecha_programada'], df_culminacion['fecha_culminacion'])],
+                size=10,
+                opacity=0.6
+            ),
+            hovertemplate='<b>Rubro:</b> %{text}<extra></extra>'
+        ))
+    if fig.data:
+        fig.update_layout(
+            title='Cronograma de Actividades',
+            xaxis_title='Fecha',
+            yaxis_title='Rubro',
+            yaxis=dict(
+                type='category',  # Establecer el tipo de eje como categoría
+                categoryorder='category ascending'
+            ),
+            xaxis=dict(
+                tickformat='%d %b %Y',  # Formato para mostrar solo la fecha
+                tickmode='array',
+                tickvals=pd.concat([df['fecha_programada'], df['fecha_culminacion']]).dropna().unique(),
+                # Mostrar solo fechas únicas
+                ticktext=[date.strftime('%d %b %Y') for date in pd.concat([df['fecha_programada'], df['fecha_culminacion']]).dropna().unique()]
+            ),
+            legend=dict(x=0.1, y=1.1, orientation='h')
+        )
+
+    # Convertir el gráfico a JSON
+    graph_json = pio.to_json(fig)
+    return graph_json
+
+
+def ver_resumen_obra(request, obra_id):
+    obra = Obra.objects.get(id=obra_id)
+    proyecto = obra.proyecto
+    presupuesto = Presupuesto.objects.get(proyecto=proyecto)
+    archivo_presupuesto = ArchivoPresupuesto.objects.get(presupuesto=presupuesto)
+    cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)
+    nombre_obra = proyecto.nombre
+    cliente = proyecto.cliente.nombre
+    ing_obra = obra.encargado.first_name + ' ' + obra.encargado.last_name
+    ing_presupuesto = presupuesto.encargado.first_name + ' ' + presupuesto.encargado.last_name
+    pedidos = Pedido.objects.filter(obra=obra).order_by('-estado', 'fecha_solicitud')
+    devoluciones = Devolucion.objects.filter(obra=obra).order_by('-estado', 'fecha_solicitud')
+    # Obtener los datos de HechoMaterialPorObra
+
+
+
+    hechos_cronograma = HechoCronograma.objects.filter(cronograma_id=cronograma.id)
+    if hechos_cronograma:
+        graph_json_cronograma = generar_grafico_cronograma(hechos_cronograma)
+        print(graph_json_cronograma)
+    else:
+        graph_json_cronograma = None
+
+    hechos_materiales = HechoMaterialPorObra.objects.filter(obra_id=obra.id)
+    materiales_ids = [hecho.material_id for hecho in hechos_materiales]
+    materiales = DimMaterial.objects.filter(material_id__in=materiales_ids)
+    unidades_medida = {material.nombre: UnidadMedida.objects.get(id=material.medida_id).descripcion for material in materiales}
+
+    graph_json = generar_grafico_materiales(hechos_materiales) if hechos_materiales.exists() else json.dumps({})
+
+    hechos_certificados = HechoCertificado.objects.filter(presupuesto_id=presupuesto.id)
+    certificados_json = generar_grafico_certificados(hechos_certificados) if hechos_certificados.exists() else json.dumps({})
+
+    context = {
+        'pedidos': pedidos,
+        'nombre_obra': nombre_obra,
+        'nombre_ing_obra': ing_obra,
+        'nombre_ing_pres': ing_presupuesto,
+        'nombre_cliente': cliente,
+        'proyecto': proyecto,
+        'obra': obra,
+        'presupuesto': presupuesto,
+        'hechos_materiales': hechos_materiales,
+        'graph_json': graph_json,
+        'graph_json_cronograma': graph_json_cronograma,
+        'certificados_json': certificados_json,
+        'unidades_medida': unidades_medida,
+        'devoluciones': devoluciones
+    }
+    return render(request, 'pantallas_gerente/ver_resumen_obra.html', context)
+
+
+def ver_pedido_gerente(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    materiales_pedido = MaterialPedido.objects.filter(
+        pedido=pedido)  # Obtiene los materiales relacionados con el pedido
+    return render(request, 'pantallas_gerente/ver_pedido_gerente.html', {'pedido': pedido, 'materiales_pedido': materiales_pedido})
+
+
+def ver_ing_gerente(request, ingeniero_id=None):
+    group_ingeniero = Group.objects.get(name='INGENIERO')
+    usuarios_ingenieros = group_ingeniero.user_set.all()
+
+    ingeniero_seleccionado = None
+    obras = Obra.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente')
+    presupuestos = Presupuesto.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente')
+    cronograma_data = []
+    certificado_data = []
+    precision_cronograma_data = {'antes': 0, 'en_fecha': 0, 'despues': 0}
+    cumplimiento_fecha_fin_data = {'antes': 0, 'en_fecha': 0, 'despues': 0}
+
+    if ingeniero_id:
+        ingeniero_seleccionado = get_object_or_404(User, id=ingeniero_id)
+        obras = obras.filter(encargado=ingeniero_seleccionado)
+        presupuestos = presupuestos.filter(encargado=ingeniero_seleccionado)
+
+
+        for obra in obras:
+            archivo_presupuesto = ArchivoPresupuesto.objects.filter(presupuesto__proyecto_id=obra.proyecto_id).first()
+            if archivo_presupuesto:
+                cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)
+                if cronograma:
+                    total_actividades = HechoCronograma.objects.filter(cronograma_id=cronograma.id).count()
+                    actividades_realizadas = HechoCronograma.objects.filter(cronograma_id=cronograma.id,
+                                                                            fecha_culminacion__isnull=False).count()
+                    porcentaje_actividades = (
+                                                         actividades_realizadas / total_actividades) * 100 if total_actividades > 0 else 0
+                    cronograma_data.append({
+                        'obra': obra.proyecto.nombre,
+                        'porcentaje_actividades': porcentaje_actividades,
+                        'obra_id': obra.id
+                    })
+                    # Calcular precisión de cronograma
+                    detalles_cronograma = HechoCronograma.objects.filter(cronograma_id=cronograma.id)
+                    for detalle in detalles_cronograma:
+                        if detalle.fecha_culminacion:
+                            if detalle.fecha_culminacion < detalle.fecha_programada:
+                                precision_cronograma_data['antes'] += 1
+                            elif detalle.fecha_culminacion == detalle.fecha_programada:
+                                precision_cronograma_data['en_fecha'] += 1
+                            else:
+                                precision_cronograma_data['despues'] += 1
+
+        # Calcular porcentajes de montos del certificado
+        for obra in obras:
+            presupuesto = HechoPresupuesto.objects.filter(proyecto_id=obra.proyecto.id).first()
+            if presupuesto:
+                total_monto = float(presupuesto.monto_total)  # Convertir Decimal a float
+                monto_aprobado = HechoCertificado.objects.filter(presupuesto_id=presupuesto.id, estado='A').aggregate(
+                    total=Sum('monto_total'))['total']
+                monto_aprobado = float(monto_aprobado) if monto_aprobado else 0
+                porcentaje_monto = (monto_aprobado / total_monto) * 100 if total_monto > 0 else 0
+                certificado_data.append({
+                    'obra': obra.proyecto.nombre,
+                    'porcentaje_monto': porcentaje_monto
+                })
+            # Calcular cumplimiento de fechas de fin
+            if obra.estado == 'F' and obra.fecha_fin:
+                fecha_estimada_fin = obra.fecha_inicio + timedelta(days=obra.plazo)
+                if obra.fecha_fin < fecha_estimada_fin:
+                    cumplimiento_fecha_fin_data['antes'] += 1
+                elif obra.fecha_fin == fecha_estimada_fin:
+                    cumplimiento_fecha_fin_data['en_fecha'] += 1
+                else:
+                    cumplimiento_fecha_fin_data['despues'] += 1
+
+    obras_json = json.dumps(list(obras.values()), cls=CustomJSONEncoder)
+    presupuestos_json = json.dumps(list(presupuestos.values()), cls=CustomJSONEncoder)
+    context = {
+        'ingenieros': usuarios_ingenieros,
+        'obras': obras,
+        'presupuestos': presupuestos,
+        'obras_json': obras_json,
+        'presupuestos_json': presupuestos_json,
+        'ingeniero_seleccionado': ingeniero_seleccionado,
+        'cronograma_data': json.dumps(cronograma_data),
+        'certificado_data': json.dumps(certificado_data),
+        'precision_cronograma_data': json.dumps(precision_cronograma_data),
+        'cumplimiento_fecha_fin_data': json.dumps(cumplimiento_fecha_fin_data)
+    }
+    return render(request, 'pantallas_gerente/ver_ing_gerente.html', context)
+
+
+class CustomJSONEncoder(DjangoJSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.strftime('%Y-%m-%d')
+        return super().default(obj)
+
+def get_gestion_obras_presupuestos(request):
+    tipo = request.GET.get('tipo')
+    estado = request.GET.get('estado')
+    ingeniero_id = request.GET.get('ingeniero_id')
+    page = request.GET.get('page', 1)
+
+    items = []
+
+    if tipo == 'Obra':
+        if estado:
+            items = Obra.objects.filter(estado=estado)
+        else:
+            items = Obra.objects.all()
+        if ingeniero_id:
+            items = items.filter(encargado_id=ingeniero_id)
+        items = items.select_related('proyecto', 'encargado', 'proyecto__cliente')
+    elif tipo == 'Presupuesto':
+        if estado:
+            items = Presupuesto.objects.filter(estado=estado)
+        else:
+            items = Presupuesto.objects.all()
+        if ingeniero_id:
+            items = items.filter(encargado_id=ingeniero_id)
+        items = items.select_related('proyecto', 'encargado', 'proyecto__cliente')
+    else:
+        obras = Obra.objects.all()
+        presupuestos = Presupuesto.objects.all()
+        if ingeniero_id:
+            obras = obras.filter(encargado_id=ingeniero_id)
+            presupuestos = presupuestos.filter(encargado_id=ingeniero_id)
+        items = list(obras) + list(presupuestos)
+
+    paginator = Paginator(items, 5)
+    page_obj = paginator.get_page(page)
+
+    data = {
+        'items': [
+            {'id': item.id, 'nombre': item.proyecto.nombre, 'tipo': 'Obra' if isinstance(item, Obra) else 'Presupuesto',
+             'estado': item.get_estado_display()} for item in page_obj],
+        'estados': [{'valor': estado[0], 'nombre': estado[1]} for estado in
+                    (Obra.ESTADOS if tipo == 'Obra' else Presupuesto.ESTADOS)] if tipo in ['Obra',
+                                                                                           'Presupuesto'] else [],
+    }
+    return JsonResponse(data)
+
+
+
+def get_estados_por_tipo(request):
+    tipo = request.GET.get('tipo')
+    estados = Obra.ESTADOS if tipo == 'Obra' else Presupuesto.ESTADOS
+    return JsonResponse({'estados': [{'valor': estado[0], 'nombre': estado[1]} for estado in estados]})
+
+
+def get_gestion_pedidos_devoluciones(request):
+    tipo = request.GET.get('tipo')
+    estado = request.GET.get('estado')
+    ingeniero_id = request.GET.get('ingeniero_id')
+    page = request.GET.get('page', 1)
+
+    items = []
+
+    if tipo == 'Pedido':
+        if estado:
+            items = Pedido.objects.filter(estado=estado)
+        else:
+            items = Pedido.objects.all()
+        if ingeniero_id:
+            items = items.filter(solicitante_id=ingeniero_id)
+        items = items.select_related('obra', 'solicitante')
+    elif tipo == 'Devolucion':
+        if estado:
+            items = Devolucion.objects.filter(estado=estado)
+        else:
+            items = Devolucion.objects.all()
+        if ingeniero_id:
+            items = items.filter(ingeniero_id=ingeniero_id)
+        items = items.select_related('obra', 'ingeniero', 'pedido')
+    else:
+        pedidos = Pedido.objects.all()
+        devoluciones = Devolucion.objects.all()
+        if ingeniero_id:
+            pedidos = pedidos.filter(solicitante_id=ingeniero_id)
+            devoluciones = devoluciones.filter(ingeniero_id=ingeniero_id)
+        items = list(pedidos) + list(devoluciones)
+
+    paginator = Paginator(items, 5)
+    page_obj = paginator.get_page(page)
+
+    data = {
+        'items': [
+            {
+                'id': item.id,
+                'tipo': 'Pedido' if isinstance(item, Pedido) else 'Devolución',
+                'obra': item.obra.proyecto.nombre,
+                'estado': item.get_estado_display()
+            } for item in page_obj],
+        'estados': [{'valor': estado[0], 'nombre': estado[1]} for estado in
+                    (Pedido.ESTADOS if tipo == 'Pedido' else Devolucion.ESTADOS)] if tipo in ['Pedido', 'Devolucion'] else [],
+    }
+    return JsonResponse(data)
+
+
+
+def get_estados_por_tipo_pedido_devolucion(request):
+    tipo = request.GET.get('tipo')
+    estados = Pedido.ESTADOS if tipo == 'Pedido' else Devolucion.ESTADOS
+    return JsonResponse({'estados': [{'valor': estado[0], 'nombre': estado[1]} for estado in estados]})
+
+
+def get_obras(request):
+    cliente_id = request.GET.get('cliente')
+    ingeniero_id = request.GET.get('ingeniero')
+    page_number = request.GET.get('page', 1)
+
+    obras= Obra.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente')
+    if cliente_id:
+        obras= obras.filter(proyecto__cliente_id=cliente_id)
+    if ingeniero_id:
+        obras = obras.filter(encargado_id=ingeniero_id)
+
+    paginator = Paginator(obras, 10)
+    page_obj = paginator.get_page(page_number)
+
+    obras_data = []
+    for obra in page_obj:
+        obras_data.append({
+            'id': obra.id,
+            'proyecto': {
+                'nombre': obra.proyecto.nombre,
+                'cliente': {
+                    'nombre': obra.proyecto.cliente.nombre
+                }
+            },
+            'encargado': {
+                'get_full_name': obra.encargado.get_full_name()
+            }
+        })
+
+    data = {
+        'obras': obras_data,
+        'page_obj': {
+            'number': page_obj.number,
+            'paginator': {
+                'num_pages': paginator.num_pages,
+            },
+            'has_previous': page_obj.has_previous(),
+            'previous_page_number': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'has_next': page_obj.has_next(),
+            'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
+        }
+    }
+
+    return JsonResponse(data)
+
+
+def ver_obras_gerente(request):
+    obras = Obra.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente')
+    clientes_ids = obras.values_list('proyecto__cliente_id', flat=True).distinct()
+    clientes = Cliente.objects.filter(id__in=clientes_ids)
+    ingenieros_ids = obras.values_list('encargado_id', flat=True).distinct()
+    ingenieros_encargados = User.objects.filter(id__in=ingenieros_ids)
+    # Paginación
+    paginator = Paginator(obras, 5)  # Mostrar 5 obras por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    cronograma_data, certificado_data = fetch_cronograma_certificado_data()
+
+    context={
+        'clientes': clientes,
+        'ingenieros_encargados': ingenieros_encargados,
+        'page_obj': page_obj,
+        'certificado_data': json.dumps(certificado_data),
+        'cronograma_data': json.dumps(cronograma_data)
+    }
+    return render(request, 'pantallas_gerente/ver_obras_gerente.html', context)
+
+
+def fetch_cronograma_certificado_data(estado=None):
+    cronograma_data = []
+    certificado_data = []
+
+    if not estado:
+        obras = Obra.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente')
+    elif estado == 'E':
+        obras = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
+    elif estado == 'F':
+        obras = Obra.objects.filter(estado='F').select_related('proyecto', 'encargado', 'proyecto__cliente')
+    else:
+        obras = Obra.objects.none()
+    print(obras)
+    for obra in obras:
+        archivo_presupuesto = ArchivoPresupuesto.objects.filter(presupuesto__proyecto_id=obra.proyecto_id).first()
+        if archivo_presupuesto:
+            try:
+                cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)
+                total_actividades = HechoCronograma.objects.filter(cronograma_id=cronograma.id).count()
+                actividades_realizadas = HechoCronograma.objects.filter(cronograma_id=cronograma.id, fecha_culminacion__isnull=False).count()
+                porcentaje_actividades = (actividades_realizadas / total_actividades * 100) if total_actividades > 0 else 0
+                cronograma_data.append({
+                    'obra': obra.proyecto.nombre,
+                    'porcentaje_actividades': porcentaje_actividades,
+                    'obra_id': obra.id
+                })
+            except Cronograma.DoesNotExist:
+                pass
+
+        presupuesto = HechoPresupuesto.objects.filter(proyecto_id=obra.proyecto.id).first()
+        if presupuesto:
+            total_monto = float(presupuesto.monto_total)  # Convertir Decimal a float
+            monto_aprobado = HechoCertificado.objects.filter(presupuesto_id=presupuesto.id, estado='A').aggregate(total=Sum('monto_total'))['total']
+            monto_aprobado = float(monto_aprobado) if monto_aprobado else 0
+            porcentaje_monto = (monto_aprobado / total_monto * 100) if total_monto > 0 else 0
+            certificado_data.append({
+                'obra': obra.proyecto.nombre,
+                'porcentaje_monto': porcentaje_monto
+            })
+
+    return cronograma_data, certificado_data
+
+
+def get_cronograma_certificado_data(request, estado=None):
+    cronograma_data, certificado_data = fetch_cronograma_certificado_data(estado)
+    data = {
+        'certificado_data': certificado_data,
+        'cronograma_data': cronograma_data
+    }
+    return JsonResponse(data, safe=False)

@@ -1,17 +1,17 @@
 {% extends 'base_gerente.html' %}
 
-{% block title %}Panel de Visualizaciones{% endblock %}
+{% block title %}Obras{% endblock %}
 
 {% block content %}
 
 <div class="clearfix"></div>
 
 <div class="row">
-{% block grafico_1 %}
+    {% block grafico_1 %}
 <div class="col-md-4 col-sm-4">
     <div class="x_panel">
         <div class="x_title">
-            <h2>Obras Activas</h2>
+            <h2>Lista de obras</h2>
             <div class="clearfix"></div>
         </div>
         <div class="x_content">
@@ -46,44 +46,34 @@
     </div>
 </div>
 {% endblock %}
-
-
-
-
-{% block grafico_2 %}
-<div class="col-md-4 col-sm-4">
-    <div class="x_panel">
-        <div class="x_title">
-            <h2>Estado de Ingenieros</h2>
-            <div class="clearfix"></div>
+    {% block grafico_2 %}
+        <div class="col-md-4 col-sm-4">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Progreso de Obras y Certificados</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <div id="plotly-graph-div-progreso"></div>
+                </div>
+            </div>
         </div>
-        <div class="x_content">
-            <div id="grafico-estado-ingenieros"></div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+        {% endblock %}
 
-{% block grafico_3 %}
-<div class="col-md-4 col-sm-4">
-    <div class="x_panel">
-        <div class="x_title">
-            <h2>Certificados Pendientes</h2>
-            <div class="clearfix"></div>
-        </div>
-        <div id="contenido-certificados-pendientes" class="x_content" style="min-height: 450px; height: 450px; width: 100%;">
-            <div id="plotly-graph-div-certificados"></div>
+        {% block grafico_3 %}
+    <div class="col-md-4 col-sm-4">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Gráfico 3</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <!-- Aquí irá la imagen de la visualización -->
+            </div>
         </div>
     </div>
-</div>
-{% endblock %}
-
-
-
-
-
-</div>
-
+    {% endblock %}
+    </div>
 <div class="row">
     {% block grafico_4 %}
     <div class="col-md-4 col-sm-4">
@@ -138,7 +128,7 @@ $(document).ready(function() {
         var page = 1;
 
         $.ajax({
-            url: "{% url 'get_obras_activas' %}",
+            url: "{% url 'get_obras' %}",
             data: {
                 cliente: cliente,
                 ingeniero: ingeniero,
@@ -146,7 +136,7 @@ $(document).ready(function() {
             },
             success: function(data) {
                 if (data.obras.length === 0) {
-                    $('#contenido-obras-activas').html('<p>No hay Obras activas</p>');
+                    $('#contenido-obras-activas').html('<p>No hay Obras</p>');
                 } else {
                     var obrasHtml = '<div class="row">' +
                                     '<div class="col-md-5">' +
@@ -204,123 +194,69 @@ $(document).ready(function() {
     });
 
     cargarObrasActivas(); // Cargar obras activas al cargar la página
+    var cronogramaData = JSON.parse('{{ cronograma_data|escapejs }}');
+    var certificadoData = JSON.parse('{{ certificado_data|escapejs }}');
 
-var graphDataCertificadosPendientes = JSON.parse('{{ graph_data_certificados_pendientes|escapejs }}');
+function plotearProgreso() {
+        var obrasNombres = cronogramaData.map(d => d.obra);
+        var porcentajeActividades = cronogramaData.map(d => d.porcentaje_actividades);
+        var porcentajeMontos = certificadoData.map(d => d.porcentaje_monto);
+        var obraIds = cronogramaData.map(d => d.obra_id);  // Suponiendo que tienes el id de la obra en cronogramaData
 
-var dataCertificados = [];
-
-graphDataCertificadosPendientes.proyectos.forEach(function(proyecto) {
-    var certificados = graphDataCertificadosPendientes.certificados_proyecto[proyecto];
-    var yBase = 0;
-
-    certificados.forEach(function(certificado) {
-        dataCertificados.push({
-            x: [proyecto],
-            y: [certificado.monto],
-            base: yBase,
-            text: [certificado.monto],
-            textposition: 'inside',  // Posición del texto dentro de la barra
-            hovertemplate: 'ID Certificado: %{customdata}<extra></extra>',
-            customdata: [certificado.id],
-            type: 'bar',
-            marker: {
-                color: '#1f77b4', // Color azul específico
-                line: {
-                    width: 1,
-                    color: 'white'
-                }
+        var data = [
+            {
+                x: porcentajeActividades,
+                y: obrasNombres,
+                type: 'bar',
+                orientation: 'h',
+                name: 'Actividades completadas',
+                text: porcentajeActividades.map(value => Math.round(value).toString() + '%'),
+                textposition: 'auto',
+                hoverinfo: 'none'  // Desactivar información emergente
+            },
+            {
+                x: porcentajeMontos,
+                y: obrasNombres,
+                type: 'bar',
+                orientation: 'h',
+                name: 'Monto cobrado',
+                text: porcentajeMontos.map(value => Math.round(value).toString() + '%'),
+                textposition: 'auto',
+                hoverinfo: 'none'  // Desactivar información emergente
             }
+        ];
+
+        var layout = {
+            barmode: 'group',
+            yaxis: { tickangle: -45 },
+            margin: {
+                l: 160,  // Aumentar el margen izquierdo para dar más espacio a las etiquetas
+                r: 50,
+                t: 50,
+                b: 50
+            },
+            legend: {
+                orientation: 'h',
+                y: 1.1,
+                x: 0.5,
+                xanchor: 'center',
+                yanchor: 'bottom'
+            },
+            height: 400,
+            width: 500
+        };
+
+        Plotly.newPlot('plotly-graph-div-progreso', data, layout);
+        // Evento de clic en las barras
+        var plotDiv = document.getElementById('plotly-graph-div-progreso');
+        plotDiv.on('plotly_click', function(data){
+            var pointIndex = data.points[0].pointIndex;  // Obtener el índice del punto clickeado
+            var obraId = obraIds[pointIndex];  // Obtener el id de la obra correspondiente
+            window.location.href = "{% url 'ver_resumen_obra' 0 %}".replace('0', obraId);
         });
-
-        yBase += certificado.monto;  // Actualizar la base para la siguiente parte de la barra
-    });
-});
-
-var layoutCertificados = {
-    barmode: 'stack',
-    xaxis: { title: 'Proyectos' },
-    yaxis: {
-        title: 'Monto Total',
-        dtick: 100000,
-        range: [0, Math.max(...Object.values(graphDataCertificadosPendientes.certificados_proyecto).flat().map(cert => cert.monto)) * 1.1]  // Asegura que el eje Y comience en 0 y tenga un poco de espacio por encima del valor máximo
-    },
-    autosize: true,
-    margin: {
-        l: 50,
-        r: 50,
-        t: 50,
-        b: 50,
-        pad: 4
-    },
-    plot_bgcolor: 'white',
-    paper_bgcolor: 'white',
-    responsive: true,
-    hovermode: 'closest',
-    showlegend: false
-};
-
-Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertificados).then(function(gd) {
-    gd.on('plotly_click', function(data){
-        var point = data.points[0];
-        console.log(point.customdata)
-        var certificadoId = point.customdata;
-        window.location.href = '/ver_certificado_gerente/' + certificadoId;
-    });
-});
-
-
-
-
-
-
-    // Datos para el gráfico de Estado de Ingenieros
-    var graphDataEstadoIngenieros = JSON.parse('{{ graph_data_estado_ingenieros|escapejs }}');
-
-    var trace2 = {
-        x: graphDataEstadoIngenieros.nombres,
-        y: graphDataEstadoIngenieros.obras_ejecucion,
-        name: 'Obras en ejecución',
-        type: 'bar'
-    };
-
-    var trace3 = {
-        x: graphDataEstadoIngenieros.nombres,
-        y: graphDataEstadoIngenieros.presupuestos_elaboracion,
-        name: 'Presupuestos en elaboración',
-        type: 'bar'
-    };
-
-    var dataIngenieros = [trace2, trace3];
-
-    var layoutIngenieros = {
-        barmode: 'stack',
-        xaxis: { title: 'Ingenieros' },
-        yaxis: {
-            title: 'Cantidad',
-            dtick: 1,
-            range: [0, Math.max(...graphDataEstadoIngenieros.obras_ejecucion, ...graphDataEstadoIngenieros.presupuestos_elaboracion) * 1.1]  // Asegura que el eje Y comience en 0 y tenga un poco de espacio por encima del valor máximo
-        },
-        autosize: true,
-        margin: {
-            l: 50,
-            r: 50,
-            t: 50,
-            b: 50,
-            pad: 4
-        },
-        legend: {
-            orientation: 'h',
-            y: 1.1,
-            x: 0.5,
-            xanchor: 'center',
-            yanchor: 'bottom'
-        },
-        responsive: true
-    };
-
-    Plotly.newPlot('grafico-estado-ingenieros', dataIngenieros, layoutIngenieros);
-
+    }
+    // Inicializar el gráfico con todos los datos
+    plotearProgreso();
 });
 </script>
 {% endblock %}
-

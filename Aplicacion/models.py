@@ -345,3 +345,209 @@ class MaterialPedidoCompra(models.Model):
 
     def str(self):
         return f'{self.material} - {self.pedido_compra}'
+
+
+
+class DimMaterial(models.Model):
+    material_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    marca_id = models.IntegerField()
+    medida_id = models.IntegerField()
+    minimo = models.IntegerField()
+    unidades_stock = models.IntegerField()
+    fotografia = models.CharField(max_length=255)
+    id_proveedor_id = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'dim_material'
+
+
+class DimCliente(models.Model):
+    cliente_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    ruc = models.CharField(max_length=50)
+    email = models.CharField(max_length=100)
+    ciudad_id = models.IntegerField()
+    direccion = models.CharField(max_length=255)
+
+    class Meta:
+        managed = False
+        db_table = 'dim_cliente'
+
+
+class DimCiudad(models.Model):
+    ciudad_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'dim_ciudad'
+
+
+class DimUsuario(models.Model):
+    usuario_id = models.AutoField(primary_key=True)
+    username = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    email = models.CharField(max_length=100)
+    is_staff = models.BooleanField()
+    is_active = models.BooleanField()
+    date_joined = models.DateField()
+
+    class Meta:
+        managed = False
+        db_table = 'dim_usuario'
+
+
+class DimProveedor(models.Model):
+    proveedor_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    ruc = models.CharField(max_length=50)
+    email = models.CharField(max_length=100)
+    ciudad_id = models.IntegerField()
+    direccion = models.CharField(max_length=255)
+    pagina_web = models.CharField(max_length=255)
+    observaciones = models.TextField()
+    telefono = models.CharField(max_length=20)
+
+    class Meta:
+        managed = False
+        db_table = 'dim_proveedor'
+
+
+class DimProyecto(models.Model):
+    proyecto_id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100)
+    cliente_id = models.IntegerField()
+    ciudad_id = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'dim_proyecto'
+
+
+
+class HechoCertificado(models.Model):
+    id = models.AutoField(primary_key=True)
+    ingeniero_id = models.IntegerField()
+    presupuesto_id = models.IntegerField()
+    estado = models.CharField(max_length=50)
+    fecha_creacion = models.DateField()
+    fecha_envio = models.DateField()
+    fecha_pago = models.DateField()
+    iva = models.DecimalField(max_digits=10, decimal_places=2)
+    monto_total = models.DecimalField(max_digits=10, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        managed = False
+        db_table = 'hecho_certificado'
+
+
+class HechoMaterialPedido(models.Model):
+    id = models.AutoField(primary_key=True)
+    pedido_id = models.IntegerField()
+    material_id = models.IntegerField()
+    cantidad = models.IntegerField()
+    fecha_solicitud = models.DateField()
+    fecha_entrega = models.DateField()
+    estado = models.CharField(max_length=50)
+
+    class Meta:
+        managed = False
+        db_table = 'hecho_materialpedido'
+
+
+class HechoDevolucion(models.Model):
+    id = models.AutoField(primary_key=True)
+    ingeniero_id = models.IntegerField()
+    obra_id = models.IntegerField()
+    pedido_id = models.IntegerField()
+    fecha_solicitud = models.DateField()
+    fecha_devolucion = models.DateField()
+    observaciones = models.TextField()
+    estado = models.CharField(max_length=50)
+
+    class Meta:
+        managed = False
+        db_table = 'hecho_devolucion'
+
+
+class HechoPedido(models.Model):
+    id = models.AutoField(primary_key=True)
+    obra_id = models.IntegerField()
+    solicitante_id = models.IntegerField()
+    fecha_solicitud = models.DateField()
+    fecha_entrega = models.DateField()
+    estado = models.CharField(max_length=50)
+
+    class Meta:
+        managed = False
+        db_table = 'hecho_pedido'
+
+
+class HechoPresupuesto(models.Model):
+    id = models.AutoField(primary_key=True)
+    monto_total = models.DecimalField(max_digits=10, decimal_places=2)
+    estado = models.CharField(max_length=50)
+    encargado_id = models.IntegerField()
+    proyecto_id = models.IntegerField()
+    anticipo = models.BooleanField()
+    monto_anticipo = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_pago_anticipo = models.DateField()
+    comprobante_anticipo = models.CharField(max_length=255)
+    iva = models.DecimalField(max_digits=10, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        managed = False
+        db_table = 'hecho_presupuesto'
+
+
+class HechoEstadoIngeniero(models.Model):
+    ingeniero_id = models.IntegerField()
+    nombre_ingeniero = models.CharField(max_length=100)
+    cantidad_obras_ejecucion = models.IntegerField()
+    cantidad_presupuestos_elaboracion = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'hecho_estado_ingeniero'
+
+
+class HechoMaterialPorObra(models.Model):
+    id = models.AutoField(primary_key=True)
+    obra_id = models.IntegerField()
+    material_id = models.IntegerField()
+    cantidad_total = models.IntegerField(default=0)
+    obra_nombre = models.CharField(max_length=255)
+    material_nombre = models.CharField(max_length=255)
+
+    class Meta:
+        managed = False
+        db_table = 'hechomaterialporobra'
+
+
+class HechoCronograma(models.Model):
+    cronograma_id = models.IntegerField()
+    detalle_id = models.IntegerField()
+    fecha_programada = models.DateField(null=True, blank=True)
+    fecha_culminacion = models.DateField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'hechocronograma'
+
+
+class HechoObra(models.Model):
+    id = models.AutoField(primary_key=True)
+    id_obra = models.IntegerField()
+    id_encargado = models.IntegerField(null=True)
+    estado = models.CharField(max_length=2)
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
+    plazo = models.IntegerField()
+    class Meta:
+        managed = False
+        db_table = 'datamart.hecho_obra'
