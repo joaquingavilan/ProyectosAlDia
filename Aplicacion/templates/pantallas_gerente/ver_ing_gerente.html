@@ -1,0 +1,540 @@
+{% extends 'base_gerente.html' %}
+
+{% block title %}Ver Ingeniero{% endblock %}
+
+{% block content %}
+<div class="page-title">
+    <div class="title_left">
+        <h3>Proyectos al día</h3>
+    </div>
+</div>
+
+<div class="clearfix"></div>
+<div class="row">
+    <div class="col-md-4">
+        {% if ingeniero_seleccionado %}
+            <script>
+                var ingeniero_id = {{ ingeniero_seleccionado.id }};
+            </script>
+        {% else %}
+            <script>
+                var ingeniero_id = null;
+            </script>
+        {% endif %}
+
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Seleccionar Ingeniero</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div class="row">
+                    <div class="col-md-4">
+                        <select id="filtro-ingeniero" class="form-control">
+                            <option value="">Seleccione Ingeniero</option>
+                            {% for ingeniero in ingenieros %}
+                            <option value="{{ ingeniero.id }}" {% if ingeniero_seleccionado and ingeniero.id == ingeniero_seleccionado.id %}selected{% endif %}>{{ ingeniero.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="row">
+    {% block grafico_4 %}
+        <div class="col-md-4 col-sm-4">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Progreso de Obras y Certificados</h2>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <div id="plotly-graph-div-progreso"></div>
+                </div>
+            </div>
+        </div>
+        {% endblock %}
+
+{% block grafico_5 %}
+    <div class="col-md-4 col-sm-4">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Finalización de Actividades y Obras</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div id="grafico-precision-cumplimiento" style="display: flex; justify-content: space-around;">
+                    <div id="grafico-precision-cronograma"></div>
+                    <div id="grafico-cumplimiento-fecha-fin"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+
+
+
+    {% block grafico_3 %}
+    <div class="col-md-4 col-sm-4">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Distribución de trabajos a lo largo del tiempo</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div id="contenido-certificados-pendientes" class="x_content" style="min-height: 450px; height: 450px; width: 100%;">
+                <div id="plotly-graph-div-certificados"></div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+</div>
+
+<div class="row">
+    {% block grafico_1 %}
+    <div class="col-md-4 col-sm-4">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Gestión de Obras y Presupuestos {% if ingeniero_seleccionado %} para {{ ingeniero_seleccionado.get_full_name }}{% endif %}</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div id="contenido-gestión-obras-presupuestos">
+                    <!-- Aquí se cargarán las tablas y gráficos -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block grafico_2 %}
+    <div class="col-md-4 col-sm-4">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Gestión de Pedidos y Devoluciones</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <div id="contenedor-filtros-tabla" {% if not ingeniero_seleccionado %}style="display:none;"{% endif %}>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <select id="filtro-tipo-pedido-devolucion" class="form-control">
+                                <option value="">Seleccione Tipo</option>
+                                <option value="Todos">Todos</option>
+                                <option value="Pedido">Pedido</option>
+                                <option value="Devolucion">Devolución</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="filtro-estado-pedido-devolucion" class="form-control" disabled>
+                                <option value="">Todos los estados</option>
+                                <!-- Opciones de estado se llenarán dinámicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button id="borrar-filtros-pedido-devolucion" class="btn btn-secondary mb-3">Limpiar</button>
+                        </div>
+                    </div>
+                    <div id="tabla-gestion-pedidos-devoluciones">
+                        <!-- Aquí se cargará la tabla de pedidos y devoluciones -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block grafico_6 %}
+    <div class="col-md-4 col-sm-4">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Gráfico 6</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <!-- Aquí irá la imagen de la visualización -->
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        var ingeniero_id = {% if ingeniero_seleccionado %}{{ ingeniero_seleccionado.id }}{% else %}null{% endif %};
+
+        $('#filtro-ingeniero').change(function() {
+            ingeniero_id = $(this).val();
+            if (ingeniero_id) {
+                var url = "{% url 'ver_ing_gerente_con_id' 0 %}".replace('0', ingeniero_id);
+                window.location.href = url;
+            } else {
+                $('#bloque-grafico').hide();
+            }
+        });
+
+        function cargarGestionObrasPresupuestos() {
+            var tipo = $('#filtro-tipo').val();
+            var estado = $('#filtro-estado').val();
+            var page = 1;
+
+            if (!ingeniero_id) {
+                $('#bloque-grafico').hide();
+                return;
+            } else {
+                $('#bloque-grafico').show();
+            }
+
+            $.ajax({
+                url: "{% url 'get_gestion_obras_presupuestos' %}",
+                data: {
+                    tipo: tipo,
+                    estado: estado,
+                    page: page,
+                    ingeniero_id: ingeniero_id
+                },
+                success: function(data) {
+                    var gestionHtml = '<div class="row">' +
+                                      '<div class="col-md-4">' +
+                                      '<select id="filtro-tipo" class="form-control">' +
+                                      '<option value="">Seleccione Tipo</option>' +
+                                      '<option value="Todos">Todos</option>' +
+                                      '<option value="Obra">Obra</option>' +
+                                      '<option value="Presupuesto">Presupuesto</option>' +
+                                      '</select>' +
+                                      '</div>' +
+                                      '<div class="col-md-4">' +
+                                      '<select id="filtro-estado" class="form-control"' + (tipo === 'Todos' ? ' disabled' : '') + '>' +
+                                      '<option value="">Todos los estados</option>';
+                    $.each(data.estados, function(index, estado) {
+                        gestionHtml += '<option value="' + estado.valor + '">' + estado.nombre + '</option>';
+                    });
+                    gestionHtml += '</select>' +
+                                   '</div>' +
+                                   '<div class="col-md-2 d-flex align-items-end">' +
+                                   '<button id="borrar-filtros" class="btn btn-secondary mb-3">Limpiar</button>' +
+                                   '</div>' +
+                                   '</div>';
+
+                    if (data.items.length === 0) {
+                        gestionHtml += '<p>No hay Obras ni Presupuestos disponibles</p>';
+                    } else {
+                        gestionHtml += '<table class="table table-striped">';
+                        gestionHtml += '<thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+                        $.each(data.items, function(index, item) {
+                            gestionHtml += '<tr>';
+                            gestionHtml += '<td>' + item.nombre + '</td>';
+                            gestionHtml += '<td>' + item.tipo + '</td>';
+                            gestionHtml += '<td>' + item.estado + '</td>';
+                            gestionHtml += '<td><a href="' + "{% url 'ver_resumen_obra' '0' %}".replace('0', item.id) + '" class="btn btn-info btn-sm">Detalles</a></td>';
+                            gestionHtml += '</tr>';
+                        });
+                        gestionHtml += '</tbody></table>';
+                    }
+                    $('#contenido-gestión-obras-presupuestos').html(gestionHtml);
+
+                    // Reattach event handlers to the new elements
+                    $('#filtro-tipo').val(tipo).change(cargarGestionObrasPresupuestos);
+                    $('#filtro-estado').val(estado).change(cargarGestionObrasPresupuestos);
+                    $('#borrar-filtros').click(function() {
+                        $('#filtro-tipo').val('');
+                        $('#filtro-estado').val('');
+                        cargarGestionObrasPresupuestos();
+                    });
+                }
+            });
+        }
+
+        $('#filtro-tipo').change(function() {
+            var tipo = $(this).val();
+            if (tipo === 'Todos') {
+                $('#filtro-estado').prop('disabled', true).val('');
+            } else {
+                $('#filtro-estado').prop('disabled', false).html('<option value="">Todos los estados</option>');
+                // Obtener estados según tipo seleccionado
+                $.ajax({
+                    url: "{% url 'get_estados_por_tipo' %}",
+                    data: { tipo: tipo },
+                    success: function(data) {
+                        $.each(data.estados, function(index, estado) {
+                            $('#filtro-estado').append('<option value="' + estado.valor + '">' + estado.nombre + '</option>');
+                        });
+                        $('#filtro-estado').val('');
+                    }
+                });
+            }
+            cargarGestionObrasPresupuestos();
+        });
+
+        $('#filtro-estado').change(cargarGestionObrasPresupuestos);
+        $('#borrar-filtros').click(function() {
+            $('#filtro-tipo').val('');
+            $('#filtro-estado').val('');
+            cargarGestionObrasPresupuestos();
+        });
+
+        if (ingeniero_id) {
+            cargarGestionObrasPresupuestos(); // Cargar obras y presupuestos al cargar la página
+        } else {
+            $('#bloque-grafico').hide();
+        }
+function mostrarOcultarContenedor() {
+        if (ingeniero_id) {
+            $('#contenedor-filtros-tabla').show();
+        } else {
+            $('#contenedor-filtros-tabla').hide();
+        }
+    }
+
+    function cargarGestionPedidosDevoluciones() {
+        var tipo = $('#filtro-tipo-pedido-devolucion').val();
+        var estado = $('#filtro-estado-pedido-devolucion').val();
+        var page = 1;
+
+        if (!ingeniero_id) {
+            return;
+        }
+
+        $.ajax({
+            url: "{% url 'get_gestion_pedidos_devoluciones' %}",
+            data: {
+                tipo: tipo,
+                estado: estado,
+                page: page,
+                ingeniero_id: ingeniero_id
+            },
+            success: function(data) {
+                var gestionHtml = '';
+
+                if (data.items.length === 0) {
+                    gestionHtml += '<p>No hay Pedidos ni Devoluciones disponibles</p>';
+                } else {
+                    gestionHtml += '<table class="table table-striped">';
+                    gestionHtml += '<thead><tr><th>Tipo</th><th>Obra</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+                    $.each(data.items, function(index, item) {
+                        gestionHtml += '<tr>';
+                        gestionHtml += '<td>' + item.tipo + '</td>';
+                        gestionHtml += '<td>' + item.obra + '</td>';
+                        gestionHtml += '<td>' + item.estado + '</td>';
+                        gestionHtml += '<td><a href="' + "{% url 'ver_pedido_gerente' '0' %}".replace('0', item.id) + '" class="btn btn-info btn-sm">Detalles</a></td>';
+                        gestionHtml += '</tr>';
+                    });
+                    gestionHtml += '</tbody></table>';
+                }
+                $('#tabla-gestion-pedidos-devoluciones').html(gestionHtml);
+            }
+        });
+    }
+
+    $('#filtro-tipo-pedido-devolucion').change(function() {
+        var tipo = $(this).val();
+        if (tipo === 'Todos') {
+            $('#filtro-estado-pedido-devolucion').prop('disabled', true).val('');
+        } else {
+            $('#filtro-estado-pedido-devolucion').prop('disabled', false).html('<option value="">Todos los estados</option>');
+            // Obtener estados según tipo seleccionado
+            $.ajax({
+                url: "{% url 'get_estados_por_tipo_pedido_devolucion' %}",
+                data: { tipo: tipo },
+                success: function(data) {
+                    $.each(data.estados, function(index, estado) {
+                        $('#filtro-estado-pedido-devolucion').append('<option value="' + estado.valor + '">' + estado.nombre + '</option>');
+                    });
+                    $('#filtro-estado-pedido-devolucion').val('');
+                }
+            });
+        }
+        cargarGestionPedidosDevoluciones();
+    });
+
+    $('#filtro-estado-pedido-devolucion').change(cargarGestionPedidosDevoluciones);
+    $('#borrar-filtros-pedido-devolucion').click(function() {
+        $('#filtro-tipo-pedido-devolucion').val('');
+        $('#filtro-estado-pedido-devolucion').val('');
+        cargarGestionPedidosDevoluciones();
+    });
+
+    mostrarOcultarContenedor();
+    cargarGestionPedidosDevoluciones();
+
+    var obras = JSON.parse('{{ obras_json|escapejs }}');
+    var presupuestos = JSON.parse('{{ presupuestos_json|escapejs }}');
+    var ingenieroId = {{ ingeniero_seleccionado.id|default:"null" }};
+
+    console.log('Obras:', obras);
+    console.log('Presupuestos:', presupuestos);
+
+    function plotearTorta() {
+        // Generar el gráfico con todos los datos disponibles
+        var data = [{
+            values: [obras.length, presupuestos.length],
+            labels: ['Obras', 'Presupuestos'],
+            type: 'pie'
+        }];
+
+        var layout = {
+            height: 400,
+            width: 500
+        };
+
+        Plotly.newPlot('plotly-graph-div-certificados', data, layout);
+    }
+
+
+
+    var cronogramaData = JSON.parse('{{ cronograma_data|escapejs }}');
+    var certificadoData = JSON.parse('{{ certificado_data|escapejs }}');
+
+function plotearProgreso() {
+        var obrasNombres = cronogramaData.map(d => d.obra);
+        var porcentajeActividades = cronogramaData.map(d => d.porcentaje_actividades);
+        var porcentajeMontos = certificadoData.map(d => d.porcentaje_monto);
+        var obraIds = cronogramaData.map(d => d.obra_id);  // Suponiendo que tienes el id de la obra en cronogramaData
+
+        var data = [
+            {
+                x: porcentajeActividades,
+                y: obrasNombres,
+                type: 'bar',
+                orientation: 'h',
+                name: 'Actividades completadas',
+                text: porcentajeActividades.map(value => Math.round(value).toString() + '%'),
+                textposition: 'auto',
+                hoverinfo: 'none'  // Desactivar información emergente
+            },
+            {
+                x: porcentajeMontos,
+                y: obrasNombres,
+                type: 'bar',
+                orientation: 'h',
+                name: 'Monto cobrado',
+                text: porcentajeMontos.map(value => Math.round(value).toString() + '%'),
+                textposition: 'auto',
+                hoverinfo: 'none'  // Desactivar información emergente
+            }
+        ];
+
+        var layout = {
+            barmode: 'group',
+            yaxis: { tickangle: -45 },
+            margin: {
+                l: 160,  // Aumentar el margen izquierdo para dar más espacio a las etiquetas
+                r: 50,
+                t: 50,
+                b: 50
+            },
+            legend: {
+                orientation: 'h',
+                y: 1.1,
+                x: 0.5,
+                xanchor: 'center',
+                yanchor: 'bottom'
+            },
+            height: 400,
+            width: 500
+        };
+
+        Plotly.newPlot('plotly-graph-div-progreso', data, layout);
+        // Evento de clic en las barras
+        var plotDiv = document.getElementById('plotly-graph-div-progreso');
+        plotDiv.on('plotly_click', function(data){
+            var pointIndex = data.points[0].pointIndex;  // Obtener el índice del punto clickeado
+            var obraId = obraIds[pointIndex];  // Obtener el id de la obra correspondiente
+            window.location.href = "{% url 'ver_resumen_obra' 0 %}".replace('0', obraId);
+        });
+    }
+    // Inicializar el gráfico con todos los datos
+    plotearTorta();
+    plotearProgreso();
+
+
+    var precisionCronogramaData = JSON.parse('{{ precision_cronograma_data|escapejs }}');
+    var cumplimientoFechaFinData = JSON.parse('{{ cumplimiento_fecha_fin_data|escapejs }}');
+
+    // Datos para el gráfico de precisión de cronograma
+    var dataPrecisionCronograma = {
+        values: [precisionCronogramaData.antes, precisionCronogramaData.en_fecha, precisionCronogramaData.despues],
+        labels: ['Antes de la Fecha Programada', 'En Fecha Programada', 'Después de Fecha Programada'],
+        type: 'pie',
+        name: 'Precisión de Cronograma',
+        marker: {
+            colors: ['#1f77b4', '#ff7f0e', '#2ca02c']
+        },
+        domain: {
+            row: 0,
+            column: 0,
+            x: [0, 0.45],
+            y: [0, 1]
+        },
+        textinfo: 'percent',
+        insidetextorientation: 'horizontal'
+    };
+
+    // Datos para el gráfico de cumplimiento de fechas de fin de obras
+    var dataCumplimientoFechaFin = {
+        values: [cumplimientoFechaFinData.antes, cumplimientoFechaFinData.en_fecha, cumplimientoFechaFinData.despues],
+        labels: ['Antes de la Fecha Programada', 'En Fecha Programada', 'Después de Fecha Programada'],
+        type: 'pie',
+        name: 'Cumplimiento de Fechas de Fin',
+        marker: {
+            colors: ['#1f77b4', '#ff7f0e', '#2ca02c']
+        },
+        domain: {
+            row: 0,
+            column: 1,
+            x: [0.55, 1],
+            y: [0, 1]
+        },
+        textinfo: 'percent',
+        insidetextorientation: 'horizontal'
+    };
+
+    var data = [dataPrecisionCronograma, dataCumplimientoFechaFin];
+
+    var layout = {
+        height: 400,
+        width: 500,
+        grid: {rows: 1, columns: 2},
+        legend: {
+            orientation: 'h',
+            y: -0.3,
+            x: 0.5,
+            xanchor: 'center',
+            yanchor: 'top'
+        },
+        annotations: [
+            {
+                text: "Actividades",
+                x: 0.235,
+                y: 1.35,
+                showarrow: false,
+                font: {
+                    size: 14
+                },
+                xanchor: 'center',
+                yanchor: 'top'
+            },
+            {
+                text: "Obras",
+                x: 0.785,
+                y: 1.35,
+                showarrow: false,
+                font: {
+                    size: 14
+                },
+                xanchor: 'center',
+                yanchor: 'top'
+            }
+        ]
+    };
+
+    Plotly.newPlot('grafico-precision-cumplimiento', data, layout);
+    });
+</script>
+{% endblock %}

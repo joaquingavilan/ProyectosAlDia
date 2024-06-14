@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>{% block title %}Proyectos al Dia{% endblock %}</title>
+    <title>{% block title %}Proyectos al Día{% endblock %}</title>
 
     <!-- Bootstrap CSS -->
     <link href="{% static 'vendors/bootstrap/dist/css/bootstrap.min.css' %}" rel="stylesheet">
@@ -19,6 +19,13 @@
     <style>
         .ui-autocomplete {
             z-index: 2000 !important; /* Asegúrate de que esté por encima del z-index de cualquier otro componente */
+        }
+        /* Estilo personalizado para el campo de entrada de cantidad */
+        .cantidad-input {
+            min-width: 70px;  /* Ajusta el valor según sea necesario */
+            text-align: center;
+            padding: 5px;  /* Ajusta el padding según sea necesario */
+            font-size: 16px;  /* Ajusta el tamaño de la fuente según sea necesario */
         }
     </style>
     {% endblock %}
@@ -39,7 +46,7 @@
                         <i class="fa fa-line-chart" style="color: #5A738E;"></i> Proyectos Al Día
                     </h1>
                 </div>
-                {% if not login_page %}
+                {% if user.is_authenticated %}
                 <div style="margin-right: 20px;">
                     <a href="{% url 'salir' %}" style="text-decoration: none; color: #5A738E; font-size: 20px;">
                         <i class="fa fa-sign-out"></i> Cerrar Sesión
@@ -81,6 +88,9 @@
 
     <!-- Custom Theme Scripts -->
     <script src="{% static 'build/js/custom.min.js' %}"></script>
+
+    <!-- Plotly JS -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 import os
+import sys
 from pathlib import Path
 from django.utils.translation import gettext_lazy as _
 import dj_database_url
@@ -27,8 +28,8 @@ SECRET_KEY = 'django-insecure-sr)oknam1m)$iljw88j-*8xu^8u(hur#obu$_da#obt(gvbxpj
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['spirited-adaptation-production.up.railway.app','127.0.0.1']
-CSRF_TRUSTED_ORIGINS = ['https://spirited-adaptation-production.up.railway.app']
+ALLOWED_HOSTS = ['spirited-adaptation-production.up.railway.app',
+                 '127.0.0.1']
 
 
 # Usamos la clase User para la autenticación de Usuarios
@@ -70,7 +71,7 @@ ROOT_URLCONF = 'ProyectosAldIA.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'Aplicacion/templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -90,7 +91,14 @@ WSGI_APPLICATION = 'ProyectosAldIA.wsgi.application'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL', 'postgresql://postgres:yjXejGOAiTevCCAEsoiukwjVADUNSzrh@monorail.proxy.rlwy.net:30962/railway'))
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'local_railway',
+        'USER': 'postgres',
+        'PASSWORD': 'casiopea678',
+        'HOST': 'localhost',
+        'PORT': '5433',
+    }
 }
 
 # Password validation
@@ -140,17 +148,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'Aplicacion/static'),
 )
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
-#STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-try:
-    from .local_settings import *
-except ImportError:
-    pass
+if 'test' in sys.argv or 'test_coverage' in sys.argv:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'

@@ -2,24 +2,15 @@
 
 {% block content %}
 <h1 class="display-4 text-center" style="margin-bottom: 0.5rem;">Solicitar Compra de Materiales</h1>
-<div class="row" style="display: flex; flex-direction: column; align-items: center;">
-    <div class="col-12"></div>
-</div>
-<div id="search-results" style="display:none; width: 100%; max-width: 400px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); padding: 10px; position: absolute; z-index: 1;">
-</div>
 <form id="formPedidoMateriales" method="POST" action="{% url 'confirmar_pedido_compra' %}" class="mt-2">
-    {% if page_obj and page_obj.object_list %}
-        <div class="d-flex justify-content-end">
-            <div class="ml-auto">
-                <button id="solicitarMateriales" class="btn btn-primary">Solicitar Materiales</button>
-            </div>
-        </div>
-    {% endif %}
     {% csrf_token %}
-
+    <div class="d-flex justify-content-end">
+        <div class="ml-auto">
+            <button id="solicitarMateriales" class="btn btn-primary">Solicitar Materiales</button>
+        </div>
+    </div>
     <div class="row">
-        {% if page_obj and page_obj.object_list %}
-            {% for item in page_obj %}
+        {% for item in page_obj %}
             <div class="col-xl-2 col-lg-2 col-md-2 col-sm-6 mb-4">
                 <div id="material-card-{{ item.material.id }}" class="card h-100 d-flex flex-column">
                     <img src="/{{ item.material.fotografia }}" class="img-fluid" alt="{{ item.material.nombre }}" style="width: auto; height: 150px; object-fit: cover;">
@@ -33,27 +24,26 @@
                             {% else %}
                                 <p class="text-center">Stock: {{ item.material.unidades_stock }}</p>
                             {% endif %}
+                            <p class="text-center">Pedido: {{ item.cantidad_pedido_pendiente }}</p>
+                            {% if cantidad_pedido_compra_pendiente > 0 %}
+                                <p class="text-center">Pedido compra: {{ item.cantidad_pedido_compra_pendiente }}</p>
+                            {% endif %}
+                            <p class="text-danger text-center">Cantidad faltante: {{ item.cantidad_faltante }}</p>
                         </div>
                         <input type="hidden" id="minimo_{{ item.material.id }}" value="{{ item.material.minimo }}">
                         <input type="hidden" id="cantidad_faltante_{{ item.material.id }}" value="{{ item.cantidad_faltante }}">
                         <div class="d-flex justify-content-center">
                             <button type="button" class="btn btn-info decrement-btn" data-material-id="{{ item.material.id }}">-</button>
-                            <input type="number" id="cantidad_{{ item.material.id }}" name="cantidad_{{ item.material.id }}" value="{{ item.cantidad_faltante }}" readonly class="form-control mx-2">
+                            <input type="number" id="cantidad_{{ item.material.id }}" name="cantidad_{{ item.material.id }}" value="{{ item.cantidad_faltante }}" readonly class="form-control cantidad-input mx-2">
                             <button type="button" class="btn btn-success increment-btn" data-material-id="{{ item.material.id }}">+</button>
                         </div>
                     </div>
                 </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <div class="alert alert-light alert-dismissible w-100">
-                No existen materiales faltantes para realizar pedido de compra.
-            </div>
-            <a href="{% url 'ver_pedidos_compras' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
-        {% endif %}
+        {% endfor %}
     </div>
 
-    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    {% if page_obj.paginator.num_pages > 1 %}
     <nav aria-label="Page navigation" class="mt-4">
       <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
@@ -86,89 +76,34 @@
     {% endif %}
 </form>
 <br>
-{% if page_obj and page_obj.object_list %}
-    <a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
-{% endif %}
-
+<a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let carrito = {};
-
-    // Inicializar el carrito con los valores de cantidad_faltante de cada material
-    {% for item in page_obj %}
-        carrito['{{ item.material.id }}'] = {{ item.cantidad_faltante }};
-    {% endfor %}
-
-    document.getElementById('solicitarMateriales').addEventListener('click', function(event) {
-        const form = document.getElementById('formPedidoMateriales');
-
-        // Elimina inputs ocultos previos (si los hubiera)
-        const inputsOcultos = document.querySelectorAll('.inputOculto');
-        inputsOcultos.forEach(input => input.remove());
-
-        for (let materialId in carrito) {
-            if (carrito[materialId] > 0) {
-                const inputOculto = document.createElement('input');
-                inputOculto.type = 'hidden';
-                inputOculto.name = 'material_' + materialId;
-                inputOculto.value = carrito[materialId];
-                inputOculto.classList.add('inputOculto');
-                form.appendChild(inputOculto);
-            }
-        }
-        // Verificar si hay materiales en el carrito
-        if (!Object.values(carrito).some(value => value > 0)) {
-            alert("Debes seleccionar al menos un material.");
-            event.preventDefault();  // Prevenir el envío del formulario
-        } else {
-            form.submit();  // Envía el formulario
-        }
-    });
-
-    // Obtenemos todos los botones de incremento y decremento
-    var incrementButtons = document.querySelectorAll(".increment-btn");
-    var decrementButtons = document.querySelectorAll(".decrement-btn");
-
     // Iteramos sobre los botones de incremento y agregamos el evento click
-    incrementButtons.forEach(function(button) {
-        button.addEventListener("click", function(event) {
-            var materialId = button.getAttribute("data-material-id");
-            var input = document.getElementById("cantidad_" + materialId);
-            var minimo = parseInt(document.getElementById("minimo_" + materialId).value);
-            var cantidadFaltante = parseInt(document.getElementById("cantidad_faltante_" + materialId).value);
-            var cantidad = input.valueAsNumber;
-
-            cantidad += minimo;
-            input.value = cantidad;
-            // Actualizar el carrito
-            carrito[materialId] = cantidad;
-            event.preventDefault();
-        });
+document.querySelectorAll(".increment-btn").forEach(function(button) {
+    button.addEventListener("click", function(event) {
+        var materialId = button.getAttribute("data-material-id");
+        var input = document.getElementById("cantidad_" + materialId);
+        var cantidad = input.valueAsNumber;
+        cantidad += 1; // Aumentar en una unidad
+        input.value = cantidad;
+        event.preventDefault();
     });
+});
 
-    // Iteramos sobre los botones de decremento y agregamos el evento click
-    decrementButtons.forEach(function(button) {
-        button.addEventListener("click", function(event) {
-            var materialId = button.getAttribute("data-material-id");
-            var input = document.getElementById("cantidad_" + materialId);
-            var minimo = parseInt(document.getElementById("minimo_" + materialId).value);
-            var cantidadFaltante = parseInt(document.getElementById("cantidad_faltante_" + materialId).value);
-            var cantidad = input.valueAsNumber;
-
-            cantidad -= minimo;
-
-            if (cantidad < cantidadFaltante) {
-                cantidad = cantidadFaltante;
-            }
-
+// Iteramos sobre los botones de decremento y agregamos el evento click
+document.querySelectorAll(".decrement-btn").forEach(function(button) {
+    button.addEventListener("click", function(event) {
+        var materialId = button.getAttribute("data-material-id");
+        var input = document.getElementById("cantidad_" + materialId);
+        var cantidad = input.valueAsNumber;
+        if (cantidad > 0) { // Prevenir que la cantidad sea menor que 0
+            cantidad -= 1; // Disminuir en una unidad
             input.value = cantidad;
-            // Actualizar el carrito
-            carrito[materialId] = cantidad;
-            event.preventDefault();
-        });
+        }
+        event.preventDefault();
     });
 });
 </script>

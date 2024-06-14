@@ -25,13 +25,16 @@
 
     <div class="x_content">
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                 {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
         {% endfor %}
 
         <div class="row mb-4">
-            <div class="col-md-3">
+            <div class="col-md-3" style="position: relative;">
                 <div class="input-group">
                     <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre">
                     <div class="input-group-append">
@@ -39,10 +42,12 @@
                     </div>
                     <input type="hidden" id="materialUrl" value="{% url 'ver_material' 999999 %}">
                 </div>
+                <div id="resultadosBusqueda" style="position: absolute; width: 100%; z-index: 1000; background-color: white; border: 1px solid #ddd;"></div>
             </div>
             <div class="col-md-3">
                 <select id="filtroCampo" class="custom-select">
                     <option value="marca">Marca</option>
+                    <option value="proveedor">Proveedor</option>
                     <option value="unidadesStock">Unidades en stock</option>
                 </select>
             </div>
@@ -120,10 +125,9 @@
 </div>
 {% endblock %}
 
-
 {% block extra_js %}
 <script>
-  //buscador
+    // Buscador
     document.getElementById('buscador').addEventListener('input', function() {
         let query = this.value;
         let resultadosDiv = document.getElementById('resultadosBusqueda');
@@ -145,79 +149,79 @@
             resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
         }
     });
-    //funcion de inicializacion
+
+    // Función de inicialización
     function inicializarFiltroValor() {
-    let campoSeleccionado = document.getElementById('filtroCampo').value;
-    let dropdownValor = document.getElementById('filtroValor');
+        let campoSeleccionado = document.getElementById('filtroCampo').value;
+        let dropdownValor = document.getElementById('filtroValor');
 
-    // Limpiar opciones previas
-    dropdownValor.innerHTML = '';
+        // Limpiar opciones previas
+        dropdownValor.innerHTML = '';
 
-    let url = '';  // URL de donde obtener los datos
+        let url = '';  // URL de donde obtener los datos
 
-    switch (campoSeleccionado) {
-        case 'marca':
-            url = '/obtener_materiales_marca/';
-            break;
-        case 'proveedor':
-            url = '/obtener_materiales_proveedor/';
-            break;
-        case 'unidadesStock':
-            url = '/obtener_materiales_stock/';
-            break;
-    }
+        switch (campoSeleccionado) {
+            case 'marca':
+                url = '/obtener_materiales_marca/';
+                break;
+            case 'proveedor':
+                url = '/obtener_materiales_proveedor/';
+                break;
+            case 'unidadesStock':
+                url = '/obtener_materiales_stock/';
+                break;
+        }
 
-    // Si hay una URL válida, hacer la solicitud AJAX
-    if (url) {
-        fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            data.forEach(item => {
-                let option = document.createElement('option');
-                option.value = item;
-                option.text = item;
-                dropdownValor.appendChild(option);
+        // Si hay una URL válida, hacer la solicitud AJAX
+        if (url) {
+            fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(item => {
+                    let option = document.createElement('option');
+                    option.value = item;
+                    option.text = item;
+                    dropdownValor.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error al obtener datos:', error);
             });
-        })
-        .catch(error => {
-            console.error('Error al obtener datos:', error);
-        });
+        }
     }
-}
-document.addEventListener('DOMContentLoaded', (event) => {
-    inicializarFiltroValor();
-});
 
-    // primer dropdown de filtro
+    document.addEventListener('DOMContentLoaded', (event) => {
+        inicializarFiltroValor();
+    });
+
+    // Primer dropdown de filtro
     document.getElementById('filtroCampo').addEventListener('change', function() {
-    inicializarFiltroValor();
-  });
+        inicializarFiltroValor();
+    });
 
+    // Código para mandar a la vista el valor del segundo dropdown
+    function filtrarMateriales() {
+        let campoSeleccionado = document.getElementById('filtroCampo').value;
+        let valorSeleccionado = document.getElementById('filtroValor').value;
+        let url = '';
 
-   // código para mandar a la vista el valor del segundo dropdown
-function filtrarMateriales() {
-    let campoSeleccionado = document.getElementById('filtroCampo').value;
-    let valorSeleccionado = document.getElementById('filtroValor').value;
-    let url = '';
+        switch (campoSeleccionado) {
+            case 'marca':
+                url = `/ver_materiales_marca/${valorSeleccionado}/`;
+                break;
+            case 'proveedor':
+                url = `/ver_materiales_proveedor/${valorSeleccionado}/`;
+                break;
+            case 'unidadesStock':
+                url = `/ver_materiales_stock/${valorSeleccionado}/`;
+                break;
+        }
 
-    switch (campoSeleccionado) {
-        case 'marca':
-            url = `/ver_materiales_marca/${valorSeleccionado}/`;
-            break;
-        case 'proveedor':
-            url = `/ver_materiales_proveedor/${valorSeleccionado}/`;
-            break;
-        case 'unidadesStock':
-            url = `/ver_materiales_stock/${valorSeleccionado}/`;
-            break;
-    }
-
-    if (url) {
-        window.location.href = url;
-    }
+        if (url) {
+            window.location.href = url;
+        }
     }
 
     document.getElementById('filtroValor').addEventListener('change', filtrarMateriales);
-
 </script>
 {% endblock %}
