@@ -1,53 +1,135 @@
 {% extends request.base_template %}
 
 {% block content %}
-    <div style="text-align: center; margin-bottom: 1rem;">
-        <h1 style="display: inline-block; margin: 0;">Pedidos de materiales</h1>
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Pedido de Materiales</h2>
+        <div class="clearfix"></div>
     </div>
 
-
-    {% if pedidos %}
-        <table class="table table-striped table-bordered">
-            <thead>
-                <tr>
-                    <th>ID pedido</th>
-                    <th>Nombre de la obra</th>
-                    <th>Estado del pedido</th>
-                    <th>Fecha de solicitud</th>
-                    <th>Cantidad de materiales</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for pedido in pedidos %}
-                    <tr>
-                        <td>{{ pedido.id }}</td>
-                        <td>{{ pedido.obra.proyecto.nombre }}</td>
-                        {% if pedido.get_estado_display == 'Pendiente' %}
-                            <td class="table-danger">{{pedido.get_estado_display}}</td>
-                        {% else %}
-                            <td>{{pedido.get_estado_display}}</td>
-                        {% endif %}
-                        <td>{{ pedido.fecha_solicitud }}</td>
-                        <td>{{ pedido.materialpedido_set.count }}</td>
-                        {% if pedido.get_estado_display == 'Pendiente' %}
-                            <td>
-                                <a href="{% url 'ver_pedido_dep' pedido.id %}" class="btn btn-danger btn-sm">Ver Pedido</a>
-                            </td>
-                        {% else %}
-                            <td>
-                                <a href="{% url 'ver_pedido_dep' pedido.id %}" class="btn btn-info btn-sm">Ver Pedido</a>
-                            </td>
-                        {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <div class="alert alert-light">
-            No se encontraron pedidos realizados.
+    <div class="x_content">
+        <div class="row mb-4">
+            <h2>Filtrar por:</h2>
+            <div class="col-md-3">
+                <select id="filtroCampo" class="form-control">
+                    <option value="" disabled selected>Seleccione una opción...</option>
+                    <option value="estado" {% if estado_seleccionado %}selected{% endif %}>Estado</option>
+                    <option value="obra" {% if obra_seleccionada %}selected{% endif %}>Obra</option>
+                    <option value="encargado" {% if encargado_seleccionado %}selected{% endif %}>Ingeniero Encargado</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroValor" class="form-control">
+                    <option value="">Seleccione un valor...</option>
+                    {% if estado_seleccionado %}
+                        <option value="P" {% if estado_seleccionado == "P" %}selected{% endif %}>Pendiente</option>
+                        <option value="E" {% if estado_seleccionado == "R" %}selected{% endif %}>Entregado</option>
+                    {% elif obra_seleccionada %}
+                        {% for obra in obras %}
+                            <option value="{{ obra.id }}" {% if obra.id|stringformat:"s" == obra_seleccionada %}selected{% endif %}>{{ obra.proyecto.nombre }}</option>
+                        {% endfor %}
+                    {% elif encargado_seleccionado %}
+                        {% for encargado in encargados %}
+                            <option value="{{ encargado.id }}" {% if encargado.id|stringformat:"s" == encargado_seleccionado %}selected{% endif %}>{{ encargado.get_full_name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'ver_pedidos_dep' %}" class="btn btn-secondary btn-block">Limpiar Filtros</a>
+            </div>
         </div>
-    {% endif %}
+        {% if pedidos %}
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID pedido</th>
+                        <th>Nombre de la obra</th>
+                        <th>Estado del pedido</th>
+                        <th>Fecha de solicitud</th>
+                        <th>Cantidad de materiales</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in pedidos %}
+                        <tr>
+                            <td>{{ pedido.id }}</td>
+                            <td>{{ pedido.obra.proyecto.nombre }}</td>
+                            {% if pedido.get_estado_display == 'Pendiente' %}
+                                <td class="table-danger">{{pedido.get_estado_display}}</td>
+                            {% else %}
+                                <td>{{pedido.get_estado_display}}</td>
+                            {% endif %}
+                            <td>{{ pedido.fecha_solicitud }}</td>
+                            <td>{{ pedido.materialpedido_set.count }}</td>
+                            {% if pedido.get_estado_display == 'Pendiente' %}
+                                <td>
+                                    <a href="{% url 'ver_pedido_dep' pedido.id %}" class="btn btn-danger btn-sm">Ver Pedido</a>
+                                </td>
+                            {% else %}
+                                <td>
+                                    <a href="{% url 'ver_pedido_dep' pedido.id %}" class="btn btn-info btn-sm">Ver Pedido</a>
+                                </td>
+                            {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="alert alert-light">
+                No se encontraron pedidos realizados.
+            </div>
+        {% endif %}
 
-    <a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
+        <a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
+    </div>
+</div>
+{% endblock %}
 
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filtroCampo = document.getElementById('filtroCampo');
+    const filtroValor = document.getElementById('filtroValor');
+
+    filtroCampo.addEventListener('change', function() {
+        const campoSeleccionado = filtroCampo.value;
+        filtroValor.innerHTML = '<option value="">Seleccione un valor...</option>';
+
+        if (campoSeleccionado === 'estado') {
+            filtroValor.innerHTML += `
+                <option value="P">Pendiente</option>
+                <option value="E">Entregado</option>
+            `;
+        } else if (campoSeleccionado === 'obra') {
+            {% for obra in obras %}
+                filtroValor.innerHTML += `
+                    <option value="{{ obra.id }}">{{ obra.proyecto.nombre }}</option>
+                `;
+            {% endfor %}
+        } else if (campoSeleccionado === 'encargado') {
+            {% for encargado in encargados %}
+                filtroValor.innerHTML += `
+                    <option value="{{ encargado.id }}">{{ encargado.get_full_name }}</option>
+                `;
+            {% endfor %}
+        }
+    });
+
+    filtroValor.addEventListener('change', function() {
+        const campoSeleccionado = filtroCampo.value;
+        const valorSeleccionado = filtroValor.value;
+
+        let url = new URL(window.location.href);
+        if (campoSeleccionado === 'estado') {
+            url.searchParams.set('estado', valorSeleccionado);
+        } else if (campoSeleccionado === 'obra') {
+            url.searchParams.set('obra', valorSeleccionado);
+        } else if (campoSeleccionado === 'encargado') {
+            url.searchParams.set('encargado', valorSeleccionado);
+        }
+        window.location.href = url.toString();
+    });
+});
+</script>
 {% endblock %}
