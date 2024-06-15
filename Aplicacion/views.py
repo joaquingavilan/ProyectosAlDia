@@ -4420,18 +4420,39 @@ def ver_devolucion(request, devolucion_id):
     return render(request, template_name, context)
 
 
-
-
-
 def ver_devoluciones(request):
+    estado_seleccionado = request.GET.get('estado')
+    obra_seleccionada = request.GET.get('obra')
+    encargado_seleccionado = request.GET.get('encargado')
+
+    # Inicializar el queryset
     devoluciones = Devolucion.objects.all().annotate(
         is_pending=Case(
             When(estado='P', then=Value(0)),
-            When(estado='D', then=Value(1)),  # Ajusta según los estados que tengas
+            When(estado='D', then=Value(1)),
             When(estado='R', then=Value(2)),
             output_field=IntegerField(),
         )
-    ).order_by('is_pending', '-fecha_solicitud')  # Ordena primero por estado y luego por fecha de devolución
+    )
+
+    # Aplicar filtros
+    if estado_seleccionado:
+        devoluciones = devoluciones.filter(estado=estado_seleccionado)
+    if obra_seleccionada:
+        try:
+            obra_seleccionada = int(obra_seleccionada)
+            devoluciones = devoluciones.filter(obra_id=obra_seleccionada)
+        except ValueError:
+            pass
+    if encargado_seleccionado:
+        try:
+            encargado_seleccionado = int(encargado_seleccionado)
+            devoluciones = devoluciones.filter(obra__encargado_id=encargado_seleccionado)
+        except ValueError:
+            pass
+
+    # Ordenar los resultados
+    devoluciones = devoluciones.order_by('is_pending', '-fecha_solicitud')
 
     # Determinar qué template renderizar en función del rol del usuario
     if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
@@ -4439,11 +4460,19 @@ def ver_devoluciones(request):
     else:
         template_name = 'pantallas_ing/ver_devoluciones.html'
 
+    # Obtener todas las obras y encargados para los filtros
+    obras = Obra.objects.all().values('id', 'proyecto__nombre')
+    encargados = User.objects.filter(groups__name='INGENIERO').values('id', 'first_name', 'last_name')
+
     context = {
-        'devoluciones': devoluciones
+        'devoluciones': devoluciones,
+        'estado_seleccionado': estado_seleccionado,
+        'obra_seleccionada': obra_seleccionada,
+        'encargado_seleccionado': encargado_seleccionado,
+        'obras': list(obras),  # Convertimos a lista de diccionarios
+        'encargados': list(encargados),  # Convertimos a lista de diccionarios
     }
-    print(template_name)
-    print(devoluciones)
+
     return render(request, template_name, context)
 
 def devoluciones_pedidos_pendientes(request):
