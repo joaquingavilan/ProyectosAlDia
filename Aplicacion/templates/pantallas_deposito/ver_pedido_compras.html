@@ -1,68 +1,70 @@
 {% extends request.base_template %}
 
 {% block content %}
-    <div style="text-align: center; margin-bottom: 1rem;">
-        <h1 style="display: inline-block; margin: 0;">Pedido de Compra <strong>#{{ pedido.id }}</strong></h1>
-    </div>
-    <div>
-        <h2>Fecha de solicitud: {{ pedido.fecha_solicitud }}</h2>
-        {% if pedido.estado == 'R' %}
-            <h2>Fecha de Devolución: {{ pedido.fecha_devolucion }}</h2>
-        {% endif %}
-        <h2>Estado: {{ pedido.get_estado_display }}</h2>
-    </div>
+    <div class="x_panel">
+        <div class="x_title">
+            <h1>Pedido de Compra <strong>#{{ pedido.id }}</strong></h1>
+        </div>
+        <div>
+            <h2>Fecha de solicitud: {{ pedido.fecha_solicitud }}</h2>
+            {% if pedido.estado == 'R' %}
+                <h2>Fecha de Devolución: {{ pedido.fecha_devolucion }}</h2>
+            {% endif %}
+            <h2>Estado: {{ pedido.get_estado_display }}</h2>
+        </div>
 
-    <div class="table-responsive">
-        <table class="table table-striped jambo_table bulk_action">
-            <thead>
-                <tr class="headings">
-                    <th class="column-title">Nombre del producto</th>
-                    <th class="column-title">Marca</th>
-                    <th class="column-title">Unidad de medida</th>
-                    <th class="column-title">Cantidad Solicitada</th>
-                    <th class="column-title">Comprobante</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for material_pedido in materiales %}
-                    <tr class="even pointer">
-                        <td>{{ material_pedido.material.nombre }}</td>
-                        <td>{{ material_pedido.material.marca }}</td>
-                        <td>{{ material_pedido.material.medida }}</td>
-                        <td>{{ material_pedido.cantidad }}</td>
-                        <td>
-                        {% if pedido.comprobante %}
-                            <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#modalComprobante{{ material_pedido.id }}">
-                                Ver
-                            </button>
-                            <!-- Modal -->
-                            <div class="modal fade" id="modalComprobante{{ material_pedido.id }}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="exampleModalLabel">Comprobante de {{ material_pedido.material.nombre }}</h5>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <img src="{{ material_pedido.comprobante.url }}" class="img-fluid" alt="Comprobante de {{ material_pedido.material.nombre }}">
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+        <div class="table-responsive">
+            <table class="table table-striped jambo_table bulk_action">
+                <thead>
+                    <tr class="headings">
+                        <th class="column-title">Nombre del producto</th>
+                        <th class="column-title">Marca</th>
+                        <th class="column-title">Unidad de medida</th>
+                        <th class="column-title">Cantidad Solicitada</th>
+                        <th class="column-title">Comprobante</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material_pedido in materiales %}
+                        <tr class="even pointer">
+                            <td>{{ material_pedido.material.nombre }}</td>
+                            <td>{{ material_pedido.material.marca }}</td>
+                            <td>{{ material_pedido.material.medida }}</td>
+                            <td>{{ material_pedido.cantidad }}</td>
+                            <td>
+                            {% if pedido.comprobante %}
+                                <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#modalComprobante{{ material_pedido.id }}">
+                                    Ver
+                                </button>
+                                <!-- Modal -->
+                                <div class="modal fade" id="modalComprobante{{ material_pedido.id }}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="exampleModalLabel">Comprobante de {{ material_pedido.material.nombre }}</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <img src="{{ material_pedido.comprobante.url }}" class="img-fluid" alt="Comprobante de {{ material_pedido.material.nombre }}">
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        {% else %}
-                            No disponible
-                        {% endif %}
-                    </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                            {% else %}
+                                No disponible
+                            {% endif %}
+                        </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-    <a href="{% url 'ver_pedidos_compras' %}" class="btn btn-secondary">Volver a pedidos</a>
+        <a href="{% url 'ver_pedidos_compras' %}" class="btn btn-secondary">Volver a pedidos</a>
+    </div>
 {% endblock %}

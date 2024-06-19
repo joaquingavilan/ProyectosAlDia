@@ -1,82 +1,84 @@
 {% extends request.base_template %}
 
 {% block content %}
-<h1 class="display-4 text-center" style="margin-bottom: 0.5rem;">Solicitar Compra de Materiales</h1>
-<form id="formPedidoMateriales" method="POST" action="{% url 'confirmar_pedido_compra' %}" class="mt-2">
-    {% csrf_token %}
-    <div class="d-flex justify-content-end">
-        <div class="ml-auto">
-            <button id="solicitarMateriales" class="btn btn-primary">Solicitar Materiales</button>
+<div class="x_panel">
+    <h2 class="x_title">Solicitar Compra de Materiales</h2>
+    <form id="formPedidoMateriales" method="POST" action="{% url 'confirmar_pedido_compra' %}" class="mt-2">
+        {% csrf_token %}
+        <div class="d-flex justify-content-end">
+            <div class="ml-auto">
+                <button id="solicitarMateriales" class="btn btn-primary">Solicitar Materiales</button>
+            </div>
         </div>
-    </div>
-    <div class="row">
-        {% for item in page_obj %}
-            <div class="col-xl-2 col-lg-2 col-md-2 col-sm-6 mb-4">
-                <div id="material-card-{{ item.material.id }}" class="card h-100 d-flex flex-column">
-                    <img src="/{{ item.material.fotografia }}" class="img-fluid" alt="{{ item.material.nombre }}" style="width: auto; height: 150px; object-fit: cover;">
-                    <div class="card-body d-flex flex-column justify-content-between">
-                        <div>
-                            <h5 class="card-title text-center">{{ item.material.nombre }}</h5>
-                            <p class="card-text text-center">{{ item.material.marca }}</p>
-                            <p class="card-text text-center">{{ item.material.medida }}</p>
-                            {% if item.material.unidades_stock <= item.material.minimo %}
-                                <p class="text-danger text-center"><strong>Stock bajo: {{ item.material.unidades_stock }}</strong></p>
-                            {% else %}
-                                <p class="text-center">Stock: {{ item.material.unidades_stock }}</p>
-                            {% endif %}
-                            <p class="text-center">Pedido: {{ item.cantidad_pedido_pendiente }}</p>
-                            {% if cantidad_pedido_compra_pendiente > 0 %}
-                                <p class="text-center">Pedido compra: {{ item.cantidad_pedido_compra_pendiente }}</p>
-                            {% endif %}
-                            <p class="text-danger text-center">Cantidad faltante: {{ item.cantidad_faltante }}</p>
-                        </div>
-                        <input type="hidden" id="minimo_{{ item.material.id }}" value="{{ item.material.minimo }}">
-                        <input type="hidden" id="cantidad_faltante_{{ item.material.id }}" value="{{ item.cantidad_faltante }}">
-                        <div class="d-flex justify-content-center">
-                            <button type="button" class="btn btn-info decrement-btn" data-material-id="{{ item.material.id }}">-</button>
-                            <input type="number" id="cantidad_{{ item.material.id }}" name="cantidad_{{ item.material.id }}" value="{{ item.cantidad_faltante }}" readonly class="form-control cantidad-input mx-2">
-                            <button type="button" class="btn btn-success increment-btn" data-material-id="{{ item.material.id }}">+</button>
+        <div class="row">
+            {% for item in page_obj %}
+                <div class="col-xl-2 col-lg-2 col-md-2 col-sm-6 mb-4">
+                    <div id="material-card-{{ item.material.id }}" class="card h-100 d-flex flex-column">
+                        <img src="/{{ item.material.fotografia }}" class="img-fluid" alt="{{ item.material.nombre }}" style="width: auto; height: 150px; object-fit: cover;">
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div>
+                                <h5 class="card-title text-center">{{ item.material.nombre }}</h5>
+                                <p class="card-text text-center">{{ item.material.marca }}</p>
+                                <p class="card-text text-center">{{ item.material.medida }}</p>
+                                {% if item.material.unidades_stock <= item.material.minimo %}
+                                    <p class="text-danger text-center"><strong>Stock bajo: {{ item.material.unidades_stock }}</strong></p>
+                                {% else %}
+                                    <p class="text-center">Stock: {{ item.material.unidades_stock }}</p>
+                                {% endif %}
+                                <p class="text-center">Pedido: {{ item.cantidad_pedido_pendiente }}</p>
+                                {% if cantidad_pedido_compra_pendiente > 0 %}
+                                    <p class="text-center">Pedido compra: {{ item.cantidad_pedido_compra_pendiente }}</p>
+                                {% endif %}
+                                <p class="text-danger text-center">Cantidad faltante: {{ item.cantidad_faltante }}</p>
+                            </div>
+                            <input type="hidden" id="minimo_{{ item.material.id }}" value="{{ item.material.minimo }}">
+                            <input type="hidden" id="cantidad_faltante_{{ item.material.id }}" value="{{ item.cantidad_faltante }}">
+                            <div class="d-flex justify-content-center">
+                                <button type="button" class="btn btn-info decrement-btn" data-material-id="{{ item.material.id }}">-</button>
+                                <input type="number" id="cantidad_{{ item.material.id }}" name="cantidad_{{ item.material.id }}" value="{{ item.cantidad_faltante }}" readonly class="form-control cantidad-input mx-2">
+                                <button type="button" class="btn btn-success increment-btn" data-material-id="{{ item.material.id }}">+</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        {% endfor %}
-    </div>
+            {% endfor %}
+        </div>
 
-    {% if page_obj.paginator.num_pages > 1 %}
-    <nav aria-label="Page navigation" class="mt-4">
-      <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
-            <span aria-hidden="true">&laquo;</span>
-            <span class="sr-only">Anterior</span>
-          </a>
-        </li>
-        {% endif %}
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav aria-label="Page navigation" class="mt-4">
+          <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+                <span class="sr-only">Anterior</span>
+              </a>
+            </li>
+            {% endif %}
 
-        {% for num in page_obj.paginator.page_range %}
-        {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-          <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-        </li>
-        {% endif %}
-        {% endfor %}
+            {% for num in page_obj.paginator.page_range %}
+            {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+              <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
 
-        {% if page_obj.has_next %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
-            <span aria-hidden="true">&raquo;</span>
-            <span class="sr-only">Siguiente</span>
-          </a>
-        </li>
+            {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+                <span class="sr-only">Siguiente</span>
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </nav>
         {% endif %}
-      </ul>
-    </nav>
-    {% endif %}
-</form>
-<br>
-<a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
+    </form>
+    <br>
+    <a href="{% url 'inicio_deposito' %}" class="btn btn-primary">Inicio</a>
+</div>
 {% endblock %}
 
 {% block extra_js %}

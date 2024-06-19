@@ -1,95 +1,95 @@
 {% extends request.base_template %}
 
 {% block content %}
-<h1 class="display-4 text-center" style="margin-bottom: 0.5rem;">Solicitar Materiales</h1>
-<div class="row" style="display: flex; flex-direction: column; align-items: center;">
-    <div class="col-12">
-        <form id="search-form" class="mb-2"> <!-- Reducido de mb-4 a mb-2 -->
-            <div class="input-group" style="width: 100%; max-width: 400px;">
-                <input type="text" id="search-input" class="form-control" placeholder="Buscar material..." name="search">
-            </div>
-        </form>
-    </div>
-</div>
-<div id="search-results" style="display:none; width: 100%; max-width: 400px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); padding: 10px; position: absolute; z-index: 1;">
-    <!-- Aquí se mostrarán los resultados de la búsqueda -->
-</div>
-<form id="formPedidoMateriales" method="POST" action="{% url 'pedido_materiales' %}" class="mt-2"> <!-- Reducido de mt-4 a mt-2 -->
-    <div class="d-flex justify-content-end">
-        <div class="ml-auto">
-            <button id="solicitarMateriales" class="btn btn-primary">Solicitar Materiales</button>
+<div class="x_panel">
+    <h2 class="x_title">Solicitar Materiales</h2>
+    <div class="row" style="display: flex; flex-direction: column; align-items: center;">
+        <div class="col-12">
+            <form id="search-form" class="mb-2"> <!-- Reducido de mb-4 a mb-2 -->
+                <div class="input-group" style="width: 100%; max-width: 400px;">
+                    <input type="text" id="search-input" class="form-control" placeholder="Buscar material..." name="search">
+                </div>
+            </form>
         </div>
     </div>
-    {% csrf_token %}
-    <div class="form-group" style="margin-bottom: 0.5rem;"> <!-- Reducido el margen inferior -->
-        <label for="obra">Seleccione la Obra</label>
-        <select name="obra" id="obra" class="form-control">
-            {% for obra in obras %}
-            <option value="{{ obra.id }}">{{ obra.proyecto.nombre }}</option>
-            {% endfor %}
-        </select>
+    <div id="search-results" style="display:none; width: 100%; max-width: 400px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); padding: 10px; position: absolute; z-index: 1;">
+        <!-- Aquí se mostrarán los resultados de la búsqueda -->
     </div>
+    <form id="formPedidoMateriales" method="POST" action="{% url 'pedido_materiales' %}" class="mt-2"> <!-- Reducido de mt-4 a mt-2 -->
+        <div class="d-flex justify-content-end">
+            <div class="ml-auto">
+                <button id="solicitarMateriales" class="btn btn-primary">Solicitar Materiales</button>
+            </div>
+        </div>
+        {% csrf_token %}
+        <div class="form-group" style="margin-bottom: 0.5rem;"> <!-- Reducido el margen inferior -->
+            <label for="obra">Seleccione la Obra</label>
+            <select name="obra" id="obra" class="form-control">
+                {% for obra in obras %}
+                <option value="{{ obra.id }}">{{ obra.proyecto.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <div class="row">
-        {% for material in page_obj %}
-        <div class="col-xl-2 col-lg-2 col-md-2 col-sm-6 mb-4">
-            <div id="material-card-{{ material.id }}" class="card h-100 d-flex flex-column"> <!-- Añadir flex-column para manejar el espacio vertical -->
-                <img src="/{{ material.fotografia }}" class="img-fluid" alt="{{ material.nombre }}" style="width: auto; height: 150px; object-fit: cover;"> <!-- Altura fija y object-fit para las imágenes -->
-                <div class="card-body d-flex flex-column justify-content-between"> <!-- Flexbox para la alineación vertical -->
-                    <div>
-                        <h5 class="card-title text-center">{{ material.nombre }}</h5> <!-- Alineación de texto -->
-                        <p class="card-text text-center">{{ material.marca }}</p> <!-- Alineación de texto -->
-                        <p class="card-text text-center">{{ material.medida }}</p> <!-- Alineación de texto -->
-                    </div>
-                    <input type="hidden" id="minimo_{{ material.id }}" value="{{ material.minimo }}">
-                    <div class="d-flex justify-content-center"> <!-- Mantener esta alineación horizontal -->
-                        <button type="button" class="btn btn-info decrement-btn" data-material-id="{{ material.id }}">-</button>
-                        <input type="number" id="cantidad_{{ material.id }}" name="cantidad_{{ material.id }}" value="0" readonly class="form-control mx-2">
-                        <button type="button" class="btn btn-success increment-btn" data-material-id="{{ material.id }}">+</button>
+        <div class="row">
+            {% for material in page_obj %}
+            <div class="col-xl-2 col-lg-2 col-md-2 col-sm-6 mb-4">
+                <div id="material-card-{{ material.id }}" class="card h-100 d-flex flex-column"> <!-- Añadir flex-column para manejar el espacio vertical -->
+                    <img src="/{{ material.fotografia }}" class="img-fluid" alt="{{ material.nombre }}" style="width: auto; height: 150px; object-fit: cover;"> <!-- Altura fija y object-fit para las imágenes -->
+                    <div class="card-body d-flex flex-column justify-content-between"> <!-- Flexbox para la alineación vertical -->
+                        <div>
+                            <h5 class="card-title text-center">{{ material.nombre }}</h5> <!-- Alineación de texto -->
+                            <p class="card-text text-center">{{ material.marca }}</p> <!-- Alineación de texto -->
+                            <p class="card-text text-center">{{ material.medida }}</p> <!-- Alineación de texto -->
+                        </div>
+                        <input type="hidden" id="minimo_{{ material.id }}" value="{{ material.minimo }}">
+                        <div class="d-flex justify-content-center"> <!-- Mantener esta alineación horizontal -->
+                            <button type="button" class="btn btn-info decrement-btn" data-material-id="{{ material.id }}">-</button>
+                            <input type="number" id="cantidad_{{ material.id }}" name="cantidad_{{ material.id }}" value="0" readonly class="form-control mx-2">
+                            <button type="button" class="btn btn-success increment-btn" data-material-id="{{ material.id }}">+</button>
+                        </div>
                     </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
 
 
-    <!-- Controles de paginación centrados y estilizados -->
-    <nav aria-label="Page navigation" class="mt-4">
-      <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
-            <span aria-hidden="true">&laquo;</span>
-            <span class="sr-only">Anterior</span>
-          </a>
-        </li>
-        {% endif %}
+        <!-- Controles de paginación centrados y estilizados -->
+        <nav aria-label="Page navigation" class="mt-4">
+          <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+                <span class="sr-only">Anterior</span>
+              </a>
+            </li>
+            {% endif %}
 
-        {% for num in page_obj.paginator.page_range %}
-        {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-          <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
-        </li>
-        {% endif %}
-        {% endfor %}
+            {% for num in page_obj.paginator.page_range %}
+            {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+              <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
 
-        {% if page_obj.has_next %}
-        <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
-            <span aria-hidden="true">&raquo;</span>
-            <span class="sr-only">Siguiente</span>
-          </a>
-        </li>
-        {% endif %}
-      </ul>
-    </nav>
-
-</form>
-<br>
-<a href="{% url 'inicio_ingenieros' %}" class="btn btn-secondary">Inicio</a>
+            {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+                <span class="sr-only">Siguiente</span>
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </nav>
+    </form>
+    <br>
+    <a href="{% url 'inicio_ingenieros' %}" class="btn btn-secondary">Inicio</a>
+</div>
 {% endblock %}
-
 
 {% block extra_js %}
 <script>

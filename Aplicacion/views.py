@@ -719,18 +719,20 @@ def editar_cliente(request, pk):
 
 
 def ver_clientes(request):
-    clientes = Cliente.objects.all()
     form_buscar = BuscadorClienteForm()
     rucs_actuales = list(Cliente.objects.values_list('ruc', flat=True))
     rucs_json = json.dumps(rucs_actuales)
     emails_actuales = list(Cliente.objects.values_list('email', flat=True))
     emails_json = json.dumps(emails_actuales)
-    ciudades = list(Ciudad.objects.values_list('nombre', flat=True))
-    ciudades_json = json.dumps(ciudades)
-    # Configuración de la paginación
-    paginator = Paginator(clientes, 10)  # Muestra 10 clientes por página
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    ciudades = Ciudad.objects.all()
+
+    # Inicializa la consulta
+    clientes = Cliente.objects.all()
+
+    # Manejar filtro por ciudad
+    ciudad_id = request.GET.get('ciudad')
+    if ciudad_id:
+        clientes = clientes.filter(ciudad_id=ciudad_id)
 
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente_id')
@@ -752,9 +754,20 @@ def ver_clientes(request):
             if termino_busqueda:
                 clientes = clientes.filter(Q(ruc__icontains=termino_busqueda) | Q(nombre__icontains=termino_busqueda))
 
-    return render(request, 'ABM/clientes/ver_clientes.html',
-                  {'clientes': clientes, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json,
-                   'emails_json': emails_json, 'ciudades_json': ciudades_json})
+    # Configuración de la paginación después de aplicar los filtros
+    paginator = Paginator(clientes, 10)  # Muestra 10 clientes por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'ABM/clientes/ver_clientes.html', {
+        'clientes': clientes,
+        'form_buscar': form_buscar,
+        'page_obj': page_obj,
+        'rucs_json': rucs_json,
+        'emails_json': emails_json,
+        'ciudades': ciudades,
+        'ciudad_seleccionada': ciudad_id,
+    })
 
 
 def buscar_clientes(request):
@@ -768,7 +781,8 @@ def buscar_clientes(request):
 
 
 def ver_cliente(request, id_cliente):
-    cliente = Cliente.objects.get(pk=id_cliente)
+    cliente = get_object_or_404(Cliente, pk=id_cliente)
+
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente_id')
         cliente = get_object_or_404(Cliente, pk=cliente_id)
@@ -781,7 +795,21 @@ def ver_cliente(request, id_cliente):
             cliente.delete()
             messages.success(request, 'Cliente eliminado exitosamente')
             return redirect('ver_clientes')
-    return render(request, 'ABM/clientes/ver_cliente.html', {'cliente': cliente})
+
+    # Determinar la plantilla base según el grupo del usuario
+    if request.user.groups.filter(name="GERENTE").exists():
+        base_template = "base_gerente.html"
+    elif request.user.groups.filter(name="ADMINISTRADOR").exists():
+        base_template = "base_adm.html"
+    else:
+        base_template = "base_generic.html"  # Asegúrate de que este sea un nombre de plantilla válida
+
+    context = {
+        'cliente': cliente,
+        'base_template': base_template,
+    }
+
+    return render(request, 'ABM/clientes/ver_cliente.html', context)
 
 
 def agregar_contacto(request, tipo, id):
@@ -1043,9 +1071,17 @@ def ver_proveedores(request):
     rucs_json = json.dumps(rucs_actuales)
     emails_actuales = list(Proveedor.objects.values_list('email', flat=True))
     emails_json = json.dumps(emails_actuales)
-    ciudades = list(Ciudad.objects.values_list('nombre', flat=True))
+    ciudades = Ciudad.objects.all()
+
+    # Obtener la ciudad seleccionada de la URL
+    ciudad_id = request.GET.get('ciudad')
+
+    # Filtrar proveedores por ciudad si se ha seleccionado una ciudad
+    if ciudad_id:
+        proveedores = proveedores.filter(ciudad_id=ciudad_id)
+
     # Configuración de la paginación
-    paginator = Paginator(proveedores, 10)  # Muestra 10 ingenieros por página
+    paginator = Paginator(proveedores, 10)  # Muestra 10 proveedores por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -1064,9 +1100,15 @@ def ver_proveedores(request):
     else:
         template_name = 'ABM/proveedores/ver_proveedores.html'
 
-    return render(request, template_name,
-                  {'proveedores': proveedores, 'form_buscar': form_buscar, 'page_obj': page_obj, 'rucs_json': rucs_json,
-                   'emails_json': emails_json, 'ciudades': ciudades})
+    return render(request, template_name, {
+        'proveedores': proveedores,
+        'form_buscar': form_buscar,
+        'page_obj': page_obj,
+        'rucs_json': rucs_json,
+        'emails_json': emails_json,
+        'ciudades': ciudades,
+        'ciudad_seleccionada': ciudad_id,  # Pasar la ciudad seleccionada al template
+    })
 
 
 def get_proveedor_data(request, proveedor_id):
@@ -2603,28 +2645,43 @@ def actualizar_anticipo(request, presupuesto_id):
     if request.method == "POST":
         try:
             presupuesto = Presupuesto.objects.get(pk=presupuesto_id)
+            logger.debug(f'Presupuesto encontrado: {presupuesto}')
             presupuesto.anticipo = request.POST.get('anticipo') == 'true'
+            logger.debug(f'Anticipo valor: {presupuesto.anticipo}')
 
             # Si se ha enviado un archivo de comprobante, lo guardamos
             comprobante = request.FILES.get('comprobante')
             if comprobante:
                 presupuesto.comprobante_anticipo = comprobante
+                logger.debug('Comprobante guardado')
 
-            if presupuesto.estado == 'S' and presupuesto.anticipo is True:
-                presupuesto.estado = 'A'
-            if presupuesto.anticipo is True:
-                presupuesto.fecha_pago_anticipo = date.today()
-            presupuesto.save()
+            # Verificar si monto_total tiene un valor válido
+            if presupuesto.monto_total is not None:
+                # Calcular el monto_anticipo como el 50% del monto_total
+                fifty_percent = Decimal('0.5')
+                presupuesto.monto_anticipo = (presupuesto.monto_total * fifty_percent).quantize(presupuesto.monto_total)
+                logger.debug(f'Monto anticipo calculado: {presupuesto.monto_anticipo}')
 
-            return JsonResponse({
-                'status': 'success',
-                'nuevo_estado': presupuesto.get_estado_display(),
-                'fecha_pago_anticipo': presupuesto.fecha_pago_anticipo.strftime(
-                    '%d/%m/%Y') if presupuesto.fecha_pago_anticipo else None
-            })
+                if presupuesto.estado == 'S' and presupuesto.anticipo is True:
+                    presupuesto.estado = 'A'
+                if presupuesto.anticipo is True:
+                    presupuesto.fecha_pago_anticipo = date.today()
+                presupuesto.save()
+                logger.debug('Presupuesto guardado')
+
+                return JsonResponse({
+                    'status': 'success',
+                    'nuevo_estado': presupuesto.get_estado_display(),
+                    'fecha_pago_anticipo': presupuesto.fecha_pago_anticipo.strftime('%d/%m/%Y') if presupuesto.fecha_pago_anticipo else None
+                })
+            else:
+                logger.error('El monto total no está definido')
+                return JsonResponse({'status': 'error', 'message': 'El monto total no está definido'})
         except Exception as e:
+            logger.error(f'Error al actualizar el anticipo: {str(e)}')
             return JsonResponse({'status': 'error', 'message': str(e)})
 
+    logger.error('Método no permitido')
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 
@@ -4083,23 +4140,35 @@ def ver_certificados_ing(request):
 
 
 def ver_certificados_adm(request):
-    # Obtiene todas las obras donde el usuario es el encargado
-    obras = Obra.objects.all()
-    certificados = []
-    for obra in obras:
-        # Obtiene el proyecto relacionado con la obra
-        proyecto = obra.proyecto
-        # Obtiene todos los presupuestos relacionados con el proyecto
-        presupuestos = Presupuesto.objects.filter(proyecto=proyecto)
-        # Para cada presupuesto, obtiene los certificados relacionados y los añade a la lista
-        for presupuesto in presupuestos:
-            for certificado in Certificado.objects.filter(presupuesto=presupuesto):
-                certificados.append(certificado)
+    certificados = Certificado.objects.all()
+    ingenieros = User.objects.filter(groups__name='INGENIERO')
+    clientes = Cliente.objects.all()
+    proyectos = Proyecto.objects.all()
 
-    # Renderiza la respuesta pasando la lista de certificados al contexto
+    query = request.GET.get('q')
+    ingeniero_id = request.GET.get('ingeniero')
+    cliente_id = request.GET.get('cliente')
+    proyecto_id = request.GET.get('proyecto')
+
+    if query:
+        certificados = certificados.filter(
+            Q(presupuesto__proyecto__nombre__icontains=query) |
+            Q(presupuesto__proyecto__cliente__nombre__icontains=query)
+        )
+    if ingeniero_id:
+        certificados = certificados.filter(presupuesto__proyecto__ingeniero_id=ingeniero_id)
+    if cliente_id:
+        certificados = certificados.filter(presupuesto__proyecto__cliente_id=cliente_id)
+    if proyecto_id:
+        certificados = certificados.filter(presupuesto__proyecto_id=proyecto_id)
+
+    print(ingenieros)
     return render(request, 'pantallas_adm/ver_certificados_adm.html', {
         'title': 'Certificados',
-        'certificados': certificados
+        'certificados': certificados,
+        'ingenieros': ingenieros,
+        'clientes': clientes,
+        'proyectos': proyectos,
     })
 
 

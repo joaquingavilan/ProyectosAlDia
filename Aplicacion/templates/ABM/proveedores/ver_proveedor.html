@@ -1,115 +1,117 @@
 {% extends request.base_template %}
 
 {% block content %}
-<h1 class="display-4 text-center">Proveedores</h1>
-<br>
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th scope="col">Nombre</th>
-            <th scope="col">RUC</th>
-            <th scope="col">Email</th>
-            <th scope="col">Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>{{ proveedor.nombre }}</td>
-            <td>{{ proveedor.ruc }}</td>
-            <td>{{ proveedor.email }}</td>
-            <td>
-                <!-- Botón para abrir el modal de edición -->
-                <button type="button" class="btn btn-primary editarProveedorBtn" data-proveedor-id="{{ proveedor.id }}">Editar</button>
+    <div class="x_panel">
+        <div class="x_title">
+            <h2>Proveedores</h2>
+            <div class="clearfix"></div>
+        </div>
+        <div class="x_content">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th scope="col">Nombre</th>
+                        <th scope="col">RUC</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ proveedor.nombre }}</td>
+                        <td>{{ proveedor.ruc }}</td>
+                        <td>{{ proveedor.email }}</td>
+                        <td>
+                            <!-- Botón para abrir el modal de edición -->
+                            <button type="button" class="btn btn-primary editarProveedorBtn" data-proveedor-id="{{ proveedor.id }}">Editar</button>
 
-                <!-- Botón para abrir el modal de contactos -->
-                <button type="button" class="btn btn-primary mostrarContactosBtn" data-proveedor-id="{{ proveedor.id }}">
-                    Mostrar Contactos
-                </button>
+                            <!-- Botón para abrir el modal de contactos -->
+                            <button type="button" class="btn btn-info mostrarContactosBtn" data-proveedor-id="{{ proveedor.id }}">
+                                Mostrar Contactos
+                            </button>
 
+                            <!-- Formulario para eliminar proveedor -->
+                            <form method="POST" action="{% url 'eliminar_proveedor' proveedor.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="proveedor_id" value="{{ proveedor.id }}">
+                                <button type="submit"  class="btn btn-danger">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 
-                <!-- Formulario para eliminar proveedor -->
-                <form method="POST" action="{% url 'eliminar_proveedor' proveedor.id %}" style="display: inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="proveedor_id" value="{{ proveedor.id }}">
-                    <button type="submit"  class="btn btn-primary">Eliminar</button>
-                </form>
-            </td>
-        </tr>
-    </tbody>
-</table>
+            <a href="{% url 'ver_proveedores' %}" class="btn btn-secondary">Volver a Proveedores</a>
+            <a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
+            <!-- Modal para editar proveedor -->
+            <div class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editarProveedorModalLabel">Editar Proveedor</h5>
+                            <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form method="post" action="{% url 'editar_proveedor' 0 %}" id="editarProveedorForm">
+                            {% csrf_token %}
+                            <div class="modal-body">
+                                <!-- Campo oculto para el ID del proveedor -->
+                                <input type="hidden" name="proveedor_id" id="proveedorId">
 
-<a href="{% url 'ver_proveedores' %}" class="btn btn-primary">Volver a Proveedores</a>
-<a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
-<!-- Modal para editar proveedor -->
-<div class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editarProveedorModalLabel">Editar Proveedor</h5>
-                <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="modal"></button>
+                                <!-- Campos del proveedor -->
+                                <div class="form-group">
+                                    <label for="nombreProveedor">Nombre:</label>
+                                    <input type="text" class="form-control" id="nombreProveedor" name="nombre">
+                                </div>
+                                <div class="form-group">
+                                    <label for="rucProveedor">RUC:</label>
+                                    <!-- Mensaje de error para el RUC -->
+                                    <div id="errorRucProveedor" class="text-danger"></div>
+                                    <input type="text" class="form-control" id="rucProveedor" name="ruc">
+                                </div>
+                                <div class="form-group">
+                                    <label for="emailProveedor">Email:</label>
+                                    <input type="email" class="form-control" id="emailProveedor" name="email">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <form method="post" action="{% url 'editar_proveedor' 0 %}" id="editarProveedorForm">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <!-- Campo oculto para el ID del proveedor -->
-                    <input type="hidden" name="proveedor_id" id="proveedorId">
 
-                    <!-- Campos del proveedor -->
-                    <div class="form-group">
-                        <label for="nombreProveedor">Nombre:</label>
-                        <input type="text" class="form-control" id="nombreProveedor" name="nombre">
-                    </div>
-                    <div class="form-group">
-                        <label for="rucProveedor">RUC:</label>
-                        <!-- Mensaje de error para el RUC -->
-                        <div id="errorRucProveedor" class="text-danger"></div>
-                        <input type="text" class="form-control" id="rucProveedor" name="ruc">
-                    </div>
-                    <div class="form-group">
-                        <label for="emailProveedor">Email:</label>
-                        <input type="email" class="form-control" id="emailProveedor" name="email">
+            <!-- Modal para mostrar contactos -->
+            <div class="modal fade" id="mostrarContactosModal" tabindex="-1" aria-labelledby="mostrarContactosModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="mostrarContactosModalLabel">Contactos</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="contactosBody"></div>
+
+                            <h6>Agregar nuevo contacto</h6>
+                            <div class="mb-3">
+                                <label for="nombreContacto" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="nombreContacto">
+                            </div>
+                            <div class="mb-3">
+                                <label for="numeroContacto" class="form-label">Número</label>
+                                <input type="text" class="form-control" id="numeroContacto">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="agregarContactoBtn">Agregar Contacto</button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
-</div>
-
-
-<!-- Modal para mostrar contactos -->
-<div class="modal fade" id="mostrarContactosModal" tabindex="-1" aria-labelledby="mostrarContactosModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="mostrarContactosModalLabel">Contactos</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="contactosBody"></div>
-
-                <h6>Agregar nuevo contacto</h6>
-                <div class="mb-3">
-                    <label for="nombreContacto" class="form-label">Nombre</label>
-                    <input type="text" class="form-control" id="nombreContacto">
-                </div>
-                <div class="mb-3">
-                    <label for="numeroContacto" class="form-label">Número</label>
-                    <input type="text" class="form-control" id="numeroContacto">
-                </div>
-                <button type="button" class="btn btn-primary" id="agregarContactoBtn">Agregar Contacto</button>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
 {% endblock %}
 
 {% block extra_js %}

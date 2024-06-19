@@ -22,13 +22,27 @@
         <div class="clearfix"></div>
     </div>
     <div class="x_content">
-        <!-- Contenido principal -->
-        <div class="mb-3 d-flex justify-content-between align-items-center">
-            <div class="input-group w-25">
-                <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
-                <input type="hidden" id="proveedorUrl" value="{% url 'ver_proveedor' 999999 %}">
+        <!-- Row for search and filter -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
+                    <input type="hidden" id="proveedorUrl" value="{% url 'ver_proveedor' 999999 %}">
+                </div>
             </div>
-            <a href="{% url 'registrar_proveedor' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir proveedor</a>
+            <div class="col-md-3">
+                <div class="input-group">
+                    <select id="filtroCiudad" class="form-control">
+                        <option value="">Filtrar por ciudad...</option>
+                        {% for ciudad in ciudades %}
+                            <option value="{{ ciudad.id }}" {% if ciudad.id|stringformat:"s" == ciudad_seleccionada %}selected{% endif %}>{{ ciudad.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6 text-right">
+                <a href="{% url 'registrar_proveedor' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir proveedor</a>
+            </div>
         </div>
         <div id="resultadosBusqueda"></div>
         <br>
@@ -55,44 +69,22 @@
                 <tr>
                     <td>{{ proveedor.nombre }}</td>
                     <td>{{ proveedor.ruc }}</td>
-                    <td>{% if proveedor.telefono %}
-                            {{ proveedor.telefono }}
-                        {% else %}
-                        -
-                        {% endif %}
-                    </td>
+                    <td>{{ proveedor.telefono|default:"-" }}</td>
                     <td>{{ proveedor.email }}</td>
                     <td>
                         {% if proveedor.pagina_web %}
-                            {% if "http://" in proveedor.pagina_web or "https://" in proveedor.pagina_web %}
-                                <a href="{{ proveedor.pagina_web }}" target="_blank">{{ proveedor.pagina_web }}</a>
-                            {% else %}
-                                <a href="http://{{ proveedor.pagina_web }}" target="_blank">{{ proveedor.pagina_web }}</a>
-                            {% endif %}
-                        {%else%}
+                            <a href="{{ proveedor.pagina_web|add:'http://' }}" target="_blank">{{ proveedor.pagina_web }}</a>
+                        {% else %}
                             -
-                        {%endif%}
+                        {% endif %}
                     </td>
-                    <td>
-                        {% if proveedor.ciudad %}
-                            {{ proveedor.ciudad }}
-                        {% else %}
-                        -
-                        {%endif%}
-                    </td>
-                    <td>{% if proveedor.direccion %}
-                            {{ proveedor.direccion }}
-                        {% else %}
-                        -
-                        {%endif%}
-                    </td>
+                    <td>{{ proveedor.ciudad.nombre|default:"-" }}</td>
+                    <td>{{ proveedor.direccion|default:"-" }}</td>
                     <td>
                         <button type="button" class="btn btn-primary btn-sm editarProveedorBtn" data-proveedor-id="{{ proveedor.id }}"><i class="fa fa-pencil"></i></button>
-                        <!-- Formulario para eliminar proveedor -->
-                        <form method="POST" action="{% url 'eliminar_proveedor' proveedor.id %}"  class="d-inline">
+                        <form method="POST" action="{% url 'eliminar_proveedor' proveedor.id %}" class="d-inline">
                             {% csrf_token %}
-                            <input type="hidden" name="proveedor_id" value="{{ proveedor.id }}">
-                            <button type="submit"  class="btn btn-danger btn-sm"><i class="fa fa-trash-o"></i></button>
+                            <button type="submit" class="btn btn-danger btn-sm"><i class="fa fa-trash-o"></i></button>
                         </form>
                     </td>
                 </tr>
@@ -103,7 +95,7 @@
 </div>
 
 <!-- Modal para editar proveedor -->
-<div class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel"  role="dialog" aria-hidden="true">
+<div class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel" role="dialog" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -344,6 +336,17 @@ document.getElementById("editarProveedorForm").addEventListener("submit", functi
         } else {
             resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
         }
+    });
+
+    document.getElementById('filtroCiudad').addEventListener('change', function() {
+        var ciudadId = this.value;
+        var url = new URL(window.location.href);
+        if (ciudadId) {
+            url.searchParams.set('ciudad', ciudadId);
+        } else {
+            url.searchParams.delete('ciudad');
+        }
+        window.location.href = url.toString();
     });
 </script>
 {% endblock %}

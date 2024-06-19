@@ -47,11 +47,11 @@
                     </h1>
                 </div>
                 {% if user.is_authenticated %}
-                <div style="margin-right: 20px;">
-                    <a href="{% url 'salir' %}" style="text-decoration: none; color: #5A738E; font-size: 20px;">
-                        <i class="fa fa-sign-out"></i> Cerrar Sesión
-                    </a>
-                </div>
+                    <div style="margin-right: 20px;">
+                        <a href="{% url 'salir' %}" style="text-decoration: none; color: #5A738E; font-size: 20px;">
+                            <i class="fa fa-sign-out"></i> Cerrar Sesión
+                        </a>
+                    </div>
                 {% endif %}
             </div>
 
