@@ -22,7 +22,16 @@
     <a href="{% url 'exportar_presupuesto' presupuesto_id=presupuesto_id archivo_presupuesto_id=archivo_presupuesto_id tipo='excel' %}" class="btn btn-success"><i class="fa fa-file-excel-o"></i></a>
   </div>
   <div class="x_title">
-    <h2>Presupuesto del proyecto <strong>{{proyecto}}</strong> para el cliente <strong>{{cliente}}</strong></h2>
+            <div class="d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">
+                    Presupuesto del proyecto <strong>{{proyecto}}</strong> para el cliente <strong>{{cliente}}</strong>
+                </h2>
+                {% if user|has_group:"GERENTE" %}
+                    <a href="{% url 'ver_ing_gerente_con_id' encargado_id %}" class="btn btn-primary ml-3">
+                        Ver ingeniero a cargo
+                    </a>
+                {% endif %}
+            </div>
     <div class="clearfix"></div>
   </div>
   <div class="x_content">
@@ -89,5 +98,10 @@
     </div>
   </div>
 </div>
-<a href="{% url 'ver_presupuestos' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
+
+    {% if user|has_group:"INGENIERO" %}
+  <a href="{% url 'ver_presupuestos' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Presupuestos</a>
+    {% elif user|has_group:"GERENTE" %}
+        <a href="{% url 'inicio' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Inicio</a>
+    {% endif %}
 {% endblock %}

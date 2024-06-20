@@ -21,7 +21,8 @@
                             <th>Mínimo</th>
                             <th>Unidades en Stock</th>
                             <th>Imagen</th>
-                            <th>Acciones</th>
+                            <th>Precio</th>
+          <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -39,7 +40,8 @@
                                 {% else %}
                                     <td>--</td>
                                 {% endif %}
-                                <td>
+                                <td>{{ material.precio }}</td>
+            <td>
                                     <a href="{% url 'editar_material' material.id %}" class="btn btn-primary">Editar</a>
                                     <a href="{% url 'ver_materiales' %}?eliminar_material_id={{ material.id }}" class="btn btn-danger">Eliminar</a>
                                 </td>

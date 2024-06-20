@@ -31,7 +31,7 @@
                         <th>ID pedido</th>
                         <th>Estado del pedido</th>
                         <th>Fecha de solicitud</th>
-                        <th>Cantidad</th>
+                        <th>Monto</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -45,13 +45,7 @@
                                 <td>{{ pedido_info.pedido.get_estado_display }}</td>
                             {% endif %}
                             <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
-                                <td>
-                                    <ul>
-                                        {% for material_pedido in pedido_info.materiales %}
-                                            {{ material_pedido.cantidad }}
-                                        {% endfor %}
-                                    </ul>
-                            </td>
+                            <td>{{pedido_info.pedido.monto_total}}</td>
                             <td><a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver pedido</a></td>
                         </tr>
                     {% endfor %}

@@ -1,4 +1,5 @@
 {% extends 'base_gerente.html' %}
+{% load custom_filters %}
 
 {% block title %}Obras{% endblock %}
 
@@ -7,88 +8,122 @@
 <div class="clearfix"></div>
 
 <div class="row">
-    {% block grafico_1 %}
+{% block grafico_2 %}
 <div class="col-md-4 col-sm-4">
     <div class="x_panel">
         <div class="x_title">
-            <h2>Lista de obras</h2>
+            <h2>Avance vs Cobros </h2>
             <div class="clearfix"></div>
         </div>
         <div class="x_content">
-            <div id="contenido-obras-activas">
-                <div class="row">
-                    <div class="col-md-5">
-                        <select id="filtro-cliente" class="form-control">
-                            <option value="">Todos los Clientes</option>
-                            {% for cliente in clientes %}
-                            <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-5">
-                        <select id="filtro-ingeniero" class="form-control">
-                            <option value="">Todos los Ingenieros</option>
-                            {% for ingeniero in ingenieros_encargados %}
-                            <option value="{{ ingeniero.id }}">{{ ingeniero.get_full_name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button id="borrar-filtros" class="btn btn-secondary mb-3">Limpiar</button>
-                    </div>
-                </div>
-
-                <div id="tabla-obras-activas">
-                    <!-- Aquí se cargará la tabla de obras activas -->
-                </div>
+            <div>
+                <label for="estado-selector-progreso">Estado:</label>
+                <select id="estado-selector-progreso" class="form-control">
+                    <option value="E" {% if estado_seleccionado_progreso == 'E' %}selected{% endif %}>En ejecución</option>
+                    <option value="F" {% if estado_seleccionado_progreso == 'F' %}selected{% endif %}>Finalizada</option>
+                </select>
             </div>
+            <div id="plotly-graph-div-progreso"></div>
         </div>
     </div>
 </div>
 {% endblock %}
-    {% block grafico_2 %}
-        <div class="col-md-4 col-sm-4">
-            <div class="x_panel">
-                <div class="x_title">
-                    <h2>Progreso de Obras y Certificados</h2>
-                    <div class="clearfix"></div>
-                </div>
-                <div class="x_content">
-                    <div id="plotly-graph-div-progreso"></div>
-                </div>
-            </div>
-        </div>
-        {% endblock %}
-
-        {% block grafico_3 %}
+        {% block grafico_4 %}
     <div class="col-md-4 col-sm-4">
         <div class="x_panel">
             <div class="x_title">
-                <h2>Gráfico 3</h2>
+                <h2>Presupuesto vs Materiales</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content">
-                <!-- Aquí irá la imagen de la visualización -->
+                <div>
+                    <label for="estado-selector-monto">Estado:</label>
+                    <select id="estado-selector-monto" class="form-control">
+                        <option value="E" {% if estado_seleccionado_monto == 'E' %}selected{% endif %}>En ejecución</option>
+                        <option value="F" {% if estado_seleccionado_monto == 'F' %}selected{% endif %}>Finalizada</option>
+                    </select>
+                </div>
+                <div id="chart"></div> <!-- Div con ID específico para el gráfico -->
             </div>
         </div>
     </div>
     {% endblock %}
+    {% block grafico_3 %}
+    <div class="col-md-4 col-sm-4">
+        <div class="x_panel">
+            <div class="x_title">
+                <h2>Obras por mes/año</h2>
+                <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+                <select id="filtro-anho-2" class="form-control">
+                    {% for anho in anhos %}
+                    <option value="{{ anho }}" {% if anho == anho_seleccionado %}selected{% endif %}>{{ anho }}</option>
+                    {% endfor %}
+                </select>
+                <div id="plotly-graph-div-obras"></div>
+            </div>
+        </div>
     </div>
+    {% endblock %}
+</div>
 <div class="row">
-    {% block grafico_4 %}
+
+    {% block grafico_1 %}
     <div class="col-md-4 col-sm-4">
         <div class="x_panel">
             <div class="x_title">
-                <h2>Gráfico 4</h2>
+                <h2>Lista de obras</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content">
-                <!-- Aquí irá la imagen de la visualización -->
+                <div id="contenido-obras-activas">
+                    <div class="row">
+                        <div class="col-md-2.5">
+                            <select id="filtro-cliente" class="form-control">
+                                <option value="">Clientes</option>
+                                {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2.5">
+                            <select id="filtro-ingeniero" class="form-control">
+                                <option value="">Ingenieros</option>
+                                {% for ingeniero in ingenieros_encargados %}
+                                <option value="{{ ingeniero.id }}">{{ ingeniero.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select id="filtro-anho" class="form-control">
+                                <option value="">Años</option>
+                                {% for anho in anhos %}
+                                <option value="{{ anho }}">{{ anho }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select id="filtro-estado" class="form-control">
+                                <option value="">Estados</option>
+                                {% for estado in estados %}
+                                <option value="{{ estado }}">{{ estado }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button id="borrar-filtros" class="btn btn-secondary mb-3">Limpiar</button>
+                        </div>
+                    </div>
+
+                    <div id="tabla-obras-activas">
+                        <!-- Aquí se cargará la tabla de obras activas -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     {% endblock %}
-
     {% block grafico_5 %}
     <div class="col-md-4 col-sm-4">
         <div class="x_panel">
@@ -117,6 +152,7 @@
     </div>
     {% endblock %}
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -125,6 +161,8 @@ $(document).ready(function() {
     function cargarObrasActivas() {
         var cliente = $('#filtro-cliente').val();
         var ingeniero = $('#filtro-ingeniero').val();
+        var anho = $('#filtro-anho').val();
+        var estado = $('#filtro-estado').val();
         var page = 1;
 
         $.ajax({
@@ -132,34 +170,15 @@ $(document).ready(function() {
             data: {
                 cliente: cliente,
                 ingeniero: ingeniero,
+                anho: anho,
+                estado: estado,
                 page: page
             },
             success: function(data) {
                 if (data.obras.length === 0) {
-                    $('#contenido-obras-activas').html('<p>No hay Obras</p>');
+                    $('#tabla-obras-activas').html('<p>No hay Obras</p>');
                 } else {
-                    var obrasHtml = '<div class="row">' +
-                                    '<div class="col-md-5">' +
-                                    '<select id="filtro-cliente" class="form-control">' +
-                                    '<option value="">Todos los Clientes</option>' +
-                                    '{% for cliente in clientes %}' +
-                                    '<option value="{{ cliente.id }}">{{ cliente.nombre }}</option>' +
-                                    '{% endfor %}' +
-                                    '</select>' +
-                                    '</div>' +
-                                    '<div class="col-md-5">' +
-                                    '<select id="filtro-ingeniero" class="form-control">' +
-                                    '<option value="">Todos los Ingenieros</option>' +
-                                    '{% for ingeniero in ingenieros_encargados %}' +
-                                    '<option value="{{ ingeniero.id }}">{{ ingeniero.get_full_name }}</option>' +
-                                    '{% endfor %}' +
-                                    '</select>' +
-                                    '</div>' +
-                                    '<div class="col-md-2 d-flex align-items-end">' +
-                                    '<button id="borrar-filtros" class="btn btn-secondary mb-3">Limpiar</button>' +
-                                    '</div>' +
-                                    '</div>' +
-                                    '<table class="table table-striped">';
+                    var obrasHtml = '<table class="table table-striped">';
                     obrasHtml += '<thead><tr><th>Nombre</th><th>Cliente</th><th>Ingeniero</th><th>Acciones</th></tr></thead><tbody>';
                     $.each(data.obras, function(index, obra) {
                         obrasHtml += '<tr>';
@@ -170,32 +189,35 @@ $(document).ready(function() {
                         obrasHtml += '</tr>';
                     });
                     obrasHtml += '</tbody></table>';
-                    $('#contenido-obras-activas').html(obrasHtml);
+                    $('#tabla-obras-activas').html(obrasHtml);
 
-                    // Reattach event handlers to the new elements
-                    $('#filtro-cliente').change(cargarObrasActivas);
-                    $('#filtro-ingeniero').change(cargarObrasActivas);
-                    $('#borrar-filtros').click(function() {
-                        $('#filtro-cliente').val('');
-                        $('#filtro-ingeniero').val('');
-                        cargarObrasActivas();
-                    });
+                    // Set the selected values for the filters (optional, since they should be already set)
+                    $('#filtro-cliente').val(cliente);
+                    $('#filtro-ingeniero').val(ingeniero);
+                    $('#filtro-anho').val(anho);
+                    $('#filtro-estado').val(estado);
                 }
             }
         });
     }
 
+    // Event handlers for the filters
     $('#filtro-cliente').change(cargarObrasActivas);
     $('#filtro-ingeniero').change(cargarObrasActivas);
+    $('#filtro-anho').change(cargarObrasActivas);
+    $('#filtro-estado').change(cargarObrasActivas);
+
+    // Event handler for the reset button
     $('#borrar-filtros').click(function() {
         $('#filtro-cliente').val('');
         $('#filtro-ingeniero').val('');
+        $('#filtro-anho').val('');
+        $('#filtro-estado').val('');
         cargarObrasActivas();
     });
 
-    cargarObrasActivas(); // Cargar obras activas al cargar la página
-    var cronogramaData = JSON.parse('{{ cronograma_data|escapejs }}');
-    var certificadoData = JSON.parse('{{ certificado_data|escapejs }}');
+    // Initial load
+    cargarObrasActivas();
 
 function plotearProgreso() {
         var obrasNombres = cronogramaData.map(d => d.obra);
@@ -255,8 +277,124 @@ function plotearProgreso() {
             window.location.href = "{% url 'ver_resumen_obra' 0 %}".replace('0', obraId);
         });
     }
-    // Inicializar el gráfico con todos los datos
-    plotearProgreso();
+    // Inicializar el gráfico con los datos iniciales
+        var cronogramaData = JSON.parse('{{ cronograma_data|escapejs }}');
+        var certificadoData = JSON.parse('{{ certificado_data|escapejs }}');
+        plotearProgreso(cronogramaData, certificadoData);
+
+        // Manejar el cambio de estado
+        document.getElementById('estado-selector-progreso').addEventListener('change', function() {
+            const estado = this.value;
+            fetch(`/obtener_datos_progreso?estado=${estado}`)
+                .then(response => response.json())
+                .then(data => {
+                    cronogramaData = data.cronograma_data;
+                    certificadoData = data.certificado_data;
+                    plotearProgreso(cronogramaData, certificadoData);
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        });
+        var obrasData = JSON.parse('{{ obras_data|escapejs }}');
+        var mesesEspanol = {{ meses_espanol|safe }};
+
+        function plotearGrafico(obras) {
+            // Inicializar contador de obras por mes
+            var meses = {};
+            for (var i = 1; i <= 12; i++) {
+                meses[i] = 0;
+            }
+
+            // Contar obras por mes
+            obras.forEach(function(obra) {
+                var mes = new Date(obra.fecha_inicio).getMonth() + 1;
+                meses[mes]++;
+            });
+
+            var trace = {
+                x: mesesEspanol,
+                y: Object.values(meses),
+                type: 'bar'
+            };
+
+            var data = [trace];
+
+            var layout = {
+                title: 'Cantidad de obras por mes',
+                xaxis: { title: 'Mes' },
+                yaxis: { title: 'Cantidad' }
+            };
+
+            Plotly.newPlot('plotly-graph-div-obras', data, layout);
+        }
+
+        plotearGrafico(obrasData);
+
+        $('#filtro-anho-2').change(function() {
+            var anho = $('#filtro-anho-2').val();
+            var url = new URL(window.location.href);
+            if (anho-2) {
+                url.searchParams.set('anho-2', anho-2);
+            } else {
+                url.searchParams.delete('anho-2');
+            }
+            window.location.href = url.href;
+        });
+
+ function updateChart(data) {
+            const proyectos = data.map(item => item.proyecto);
+            const presupuestos = data.map(item => item.monto_presupuesto);
+            const pedidos = data.map(item => item.monto_total_pedidos);
+            const obra_ids = data.map(item => item.obra_id);
+
+            const trace1 = {
+                x: proyectos,
+                y: presupuestos,
+                name: 'Presupuesto',
+                type: 'bar',
+                customdata: obra_ids
+            };
+
+            const trace2 = {
+                x: proyectos,
+                y: pedidos,
+                name: 'Pedidos',
+                type: 'bar',
+                customdata: obra_ids
+            };
+
+            const layout = {
+                barmode: 'group',
+                xaxis: { title: 'Proyectos' },
+                yaxis: { title: 'Montos' }
+            };
+
+            const config = {
+                responsive: true
+            };
+
+            const plotDiv = document.getElementById('chart');
+
+            Plotly.newPlot(plotDiv, [trace1, trace2], layout, config);
+
+            plotDiv.on('plotly_click', function(data) {
+                const point = data.points[0];
+                const obra_id = point.customdata;
+                window.location.href = `/ver_resumen_obra/${obra_id}`;
+            });
+        }
+
+        // Datos iniciales del gráfico
+        const initialData = {{ montos|safe }};
+        updateChart(initialData);
+
+        // Manejar el cambio de estado
+        document.getElementById('estado-selector-monto').addEventListener('change', function() {
+            const estado = this.value;
+            fetch(`/obtener_montos_obra?estado=${estado}`)
+                .then(response => response.json())
+                .then(data => updateChart(data))
+                .catch(error => console.error('Error fetching data:', error));
+        });
 });
 </script>
 {% endblock %}

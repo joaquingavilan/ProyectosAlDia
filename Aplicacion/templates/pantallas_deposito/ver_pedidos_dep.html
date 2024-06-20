@@ -48,6 +48,7 @@
                         <th>Estado del pedido</th>
                         <th>Fecha de solicitud</th>
                         <th>Cantidad de materiales</th>
+                        <th>Monto Total</th> <!-- Nueva columna -->
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -63,6 +64,7 @@
                             {% endif %}
                             <td>{{ pedido.fecha_solicitud }}</td>
                             <td>{{ pedido.materialpedido_set.count }}</td>
+                            <td>{{ pedido.monto_total }}</td>
                             {% if pedido.get_estado_display == 'Pendiente' %}
                                 <td>
                                     <a href="{% url 'ver_pedido_dep' pedido.id %}" class="btn btn-danger btn-sm">Ver Pedido</a>

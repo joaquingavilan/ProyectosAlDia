@@ -7,7 +7,63 @@
 <div class="clearfix"></div>
 
 <div class="row">
+
+
+
+
+
 {% block grafico_1 %}
+<div class="col-md-4 col-sm-4">
+    <div class="x_panel">
+        <div class="x_title">
+            <h2>Estado de Ingenieros</h2>
+            <div class="clearfix"></div>
+        </div>
+        <div class="x_content">
+            <div id="grafico-estado-ingenieros"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block grafico_2 %}
+<div class="col-md-4 col-sm-4">
+    <div class="x_panel">
+        <div class="x_title">
+            <h2>Presupuestos Pendientes de Aprobacion</h2>
+            <div class="clearfix"></div>
+        </div>
+        <div id="contenido-presupuestos-pendientes" class="x_content" style="min-height: 450px; height: 450px; width: 100%;">
+            <div id="plotly-graph-div-presupuestos"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block grafico_3 %}
+<div class="col-md-4 col-sm-4">
+    <div class="x_panel">
+        <div class="x_title">
+            <h2>Certificados Pendientes</h2>
+            <div class="clearfix"></div>
+        </div>
+        <div id="contenido-certificados-pendientes" class="x_content" style="min-height: 450px; height: 450px; width: 100%;">
+            <div id="plotly-graph-div-certificados"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+
+</div>
+
+<div class="row">
+
+{% block grafico_4 %}
 <div class="col-md-4 col-sm-4">
     <div class="x_panel">
         <div class="x_title">
@@ -47,71 +103,46 @@
 </div>
 {% endblock %}
 
-
-
-
-{% block grafico_2 %}
+{% block grafico_5 %}
 <div class="col-md-4 col-sm-4">
     <div class="x_panel">
         <div class="x_title">
-            <h2>Estado de Ingenieros</h2>
+            <h2>Presupuestos en elaboracion</h2>
             <div class="clearfix"></div>
         </div>
         <div class="x_content">
-            <div id="grafico-estado-ingenieros"></div>
+            <div id="contenido-presupuestos-elaboracion">
+                <div class="row">
+                    <div class="col-md-5">
+                        <select id="filtro-cliente_pres" class="form-control">
+                            <option value="">Todos los Clientes</option>
+                            {% for cliente in clientes_pres %}
+                            <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <select id="filtro-ingeniero_pres" class="form-control">
+                            <option value="">Todos los Ingenieros</option>
+                            {% for ingeniero in ingenieros_pres %}
+                            <option value="{{ ingeniero.id }}">{{ ingeniero.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button id="borrar-filtros_pres" class="btn btn-secondary mb-3">Limpiar</button>
+                    </div>
+                </div>
+
+                <div id="tabla-presupuestos-elaboracion">
+                    <!-- Aquí se cargará la tabla de obras activas -->
+                </div>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block grafico_3 %}
-<div class="col-md-4 col-sm-4">
-    <div class="x_panel">
-        <div class="x_title">
-            <h2>Certificados Pendientes</h2>
-            <div class="clearfix"></div>
-        </div>
-        <div id="contenido-certificados-pendientes" class="x_content" style="min-height: 450px; height: 450px; width: 100%;">
-            <div id="plotly-graph-div-certificados"></div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-
-
-
-
-</div>
-
-<div class="row">
-    {% block grafico_4 %}
-    <div class="col-md-4 col-sm-4">
-        <div class="x_panel">
-            <div class="x_title">
-                <h2>Gráfico 4</h2>
-                <div class="clearfix"></div>
-            </div>
-            <div class="x_content">
-                <!-- Aquí irá la imagen de la visualización -->
-            </div>
-        </div>
-    </div>
-    {% endblock %}
-
-    {% block grafico_5 %}
-    <div class="col-md-4 col-sm-4">
-        <div class="x_panel">
-            <div class="x_title">
-                <h2>Gráfico 5</h2>
-                <div class="clearfix"></div>
-            </div>
-            <div class="x_content">
-                <!-- Aquí irá la imagen de la visualización -->
-            </div>
-        </div>
-    </div>
-    {% endblock %}
 
     {% block grafico_6 %}
     <div class="col-md-4 col-sm-4">
@@ -205,6 +236,84 @@ $(document).ready(function() {
 
     cargarObrasActivas(); // Cargar obras activas al cargar la página
 
+
+function cargarPresupuestosElaboracion() {
+        var cliente_p = $('#filtro-cliente_pres').val();
+        var ingeniero_p = $('#filtro-ingeniero_pres').val();
+        var page = 1;
+        console.log(cliente_p)
+        console.log(ingeniero_p)
+
+        $.ajax({
+            url: "{% url 'get_presupuestos_elaboracion' %}",
+            data: {
+                cliente: cliente_p,
+                ingeniero: ingeniero_p,
+                page: page
+            },
+            success: function(data) {
+                if (data.presupuestos.length === 0) {
+                    $('#contenido-presupuestos-elaboracion').html('<p>No hay Presupuestos en elaboracion</p>');
+                } else {
+                    var presupuestosHtml = '<div class="row">' +
+                                    '<div class="col-md-5">' +
+                                    '<select id="filtro-cliente_pres" class="form-control">' +
+                                    '<option value="">Todos los Clientes</option>' +
+                                    '{% for cliente in clientes_pres %}' +
+                                    '<option value="{{ cliente.id }}">{{ cliente.nombre }}</option>' +
+                                    '{% endfor %}' +
+                                    '</select>' +
+                                    '</div>' +
+                                    '<div class="col-md-5">' +
+                                    '<select id="filtro-ingeniero_pres" class="form-control">' +
+                                    '<option value="">Todos los Ingenieros</option>' +
+                                    '{% for ingeniero in ingenieros_pres %}' +
+                                    '<option value="{{ ingeniero.id }}">{{ ingeniero.get_full_name }}</option>' +
+                                    '{% endfor %}' +
+                                    '</select>' +
+                                    '</div>' +
+                                    '<div class="col-md-2 d-flex align-items-end">' +
+                                    '<button id="borrar-filtros_pres" class="btn btn-secondary mb-3">Limpiar</button>' +
+                                    '</div>' +
+                                    '</div>' +
+                                    '<table class="table table-striped">';
+                    presupuestosHtml += '<thead><tr><th>Nombre</th><th>Cliente</th><th>Ingeniero</th><th>Fecha de solicitud</th></tr></thead><tbody>';
+                    $.each(data.presupuestos, function(index, presupuesto) {
+                        presupuestosHtml += '<tr>';
+                        presupuestosHtml += '<td>' + presupuesto.proyecto.nombre + '</td>';
+                        presupuestosHtml += '<td>' + presupuesto.proyecto.cliente.nombre + '</td>';
+                        presupuestosHtml += '<td>' + presupuesto.encargado.get_full_name + '</td>';
+                        presupuestosHtml += '<td>'+ presupuesto.fecha_asignacion + '</td>';
+                        presupuestosHtml += '</tr>';
+                    });
+                    presupuestosHtml += '</tbody></table>';
+                    $('#contenido-presupuestos-elaboracion').html(presupuestosHtml);
+
+                    // Reattach event handlers to the new elements
+                    $('#filtro-cliente_pres').change(cargarPresupuestosElaboracion);
+                    $('#filtro-ingeniero_pres').change(cargarPresupuestosElaboracion);
+                    $('#borrar-filtros_pres').click(function() {
+                        $('#filtro-cliente_pres').val('');
+                        $('#filtro-ingeniero_pres').val('');
+                        cargarPresupuestosElaboracion();
+                    });
+                }
+            }
+        });
+    }
+
+    $('#filtro-cliente_pres').change(cargarPresupuestosElaboracion);
+    $('#filtro-ingeniero_pres').change(cargarPresupuestosElaboracion);
+    $('#borrar-filtros_pres').click(function() {
+        $('#filtro-cliente_pres').val('');
+        $('#filtro-ingeniero_pres').val('');
+        cargarPresupuestosElaboracion();
+    });
+
+    cargarPresupuestosElaboracion(); // Cargar presupestos en elaboracion al cargar la página
+
+
+
 var graphDataCertificadosPendientes = JSON.parse('{{ graph_data_certificados_pendientes|escapejs }}');
 
 var dataCertificados = [];
@@ -275,6 +384,7 @@ Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertific
 
     // Datos para el gráfico de Estado de Ingenieros
     var graphDataEstadoIngenieros = JSON.parse('{{ graph_data_estado_ingenieros|escapejs }}');
+    var maxSum = Math.max(...graphDataEstadoIngenieros.obras_ejecucion.map((value, index) => value + graphDataEstadoIngenieros.presupuestos_elaboracion[index]));
 
     var trace2 = {
         x: graphDataEstadoIngenieros.nombres,
@@ -298,7 +408,7 @@ Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertific
         yaxis: {
             title: 'Cantidad',
             dtick: 1,
-            range: [0, Math.max(...graphDataEstadoIngenieros.obras_ejecucion, ...graphDataEstadoIngenieros.presupuestos_elaboracion) * 1.1]  // Asegura que el eje Y comience en 0 y tenga un poco de espacio por encima del valor máximo
+            range: [0, maxSum * 1.1]  // Asegura que el eje Y comience en 0 y tenga un poco de espacio por encima del valor máximo
         },
         autosize: true,
         margin: {
@@ -319,6 +429,68 @@ Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertific
     };
 
     Plotly.newPlot('grafico-estado-ingenieros', dataIngenieros, layoutIngenieros);
+var graphDataPresupuestosPendientes = JSON.parse('{{ graph_data_presupuestos_pendientes|escapejs }}');
+
+var dataPresupuestos = [];
+
+graphDataPresupuestosPendientes.clientes.forEach(function(cliente) {
+    var presupuestos = graphDataPresupuestosPendientes.presupuestos_cliente[cliente];
+    var yBase = 0;
+
+    presupuestos.forEach(function(presupuesto) {
+        dataPresupuestos.push({
+            x: [cliente],
+            y: [1], // Cada segmento tiene un valor de 1 para apilarse
+            base: yBase,
+            text: [presupuesto.proyecto_nombre],
+            textposition: 'inside',
+            hovertemplate: 'ID Presupuesto: %{customdata}<extra></extra>',
+            customdata: [presupuesto.id],
+            type: 'bar',
+            marker: {
+                color: '#1f77b4', // Color azul específico
+                line: {
+                    width: 1,
+                    color: 'white'
+                }
+            }
+        });
+
+        yBase += 1; // Incrementar la base para el siguiente segmento
+    });
+});
+
+var layoutPresupuestos = {
+    barmode: 'stack',
+    xaxis: { title: 'Clientes' },
+    yaxis: {
+        title: 'Número de Presupuestos',
+        dtick: 1,
+        range: [0, Math.max(...graphDataPresupuestosPendientes.clientes.map(cliente => graphDataPresupuestosPendientes.presupuestos_cliente[cliente].length)) * 1.1] // Ajustar el rango Y
+    },
+    autosize: true,
+    margin: {
+        l: 50,
+        r: 50,
+        t: 50,
+        b: 50,
+        pad: 4
+    },
+    plot_bgcolor: 'white',
+    paper_bgcolor: 'white',
+    responsive: true,
+    hovermode: 'closest',
+    showlegend: false
+};
+
+Plotly.newPlot('plotly-graph-div-presupuestos', dataPresupuestos, layoutPresupuestos).then(function(gd) {
+    gd.on('plotly_click', function(data){
+        var point = data.points[0];
+        var presupuestoId = point.customdata;
+        window.location.href = '/ver_archivo_presupuesto/' + presupuestoId;
+    });
+});
+
 
 });
 </script>

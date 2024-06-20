@@ -35,6 +35,7 @@
                               <th class="column-title">Fecha de solicitud</th> <!-- Aumentado el ancho -->
                               <th class="column-title" style="width: 10%;">Cantidad</th> <!-- Reducido el ancho -->
                               <th class="column-title">Unidad de medida</th> <!-- Reducido el ancho -->
+                              <th class="column-title">Precio</th> <!-- Reducido el ancho -->
                             </tr>
                           </thead>
                           <tbody>
@@ -50,6 +51,7 @@
                                             </div>
                                         </td>
                                         <td>{{ material_pedido_compra.material.medida }}</td>
+                                        <td>{{ material_pedido_compra.material.monto }}</td>
                                         {% if material_pedido_compra.material in materiales_no_disponibles %}
                                             <td><a href="{% url 'ver_pedido' pedido.id %}" class="btn btn-danger btn-sm">Solicitar Compra</a></td>
                                         {% endif %}

@@ -29,7 +29,7 @@
             </div>
             <div class="x_content">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <select id="filtro-ingeniero" class="form-control">
                             <option value="">Seleccione Ingeniero</option>
                             {% for ingeniero in ingenieros %}
@@ -46,6 +46,7 @@
 
 <div class="row">
     {% block grafico_4 %}
+    {% if ingeniero_seleccionado %}
         <div class="col-md-4 col-sm-4">
             <div class="x_panel">
                 <div class="x_title">
@@ -57,9 +58,11 @@
                 </div>
             </div>
         </div>
+    {% endif %}
         {% endblock %}
 
 {% block grafico_5 %}
+    {% if ingeniero_seleccionado %}
     <div class="col-md-4 col-sm-4">
         <div class="x_panel">
             <div class="x_title">
@@ -74,12 +77,14 @@
             </div>
         </div>
     </div>
+    {% endif %}
 {% endblock %}
 
 
 
 
     {% block grafico_3 %}
+    {% if ingeniero_seleccionado %}
     <div class="col-md-4 col-sm-4">
         <div class="x_panel">
             <div class="x_title">
@@ -91,11 +96,13 @@
             </div>
         </div>
     </div>
+    {% endif %}
     {% endblock %}
 </div>
 
 <div class="row">
     {% block grafico_1 %}
+    {% if ingeniero_seleccionado %}
     <div class="col-md-4 col-sm-4">
         <div class="x_panel">
             <div class="x_title">
@@ -109,9 +116,11 @@
             </div>
         </div>
     </div>
+    {% endif %}
     {% endblock %}
 
     {% block grafico_2 %}
+    {% if ingeniero_seleccionado %}
     <div class="col-md-4 col-sm-4">
         <div class="x_panel">
             <div class="x_title">
@@ -146,9 +155,11 @@
             </div>
         </div>
     </div>
+    {% endif %}
     {% endblock %}
 
     {% block grafico_6 %}
+    {% if ingeniero_seleccionado %}
     <div class="col-md-4 col-sm-4">
         <div class="x_panel">
             <div class="x_title">
@@ -160,6 +171,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
     {% endblock %}
 </div>
 {% endblock %}
@@ -316,12 +328,13 @@ function mostrarOcultarContenedor() {
                     gestionHtml += '<p>No hay Pedidos ni Devoluciones disponibles</p>';
                 } else {
                     gestionHtml += '<table class="table table-striped">';
-                    gestionHtml += '<thead><tr><th>Tipo</th><th>Obra</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+                    gestionHtml += '<thead><tr><th>Tipo</th><th>Obra</th><th>Estado</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>';
                     $.each(data.items, function(index, item) {
                         gestionHtml += '<tr>';
                         gestionHtml += '<td>' + item.tipo + '</td>';
                         gestionHtml += '<td>' + item.obra + '</td>';
                         gestionHtml += '<td>' + item.estado + '</td>';
+                        gestionHtml += '<td>' + item.monto_total + '</td>';
                         gestionHtml += '<td><a href="' + "{% url 'ver_pedido_gerente' '0' %}".replace('0', item.id) + '" class="btn btn-info btn-sm">Detalles</a></td>';
                         gestionHtml += '</tr>';
                     });

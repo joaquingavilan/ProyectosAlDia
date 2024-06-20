@@ -87,7 +87,7 @@ class BuscadorProveedorForm(forms.Form):
 class MaterialForm(forms.ModelForm):
     class Meta:
         model = Material
-        fields = ['nombre', 'marca', 'id_proveedor', 'medida', 'minimo', 'unidades_stock', 'fotografia']
+        fields = ['nombre', 'marca', 'id_proveedor', 'medida', 'minimo', 'unidades_stock', 'fotografia', 'precio']
 
     labels = {
         'id_proveedor': 'Proveedor',

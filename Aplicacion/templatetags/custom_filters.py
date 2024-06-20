@@ -27,3 +27,13 @@ def split(value, key):
 @register.filter
 def anydevolucion(devoluciones, pedido_id):
     return devoluciones.filter(pedido__id=pedido_id).exists()
+
+
+@register.filter(name='has_group')
+def has_group(user, group_name):
+    return user.groups.filter(name=group_name).exists()
+
+
+@register.filter
+def zip_lists(a, b):
+    return zip(a, b)
