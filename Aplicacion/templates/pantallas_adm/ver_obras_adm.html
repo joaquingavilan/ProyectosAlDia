@@ -1,5 +1,5 @@
 {% extends request.base_template %}
-
+{% load static %}
 {% block content %}
 <div class="x_panel {% if not presupuestos %}collapsed{% endif %}">
     <div class="x_title">
@@ -11,7 +11,6 @@
         </ul>
         <div class="clearfix"></div>
     </div>
-
 
     <div class="x_content" {% if not presupuestos %}style="display: none;"{% endif %}>
         {% if presupuestos %}
@@ -48,8 +47,8 @@
             </tbody>
         </table>
         {% else %}
-        <div class="alert alert-warning" role="alert">
-            No hay obras pendientes de asignacion
+        <div class="alert alert-light" role="alert">
+            No hay obras pendientes de asignación
         </div>
         {% endif %}
     </div>
@@ -70,8 +69,7 @@
     <div class="x_content">
         <!-- Búsqueda y filtros -->
         <div class="row mb-4">
-            <!-- Buscador -->
-            <div class="col-md-4">
+            <div class="col-md-4 position-relative">
                 <div class="input-group">
                     <input class="form-control" type="text" id="buscadorObras" placeholder="Buscar por nombre de proyecto">
                     <div class="input-group-append">
@@ -79,27 +77,23 @@
                     </div>
                     <input type="hidden" id="obraUrl" value="{% url 'ver_obra_adm' 999999 %}">
                 </div>
-                <div id="resultadosBusquedaObras"></div>
+                <div id="resultadosBusquedaObras" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;"></div>
             </div>
-            <!-- Filtro Campo -->
             <div class="col-md-3">
-                <select id="filtroCampo" class="form-control">
-                    <option value="estado" {% if campo_seleccionado == "estado" %}selected{% endif %}>Estado</option>
-                    <option value="encargado" {% if campo_seleccionado == "encargado" %}selected{% endif %}>Ingeniero Encargado</option>
-                    <option value="fechaInicio" {% if campo_seleccionado == "fechaInicio" %}selected{% endif %}>Fecha de Inicio</option>
-                    <option value="fechaFin" {% if campo_seleccionado == "fechaFin" %}selected{% endif %}>Fecha de Fin</option>
+                <select id="filtroCampo" class="custom-select">
+                    <option value="estado">Estado</option>
+                    <option value="encargado">Ingeniero Encargado</option>
+                    <option value="fechaInicio">Fecha de Inicio</option>
+                    <option value="fechaFin">Fecha de Fin</option>
                 </select>
             </div>
-            <!-- Filtro Valor -->
             <div class="col-md-3">
-                <select id="filtroValor" class="form-control"></select>
+                <select id="filtroValor" class="custom-select"></select>
             </div>
-            <!-- Botón de limpiar filtros -->
             <div class="col-md-2">
                 <a href="{% url 'ver_obras_adm' %}" class="btn btn-secondary btn-block">Limpiar Filtros</a>
             </div>
         </div>
-
         <!-- Tabla con todas las obras -->
         {% if obras %}
         <table class="table table-striped table-bordered">
@@ -235,7 +229,7 @@ document.getElementById('buscadorObras').addEventListener('input', function() {
     let resultadosDiv = document.getElementById('resultadosBusquedaObras');
     let baseUrl = document.getElementById('obraUrl').value;
 
-    if (query.length >= 3) {
+    if (query.length >= 2) {
         fetch(`/buscar_obras/?q=${query}`)
         .then(response => response.json())
         .then(data => {
@@ -243,14 +237,27 @@ document.getElementById('buscadorObras').addEventListener('input', function() {
             data.forEach(obra => {
                 let div = document.createElement('div');
                 let obraUrl = baseUrl.replace('999999', obra.id);
-                div.innerHTML = `<a href="${obraUrl}"><strong>Proyecto:</strong> ${obra.proyecto_nombre}</a>`;
+                div.innerHTML = `<a class="dropdown-item" href="${obraUrl}"><strong>Proyecto:</strong> ${obra.proyecto__nombre}</a>`;
                 resultadosDiv.appendChild(div);
             });
+            resultadosDiv.style.display = 'block'; // Mostrar resultados
+        })
+        .catch(error => {
+            console.error('Error al buscar obras:', error);
         });
     } else {
         resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+        resultadosDiv.style.display = 'none'; // Ocultar resultados si la consulta es demasiado corta
     }
 });
+
+// Ocultar los resultados de la búsqueda cuando se hace clic fuera del buscador
+document.addEventListener('click', function(event) {
+let resultadosDiv = document.getElementById('resultadosBusquedaObras');
+        if (!resultadosDiv.contains(event.target) && event.target.id !== 'buscador') {
+            resultadosDiv.style.display = 'none';
+        }
+    });
 
 function inicializarFiltroValorObras() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
@@ -324,6 +331,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 document.getElementById('filtroCampo').addEventListener('change', function() {
     inicializarFiltroValorObras();
 });
+
 function filtrarObras() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
     let valorSeleccionado = document.getElementById('filtroValor').value;
@@ -332,14 +340,12 @@ function filtrarObras() {
     window.location.href = url;  // Esto redirigirá a la nueva página de obras filtradas.
 }
 
-
 document.getElementById('filtroValor').addEventListener('change', function() {
     // Si el valor seleccionado no es vacío, aplicar el filtro.
     if (this.value !== "") {
         filtrarObras();
     }
 });
-
 
 </script>
 {% endblock %}

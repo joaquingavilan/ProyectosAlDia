@@ -2715,9 +2715,6 @@ def ver_obras_adm(request):
     return render(request, template_name, context)
 
 
-
-
-
 def ver_obra_adm(request, obra_id):
     obra = get_object_or_404(Obra, id=obra_id)
     return render(request, 'pantallas_adm/ver_obra_adm.html', {'obra': obra})

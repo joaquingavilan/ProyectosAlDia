@@ -14,7 +14,7 @@
     <div class="x_content">
         <!-- Filtros y búsqueda -->
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-4 position-relative">
                 <div class="input-group">
                     <input class="form-control" type="text" id="buscadorPresupuestos" placeholder="Buscar por nombre de proyecto">
                     <div class="input-group-append">
@@ -22,7 +22,8 @@
                     </div>
                     <input type="hidden" id="presupuestoUrl" value="{% url 'ver_presupuesto_adm' 999999 %}">
                 </div>
-                <div id="resultadosBusquedaPresupuestos"></div>
+                <div id="resultadosBusquedaPresupuestos" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;">
+                </div>
             </div>
             <div class="col-md-3">
                 <!-- Dropdown para seleccionar el campo de filtro -->
@@ -43,7 +44,6 @@
                 <button onclick="window.location.href='{% url 'ver_presupuestos_adm' %}'" class="btn btn-secondary btn-block">Borrar Filtros</button>
             </div>
         </div>
-
 
         <!-- Tabla de presupuestos -->
         {% if presupuestos %}
@@ -146,9 +146,6 @@
             </div>
         </div>
 
-
-
-
         <!-- Paginador -->
         <nav>
             <ul class="pagination">
@@ -180,7 +177,6 @@
     </div>
 </div>
 {% endblock %}
-
 
 {% block extra_js %}
 <script>
@@ -232,7 +228,6 @@ function registrarAnticipo(buttonElem) {
     });
 }
 
-
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -247,6 +242,7 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
 function actualizarEstado(selectElem) {
     const idPresupuesto = selectElem.getAttribute('data-id');
     const nuevoEstado = selectElem.value;
@@ -268,6 +264,7 @@ function actualizarEstado(selectElem) {
         }
     });
 }
+
 document.getElementById('buscadorPresupuestos').addEventListener('input', function() {
     let query = this.value;
     let resultadosDiv = document.getElementById('resultadosBusquedaPresupuestos');
@@ -278,19 +275,25 @@ document.getElementById('buscadorPresupuestos').addEventListener('input', functi
         .then(response => response.json())
         .then(data => {
             resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
-            data.forEach(presupuesto => {
-                let div = document.createElement('div');
-                let presupuestoUrl = baseUrl.replace('999999', presupuesto.id);
-                div.innerHTML = `<a href="${presupuestoUrl}"><strong>Proyecto:</strong> ${presupuesto.proyecto_nombre}</a>`;
-                resultadosDiv.appendChild(div);
-            });
+            if (data.length > 0) {
+                data.forEach(presupuesto => {
+                    let div = document.createElement('div');
+                    let presupuestoUrl = baseUrl.replace('999999', presupuesto.id);
+                    div.innerHTML = `<a href="${presupuestoUrl}" class="dropdown-item"><strong>Proyecto:</strong> ${presupuesto.proyecto_nombre}</a>`;
+                    resultadosDiv.appendChild(div);
+                });
+                resultadosDiv.style.display = 'block';
+            } else {
+                resultadosDiv.style.display = 'none';
+            }
         });
     } else {
         resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+        resultadosDiv.style.display = 'none';
     }
 });
 
-//inicializar primer dropdown
+// Inicializar primer dropdown
 // Función de inicialización para el dropdown filtroValor
 function inicializarFiltroValorPresupuestos() {
     let campoSeleccionado = document.getElementById('filtroCampo').value;
@@ -344,6 +347,7 @@ function inicializarFiltroValorPresupuestos() {
         });
     }
 }
+
 document.addEventListener('DOMContentLoaded', (event) => {
     inicializarFiltroValorPresupuestos();  // Llamar a la función al cargar la página
 });
@@ -363,10 +367,6 @@ function filtrarPresupuestos() {
     }
 }
 
-
-
 document.getElementById('filtroValor').addEventListener('change', filtrarPresupuestos);
-
-
 </script>
 {% endblock %}
