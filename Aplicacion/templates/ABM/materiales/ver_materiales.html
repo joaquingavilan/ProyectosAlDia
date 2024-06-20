@@ -1,6 +1,6 @@
 {% extends request.base_template %}
 {% load static %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="x_panel">
     <div class="x_title">
@@ -81,7 +81,7 @@
                             <td>{{ material.medida }}</td>
                             <td>{{ material.minimo }}</td>
                             <td>{{ material.unidades_stock }}</td>
-                            <td>{{ material.precio }}</td>
+                            <td>{{ material.precio|intcomma }}</td>
                             <td>
                                 <a href="{% url 'editar_material' material.id %}" class="btn btn-primary btn-sm"><i class="fa fa-pencil"></i></a>
                                 <a href="{% url 'ver_materiales' %}?eliminar_material_id={{ material.id }}" class="btn btn-danger btn-sm"><i class="fa fa-trash-o"></i></a>

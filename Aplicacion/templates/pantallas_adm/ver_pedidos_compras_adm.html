@@ -26,7 +26,7 @@
                             <td>{{ pedido_info.pedido.id }}</td>
                             <td>{{ pedido_info.pedido.get_estado_display }}</td>
                             <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
-                            <td>{{ pedido_info.pedido.monto_total }}</td>
+                            <td>{{ pedido_info.pedido.monto_total|intcomma }}</td>
                             <td>
                                 <button type="button" class="btn btn-success" onclick="mostrarModalCompra({{ pedido_info.pedido.id }})">Comprar</button>
                             </td>
@@ -36,7 +36,7 @@
                             <td>{{ pedido_info.pedido.id }}</td>
                             <td>{{ pedido_info.pedido.get_estado_display }}</td>
                             <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
-                            <td>{{ pedido_info.pedido.monto_total }}</td>
+                            <td>{{ pedido_info.pedido.monto_total|intcomma }}</td>
                             <td>
                                 <a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver detalles</a>
                             </td>

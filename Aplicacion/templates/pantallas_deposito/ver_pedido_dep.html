@@ -1,9 +1,9 @@
 {% extends request.base_template %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="x_panel">
     <div class="x_title">
-        <h1 style="margin: 0; flex-grow: 1;">Pedido para <strong>{{ pedido.obra.proyecto.nombre }}</strong></h1>
+        <h2>Pedido para <strong>{{ pedido.obra.proyecto.nombre }}</strong></h2>
         <div class="clearfix"></div>
     </div>
 
@@ -14,7 +14,7 @@
             <h2>Fecha de Entrega: {{pedido.fecha_entrega}}</h2>
         {% endif %}
         <h2>Estado: {{pedido.get_estado_display}}</h2>
-        <h2>Monto total: {{pedido.monto_total}}</h2>
+        <h2>Monto total: {{pedido.monto_total|intcomma}}</h2>
     </div>
     <div class="x_content">
         <br />
@@ -43,7 +43,7 @@
                             </div>
                         </td>
                         <td>{{ material_pedido.material.medida }}</td>
-                                <td>{{ material_pedido.monto }}</td>
+                                <td>{{ material_pedido.monto|intcomma }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>

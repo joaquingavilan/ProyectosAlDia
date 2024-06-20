@@ -1,5 +1,5 @@
 {% extends request.base_template %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="container">
     <div class="x_panel">
@@ -40,8 +40,8 @@
                                 {% else %}
                                     <td>--</td>
                                 {% endif %}
-                                <td>{{ material.precio }}</td>
-            <td>
+                                <td>{{ material.precio|intcomma }}</td>
+                                <td>
                                     <a href="{% url 'editar_material' material.id %}" class="btn btn-primary">Editar</a>
                                     <a href="{% url 'ver_materiales' %}?eliminar_material_id={{ material.id }}" class="btn btn-danger">Eliminar</a>
                                 </td>

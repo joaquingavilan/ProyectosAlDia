@@ -1,5 +1,5 @@
 {% extends request.base_template %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="x_panel">
     <div class="x_title">
@@ -64,7 +64,7 @@
                             {% endif %}
                             <td>{{ pedido.fecha_solicitud }}</td>
                             <td>{{ pedido.materialpedido_set.count }}</td>
-                            <td>{{ pedido.monto_total }}</td>
+                            <td>{{ pedido.monto_total|intcomma }}</td>
                             {% if pedido.get_estado_display == 'Pendiente' %}
                                 <td>
                                     <a href="{% url 'ver_pedido_dep' pedido.id %}" class="btn btn-danger btn-sm">Ver Pedido</a>

@@ -1,5 +1,5 @@
 {% extends 'base_deposito.html' %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="x_panel">
     <div class="x_title">
@@ -61,7 +61,7 @@
                             <td>{{ devolucion.get_estado_display }}</td>
                             <td>{{ devolucion.fecha_solicitud }}</td>
                             <td>{{ devolucion.materiales.count }}</td>
-                            <td>{{devolucion.monto_total}}</td>
+                            <td>{{devolucion.monto_total|intcomma}}</td>
                             <td><a href="{% url 'ver_devolucion_dep' devolucion_id=devolucion.id %}" class="btn btn-{% if devolucion.get_estado_display == 'Pendiente' %}danger{% else %}info{% endif %} btn-sm">Ver Devolución</a></td>
                         </tr>
                     {% endfor %}

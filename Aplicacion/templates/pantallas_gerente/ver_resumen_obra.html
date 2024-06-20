@@ -16,7 +16,7 @@
 
 <div class="row">
         {% block grafico_2 %}
-<div class="col-md-4 col-sm-4">
+<div class="col-md-6 col-sm-6">
     <div class="x_panel">
         <div class="x_title">
             <h2>Cronograma de la Obra</h2>
@@ -28,27 +28,8 @@
     </div>
 </div>
 {% endblock %}
-
-{% block grafico_7 %}
-<div class="col-md-4 col-sm-4">
-    <div class="x_panel">
-        <div class="x_title">
-            <h2>Presupuesto vs Materiales</h2>
-            <div class="clearfix"></div>
-        </div>
-        <div class="x_content">
-            <div id="chart" style="width:100%;"></div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-
-
-
-
 {% block grafico_3 %}
-<div class="col-md-4 col-sm-4">
+<div class="col-md-6 col-sm-6">
     <div class="x_panel">
         <div class="x_title">
             <h2>Montos de Certificados por Fecha</h2>
@@ -60,12 +41,24 @@
     </div>
 </div>
 {% endblock %}
-
 </div>
 
 <div class="row">
+    {% block grafico_7 %}
+<div class="col-md-3 col-sm-3">
+    <div class="x_panel">
+        <div class="x_title">
+            <h2>Presupuesto vs Materiales</h2>
+            <div class="clearfix"></div>
+        </div>
+        <div class="x_content">
+            <div id="chart" style="width:100%;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
     {% block grafico_8 %}
-<div class="col-md-4 col-sm-4">
+<div class="col-md-3 col-sm-3">
     <div class="x_panel">
         <div class="x_title">
             <h2>Cantidad por material</h2>
@@ -87,7 +80,7 @@
 </div>
 {% endblock %}
     {% block grafico_4 %}
-    <div class="col-md-4 col-sm-4">
+    <div class="col-md-3 col-sm-3">
         <div class="x_panel">
             <div class="x_title">
                 <h2>Devoluciones de materiales</h2>
@@ -126,7 +119,7 @@
     </div>
     {% endblock %}
 {% block grafico_1 %}
-<div class="col-md-4 col-sm-4">
+<div class="col-md-3 col-sm-3">
     <div class="x_panel">
         <div class="x_title">
             <h2>Pedidos de materiales</h2>

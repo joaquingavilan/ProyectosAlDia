@@ -1,95 +1,94 @@
 <!-- ver_devolucion_dep.html -->
 {% extends 'base_deposito.html' %}
 {% load static %}
+{% load custom_filters %}
 {% block content %}
  <div class="x_panel">
-          <div class="x_title">
-              <h1>Devolución del pedido <strong>#{{ devolucion.pedido.id }}</strong> de la Obra <strong>{{ devolucion.obra.proyecto.nombre }}</strong></h1>
-          </div>
-          <div>
-              <h2>Solicitado por: {{devolucion.ingeniero.get_full_name}}</h2>
-              <h2>Fecha de solicitud: {{devolucion.fecha_solicitud}}</h2>
-              {% if devolucion.estado == 'D' %}
-                <h2>Fecha de Devolución: {{devolucion.fecha_devolucion}}</h2>
-              {% endif %}
-                <h2>Estado: {{devolucion.get_estado_display}}</h2>
-        <h2>Monto total: {{devolucion.monto_total}}</h2>
-          </div>
-          <div class="x_content">
-            <br />
-
-            <div class="table-responsive">
-                <table class="table table-striped jambo_table bulk_action">
-                      <thead>
-                        <tr class="headings">
-                          <th class="column-title" style="width: 15%;">Nombre del producto</th>
-                          <th class="column-title" style="width: 15%;">Marca</th>
-                          <th class="column-title" style="width: 20%;">Fotografía</th> <!-- Aumentado el ancho -->
-                          <th class="column-title" style="width: 10%;">Cantidad devuelta</th> <!-- Reducido el ancho -->
-                          <th class="column-title" style="width: 10%;">Unidad de medida</th> <!-- Reducido el ancho -->
-                          <th class="column-title" style="width: 10%;">Monto</th> <!-- Reducido el ancho -->
-                          {% if devolucion.observaciones %}
-                            <th class="column-title" style="width: 20%;">Observaciones</th>
-                          {% endif %}
+     <div class="x_title">
+         <h2>Devolución del pedido <strong>#{{ devolucion.pedido.id }}</strong> de la Obra <strong>{{ devolucion.obra.proyecto.nombre }}</strong></h2>
+         <div class="clearfix"></div>
+     </div>
+     <div>
+         <h2>Solicitado por: {{devolucion.ingeniero.get_full_name}}</h2>
+         <h2>Fecha de solicitud: {{devolucion.fecha_solicitud}}</h2>
+         {% if devolucion.estado == 'D' %}
+            <h2>Fecha de Devolución: {{devolucion.fecha_devolucion}}</h2>
+         {% endif %}
+         <h2>Estado: {{devolucion.get_estado_display}}</h2>
+         <h2>Monto total: {{devolucion.monto_total|intcomma}}</h2>
+     </div>
+     <div class="x_content">
+         <br />
+         <div class="table-responsive">
+             <table class="table table-striped jambo_table bulk_action">
+                 <thead>
+                 <tr class="headings">
+                     <th class="column-title" style="width: 15%;">Nombre del producto</th>
+                     <th class="column-title" style="width: 15%;">Marca</th>
+                     <th class="column-title" style="width: 20%;">Fotografía</th> <!-- Aumentado el ancho -->
+                     <th class="column-title" style="width: 10%;">Cantidad devuelta</th> <!-- Reducido el ancho -->
+                     <th class="column-title" style="width: 10%;">Unidad de medida</th> <!-- Reducido el ancho -->
+                     <th class="column-title" style="width: 10%;">Monto</th> <!-- Reducido el ancho -->
+                     {% if devolucion.observaciones %}
+                        <th class="column-title" style="width: 20%;">Observaciones</th>
+                     {% endif %}
+                 </tr>
+                 </thead>
+                 <tbody>
+                    {% for material_devuelto in devolucion.materialdevuelto_set.all %}
+                        <tr>
+                            <td>{{ material_devuelto.material.nombre }}</td>
+                            <td>{{ material_devuelto.material.marca }}</td>
+                            <td><img src="{{ material_devuelto.material.foto.url }}" alt="Foto" style="max-width: 100%; height: auto;"></td>
+                            <td>{{ material_devuelto.cantidad }}</td>
+                            <td>{{ material_devuelto.material.medida }}</td>
+                            <td>{{ material_devuelto.monto|intcomma }}</td>
+                            {% if devolucion.observaciones %}
+                                <td>{{ devolucion.observaciones }}</td>
+                            {% endif %}
                         </tr>
-                      </thead>
-                      <tbody>
-                        {% for material_devuelto in devolucion.materialdevuelto_set.all %}
-                            <tr>
-                                <td>{{ material_devuelto.material.nombre }}</td>
-                                <td>{{ material_devuelto.material.marca }}</td>
-                                <td><img src="{{ material_devuelto.material.foto.url }}" alt="Foto" style="max-width: 100%; height: auto;"></td>
-                                <td>{{ material_devuelto.cantidad }}</td>
-                                <td>{{ material_devuelto.material.medida }}</td>
-                                <td>{{ material_devuelto.monto }}</td>
-                                {% if devolucion.observaciones %}
-                                    <td>{{ devolucion.observaciones }}</td>
-                                {% endif %}
-                            </tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
-            </div>
+                    {% endfor %}
+                 </tbody>
+             </table>
+         </div>
               <!-- Modal de Confirmación -->
-            <div class="modal" id="rechazarModal">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Confirmar rechazo</h5>
-                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+         <div class="modal" id="rechazarModal">
+             <div class="modal-dialog">
+                 <div class="modal-content">
+                     <div class="modal-header">
+                         <h5 class="modal-title">Confirmar rechazo</h5>
+                         <button type="button" class="close" data-dismiss="modal">&times;</button>
+                     </div>
+                     <div class="modal-body">
+                         <p>Motivo del rechazo</p>
+                         <textarea id="observacionesRechazo" name="observaciones" class="form-control" rows="3" placeholder="Escribe aquí tus observaciones..."></textarea>
+                     </div>
+                     <div class="modal-footer">
+                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                         <button type="button" class="btn btn-danger" id="confirmarRechazoModal">Rechazar</button>
+                     </div>
+                 </div>
+             </div>
+         </div>
+         {% if devolucion.observaciones %}
+            <a>{{ material_devuelto.observaciones }}</a>
+         {% endif %}
+            <td class="text-center">
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{% url 'ver_devoluciones_dep' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
+                    {% if devolucion.estado == 'P' %}
+                        <div>
+                            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rechazarModal">Rechazar</button>
+                            <form method="post" action="{% url 'aceptar_devolucion_dep' devolucion_id=devolucion.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success mr-2">Aceptar</button>
+                            </form>
                         </div>
-                        <div class="modal-body">
-                            <p>Motivo del rechazo</p>
-                            <textarea id="observacionesRechazo" name="observaciones" class="form-control" rows="3" placeholder="Escribe aquí tus observaciones..."></textarea>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                            <button type="button" class="btn btn-danger" id="confirmarRechazoModal">Rechazar</button>
-                        </div>
-                    </div>
+                    {% endif %}
                 </div>
-            </div>
-              {% if devolucion.observaciones %}
-                <a>{{ material_devuelto.observaciones }}</a>
-              {% endif %}
-              <td class="text-center">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="{% url 'ver_devoluciones_dep' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Atrás</a>
-                        {% if devolucion.estado == 'P' %}
-                            <div>
-                                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rechazarModal">Rechazar</button>
-                                <form method="post" action="{% url 'aceptar_devolucion_dep' devolucion_id=devolucion.id %}">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-success mr-2">Aceptar</button>
-                                </form>
-                            </div>
-                        {% endif %}
-                    </div>
-              </td>
-          </div>
-          </div>
-      </div>
-    </div>
+            </td>
+     </div>
+ </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>

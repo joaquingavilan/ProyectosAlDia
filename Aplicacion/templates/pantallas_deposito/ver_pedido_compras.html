@@ -1,9 +1,10 @@
 {% extends request.base_template %}
-
+{% load custom_filters %}
 {% block content %}
     <div class="x_panel">
         <div class="x_title">
-            <h1>Pedido de Compra <strong>#{{ pedido.id }}</strong></h1>
+            <h2>Pedido de Compra <strong>#{{ pedido.id }}</strong></h2>
+            <div class="clearfix"></div>
         </div>
         <div>
             <h2>Fecha de solicitud: {{ pedido.fecha_solicitud }}</h2>
@@ -11,7 +12,7 @@
                 <h2>Fecha de Devolución: {{ pedido.fecha_devolucion }}</h2>
             {% endif %}
             <h2>Estado: {{ pedido.get_estado_display }}</h2>
-            <h2>Monto total: {{ pedido.monto_total }}</h2>
+            <h2>Monto total: {{ pedido.monto_total|intcomma }}</h2>
     </div>
 
         <div class="table-responsive">
@@ -33,7 +34,7 @@
                             <td>{{ material_pedido.material.marca }}</td>
                             <td>{{ material_pedido.material.medida }}</td>
                             <td>{{ material_pedido.cantidad }}</td>
-                            <td>{{ material_pedido.monto }}</td>
+                            <td>{{ material_pedido.monto|intcomma }}</td>
                         <td>
                             {% if pedido.comprobante %}
                                 <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#modalComprobante{{ material_pedido.id }}">

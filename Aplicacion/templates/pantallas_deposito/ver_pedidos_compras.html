@@ -1,5 +1,5 @@
 {% extends request.base_template %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="x_panel">
     <div class="x_title">
@@ -45,7 +45,7 @@
                                 <td>{{ pedido_info.pedido.get_estado_display }}</td>
                             {% endif %}
                             <td>{{ pedido_info.pedido.fecha_solicitud }}</td>
-                            <td>{{pedido_info.pedido.monto_total}}</td>
+                            <td>{{pedido_info.pedido.monto_total|intcomma}}</td>
                             <td><a href="{% url 'ver_pedido_compras' pedido_id=pedido_info.pedido.id %}" class="btn btn-info btn-sm">Ver pedido</a></td>
                         </tr>
                     {% endfor %}

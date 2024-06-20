@@ -1,5 +1,5 @@
 {% extends request.base_template %}
-
+{% load custom_filters %}
 {% block content %}
   <div class="x_panel">
     <h2 class="x_title">Materiales</h2>
@@ -34,7 +34,7 @@
                   {% else %}
                     <td>--</td>
                   {% endif %}
-                  <td>{{ material.precio }}</td>
+                  <td>{{ material.precio|intcomma }}</td>
                   <td>
                     <a href="{% url 'editar_material' material.id %}" class="btn btn-primary">Editar</a>
                     <!-- Actualización del enlace de eliminación -->

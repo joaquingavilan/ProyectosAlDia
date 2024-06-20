@@ -350,7 +350,7 @@ var layoutCertificados = {
     xaxis: { title: 'Proyectos' },
     yaxis: {
         title: 'Monto Total',
-        dtick: 100000,
+        dtick: 1000000,
         range: [0, Math.max(...Object.values(graphDataCertificadosPendientes.certificados_proyecto).flat().map(cert => cert.monto)) * 1.1]  // Asegura que el eje Y comience en 0 y tenga un poco de espacio por encima del valor máximo
     },
     autosize: true,
