@@ -25,9 +25,15 @@
     <div class="x_content">
         <!-- Contenido principal -->
         <div class="row mb-3">
-            <div class="col-md-3">
-                <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
-                <input type="hidden" id="clienteUrl" value="{% url 'ver_cliente' 999999 %}">
+            <div class="col-md-3 position-relative">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fa fa-search"></i></span>
+                    </div>
+                    <input type="hidden" id="clienteUrl" value="{% url 'ver_cliente' 999999 %}">
+                </div>
+                <div id="resultadosBusqueda" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;"></div>
             </div>
             <div class="col-md-3">
                 <select id="filtroCiudad" class="form-control">
@@ -41,7 +47,6 @@
                 <a href="{% url 'registro_cliente' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir cliente</a>
             </div>
         </div>
-        <div id="resultadosBusqueda"></div>
         <br>
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">
@@ -179,5 +184,39 @@
         const currentUrl = window.location.href.split('?')[0];
         window.location.href = `${currentUrl}?ciudad=${selectedCity}`;
     });
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+    // Buscador de clientes
+    document.getElementById('buscador').addEventListener('input', function() {
+        let query = this.value;
+        let resultadosDiv = document.getElementById('resultadosBusqueda');
+        let baseUrl = document.getElementById('clienteUrl').value;
+
+        if (query.length >= 3) {
+            fetch(`/buscar_clientes/?q=${query}`)
+            .then(response => response.json())
+            .then(data => {
+                resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+                data.forEach(cliente => {
+                    let div = document.createElement('div');
+                    let clienteUrl = baseUrl.replace('999999', cliente.id);
+                    div.innerHTML = `<a class="dropdown-item" href="${clienteUrl}">${cliente.nombre}</a>`;
+                    resultadosDiv.appendChild(div);
+                });
+                resultadosDiv.style.display = 'block';  // Mostrar el menú desplegable
+            });
+        } else {
+            resultadosDiv.style.display = 'none';  // Ocultar el menú desplegable si la consulta es demasiado corta
+        }
+    });
+
+    // Ocultar los resultados de la búsqueda cuando se hace clic fuera del buscador
+    document.addEventListener('click', function(event) {
+        let resultadosDiv = document.getElementById('resultadosBusqueda');
+        if (!resultadosDiv.contains(event.target) && event.target.id !== 'buscador') {
+            resultadosDiv.style.display = 'none';
+        }
+    });
+});
 </script>
 {% endblock %}
