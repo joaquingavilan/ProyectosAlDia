@@ -23,12 +23,13 @@
     </div>
     <div class="x_content">
         <!-- Row for search and filter -->
-        <div class="row mb-3">
+        <div class="row mb-4">
             <div class="col-md-3">
                 <div class="input-group">
                     <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
                     <input type="hidden" id="proveedorUrl" value="{% url 'ver_proveedor' 999999 %}">
                 </div>
+                <div id="resultadosBusqueda" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;"></div>
             </div>
             <div class="col-md-3">
                 <div class="input-group">
@@ -44,7 +45,6 @@
                 <a href="{% url 'registrar_proveedor' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir proveedor</a>
             </div>
         </div>
-        <div id="resultadosBusqueda"></div>
         <br>
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">
@@ -193,10 +193,50 @@
 
 {% block extra_js %}
 <script>
-    let currentProveedorId = null;
-    let rucsActuales = {{ rucs_json|safe }};
-    let emailsActuales = {{emails_json|safe }};
-    document.addEventListener('DOMContentLoaded', (event) => {
+    document.addEventListener('DOMContentLoaded', function() {
+        let currentProveedorId = null;
+        let rucsActuales = {{ rucs_json|safe }};
+        let emailsActuales = {{ emails_json|safe }};
+
+        // Event listener para el input del buscador
+        document.getElementById('buscador').addEventListener('input', function() {
+            let query = this.value.trim().toLowerCase();
+            let resultadosDiv = document.getElementById('resultadosBusqueda');
+            let baseUrl = document.getElementById('proveedorUrl').value;
+
+            if (query.length >= 3) {
+                fetch(`/buscar_proveedores/?q=${query}`)
+                .then(response => response.json())
+                .then(data => {
+                    resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+                    data.forEach(proveedor => {
+                        let div = document.createElement('div');
+                        let proveedorUrl = baseUrl.replace('999999', proveedor.id);
+                        div.innerHTML = `<a class="dropdown-item" href="${proveedorUrl}">${proveedor.nombre}</a>`;
+                        resultadosDiv.appendChild(div);
+                    });
+                    resultadosDiv.style.display = 'block';  // Mostrar resultados
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                });
+            } else {
+                resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+                resultadosDiv.style.display = 'none';  // Ocultar resultados si no hay consulta válida
+            }
+        });
+
+        document.getElementById('filtroCiudad').addEventListener('change', function() {
+            var ciudadId = this.value;
+            var url = new URL(window.location.href);
+            if (ciudadId) {
+                url.searchParams.set('ciudad', ciudadId);
+            } else {
+                url.searchParams.delete('ciudad');
+            }
+            window.location.href = url.toString();
+        });
+
         // Manejo de botones editar proveedor
         let editarProveedorBtns = document.querySelectorAll(".editarProveedorBtn");
         editarProveedorBtns.forEach(btn => {
@@ -216,140 +256,20 @@
                     document.getElementById("telefonoProveedor").value = data.telefono;
                     document.getElementById("observacionesProveedor").value = data.observaciones;
                     document.getElementById("emailProveedor").value = data.email;
-                    document.getElementById("direccionProveedor").value = data.direccion || '';  // Añadido
-                    document.getElementById("ciudadProveedor").value = data.ciudad || '';        // Añadido
-                    document.getElementById("paginaWebProveedor").value = data.pagina_web || ''; // Añadido
+                    document.getElementById("direccionProveedor").value = data.direccion || '';
+                    document.getElementById("ciudadProveedor").value = data.ciudad || '';
+                    document.getElementById("paginaWebProveedor").value = data.pagina_web || '';
                     document.getElementById("editarProveedorForm").setAttribute("data-original-ruc", data.ruc);
                     document.getElementById("editarProveedorForm").setAttribute("data-original-email", data.email);
                     document.getElementById("editarProveedorForm").action = `/editar_proveedor/${proveedorId}/`;
 
                     $('#editarProveedorModal').modal('show');
-
-
                 })
                 .catch(error => {
-                    console.log('There was a problem with the fetch operation:', error.message);
+                    console.error('There was a problem with the fetch operation:', error.message);
                 });
             });
         });
-
-document.getElementById("editarProveedorForm").addEventListener("submit", function(event) {
-    event.preventDefault();
-    let rucField = document.getElementById("rucProveedor");
-    let rucIngresado = rucField.value;
-
-    let emailField = document.getElementById("emailProveedor");
-    let emailIngresado = emailField.value;
-
-    // Excluye el RUC del cliente actual que se está editando y el email del cliente actual
-    let rucOriginal = this.getAttribute('data-original-ruc');
-    let rucsSinActual = rucsActuales.filter(ruc => ruc !== rucOriginal);
-    let emailOriginal = this.getAttribute('data-original-email');
-    let emailsSinActual = emailsActuales.filter(email => email !== emailOriginal);
-
-    let regexRUC = /^[\d\-]*$/;
-    // Validación Teléfono
-    let telefonoField = document.getElementById("telefonoProveedor");
-    let telefonoIngresado = telefonoField.value;
-    let regexTelefono = /^\d{6,20}$/;
-
-    if (telefonoIngresado && !regexTelefono.test(telefonoIngresado)) {
-        alert("Ingrese un teléfono válido (solo números)");
-        telefonoField.focus();
-        isValid = false;
-    } else {
-        document.getElementById("telefonoError").innerText = "";
-    }
-    // Verifica si el RUC cumple con el patrón de solo números y guiones
-    if (!rucIngresado) {
-        alert("El RUC no puede estar vacío.");
-        rucField.focus();
-        return;
-    } else if (!regexRUC.test(rucIngresado)) {
-        alert("El RUC solo debe contener números y un guión, sin puntos.");
-        rucField.value = rucOriginal;  // Opcional: Restaurar el RUC original o dejar al usuario corregir
-        rucField.focus();
-        return;
-    } else if (rucsSinActual.includes(rucIngresado)) {
-        alert("El RUC ingresado ya está registrado en el sistema.");
-        rucField.value = rucOriginal;
-        rucField.focus();
-        return;
-    }
-
-    if (emailsSinActual.includes(emailIngresado)) {
-        alert("El email ingresado ya está registrado para otro proveedor");
-        emailField.value = emailOriginal;
-        emailField.focus();
-        return;
-    }
-
-    let formData = new FormData(this);
-    fetch(this.action, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (response.status == 400) {
-            return response.json().then(data => {
-                throw data;
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.status === 'success') {
-            $('#editarProveedorModal').modal('hide');
-            location.reload();
-        } else if (data.status === "error") {
-            // Mostramos los errores en el modal
-            let errorContainer = document.getElementById("errorContainer");
-            errorContainer.innerHTML = "";
-            for (let field in data.errors) {
-                errorContainer.innerHTML += `${field}: ${data.errors[field]}<br>`;
-            }
-            errorContainer.style.display = "block";
-        }
-    });
-});
-
-    });
-
-        //buscador
-    document.getElementById('buscador').addEventListener('input', function() {
-        let query = this.value;
-        let resultadosDiv = document.getElementById('resultadosBusqueda');
-        let baseUrl = document.getElementById('proveedorUrl').value;
-
-        if (query.length >= 3) {
-            fetch(`/buscar_proveedores/?q=${query}`)
-            .then(response => response.json())
-            .then(data => {
-                resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
-                data.forEach(proveedor => {
-                    let div = document.createElement('div');
-                    let proveedorUrl = baseUrl.replace('999999', proveedor.id);
-                    div.innerHTML = `<a class="container" href="${proveedorUrl}">${proveedor.nombre}</a>`;
-                    resultadosDiv.appendChild(div);
-                });
-            });
-        } else {
-            resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
-        }
-    });
-
-    document.getElementById('filtroCiudad').addEventListener('change', function() {
-        var ciudadId = this.value;
-        var url = new URL(window.location.href);
-        if (ciudadId) {
-            url.searchParams.set('ciudad', ciudadId);
-        } else {
-            url.searchParams.delete('ciudad');
-        }
-        window.location.href = url.toString();
     });
 </script>
 {% endblock %}
-
-
-
