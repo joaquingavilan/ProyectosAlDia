@@ -1857,7 +1857,8 @@ def ver_proyectos_cliente(request, cliente_nombre):
     paginator = Paginator(proyectos, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+    filtro = "Cliente"
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj, 'filtro': filtro})
 
 
 def ver_proyectos_encargado_presupuesto(request, ingeniero_user):
@@ -1867,21 +1868,37 @@ def ver_proyectos_encargado_presupuesto(request, ingeniero_user):
     paginator = Paginator(proyectos, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+    filtro = "Encargado de Presupuesto"
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj, 'filtro': filtro})
 
 
 def ver_proyectos_encargado_obra(request, ingeniero_user):
-    if ingeniero_user == "No asignado":
-        proyectos = Proyecto.objects.filter(obra__encargado__isnull=True)
-    else:
-        ingeniero = User.objects.get(username=ingeniero_user)
-        proyectos = Proyecto.objects.filter(obra__encargado=ingeniero)
+    try:
+        # Buscar al usuario por su nombre completo
+        ingeniero = User.objects.get(first_name__icontains=ingeniero_user.split()[0],
+                                     last_name__icontains=ingeniero_user.split()[1])
 
-    # Configuración de la paginación
-    paginator = Paginator(proyectos, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+        if ingeniero_user == "No asignado":
+            proyectos = Proyecto.objects.filter(obra__encargado__isnull=True)
+        else:
+            proyectos = Proyecto.objects.filter(obra__encargado=ingeniero)
+
+        # Configuración de la paginación
+        paginator = Paginator(proyectos, 10)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        filtro = "Encargado de Obra"
+
+        return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html',
+                      {'proyectos': proyectos, 'page_obj': page_obj, 'filtro': filtro})
+
+    except User.DoesNotExist:
+        # Manejar el caso donde el usuario no existe
+        return render(request, 'ABM/error.html', {'mensaje': 'Usuario no encontrado'})
+
+    except Exception as e:
+        # Manejar cualquier otra excepción no esperada
+        return render(request, 'ABM/error.html', {'mensaje': str(e)})
 
 
 def ver_proyectos_estado_presupuesto(request, estado):
@@ -1894,8 +1911,8 @@ def ver_proyectos_estado_presupuesto(request, estado):
     paginator = Paginator(proyectos, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
-    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj})
+    filtro = "Estado del Presupuesto"
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'page_obj': page_obj, 'filtro': filtro})
 
 
 def ver_proyectos_estado_obra(request, estado):
@@ -1905,8 +1922,8 @@ def ver_proyectos_estado_obra(request, estado):
     print(estado_codigo)
     # Filtrar los proyectos basándose en el código del estado
     proyectos = Proyecto.objects.filter(obra__estado=estado_codigo)
-
-    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos})
+    filtro = "Estado de la Obra"
+    return render(request, 'ABM/proyectos/ver_proyectos_filtrados.html', {'proyectos': proyectos, 'filtro': filtro})
 
 
 def ver_proyectos_ciudad(request, ciudad):
