@@ -1358,7 +1358,12 @@ def buscar_materiales(request):
 
 def ver_material(request, id_material):
     material = Material.objects.get(pk=id_material)
-    return render(request, 'ABM/materiales/ver_material.html', {'material': material})
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_material_inventario.html'
+    else:
+        template_name = 'ABM/materiales/ver_material.html'
+
+    return render(request, template_name, {'material': material})
 
 
 #                   VISTAS PARA PROYECTOS
@@ -3882,20 +3887,6 @@ def ver_obras_filtrados(request):
 
     # Devolver una respuesta JSON con la URL de redirección
     return JsonResponse({'redirect_url': redirect_url})
-
-
-def buscar_materiales(request):
-    search_query = request.GET.get('search', '')
-
-    # Realiza una búsqueda en la base de datos utilizando el modelo Material
-    # Puedes ajustar esta consulta según tus necesidades específicas
-    resultados = Material.objects.filter(Q(nombre__icontains=search_query))
-
-    # Crea una lista de diccionarios con los resultados
-    resultados_list = [{'id': material.id, 'nombre': material.nombre} for material in resultados]
-
-    # Devuelve los resultados en formato JSON
-    return JsonResponse(resultados_list, safe=False)
 
 
 def ver_pedido(request, pedido_id):
