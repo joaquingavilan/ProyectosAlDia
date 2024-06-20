@@ -135,6 +135,7 @@
             <form method="post" action="{% url 'editar_cliente' 0 %}" id="editarClienteForm"> <!-- La URL se actualiza con JS -->
                 {% csrf_token %}
                 <div class="modal-body">
+                    <input type="hidden" id="clienteId" name="cliente_id">
                     <div class="form-group">
                         <label for="nombre">Nombre:</label>
                         <input type="text" class="form-control" id="nombre" name="nombre" required>
@@ -159,6 +160,10 @@
                         <input type="email" class="form-control" id="email" name="email">
                     </div>
                     <div class="form-group">
+                        <label for="direccion">Dirección:</label>
+                        <input type="text" class="form-control" id="direccion" name="direccion">
+                    </div>
+                    <div class="form-group">
                         <label for="ciudad">Ciudad:</label>
                         <select class="form-control" id="ciudad" name="ciudad">
                             <option value="">Selecciona una ciudad</option>
@@ -166,6 +171,10 @@
                                 <option value="{{ ciudad.id }}">{{ ciudad.nombre }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="observaciones">Observaciones:</label>
+                        <input type="text" class="form-control" id="observaciones" name="observaciones">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -179,13 +188,13 @@
 
 <script src="{% static 'js/editar_cliente.js' %}"></script>
 <script>
-    document.getElementById('filtroCiudad').addEventListener('change', function() {
-        const selectedCity = this.value;
-        const currentUrl = window.location.href.split('?')[0];
-        window.location.href = `${currentUrl}?ciudad=${selectedCity}`;
-    });
+document.getElementById('filtroCiudad').addEventListener('change', function() {
+    const selectedCity = this.value;
+    const currentUrl = window.location.href.split('?')[0];
+    window.location.href = `${currentUrl}?ciudad=${selectedCity}`;
+});
 
-    document.addEventListener('DOMContentLoaded', (event) => {
+document.addEventListener('DOMContentLoaded', (event) => {
     // Buscador de clientes
     document.getElementById('buscador').addEventListener('input', function() {
         let query = this.value;
@@ -216,6 +225,67 @@
         if (!resultadosDiv.contains(event.target) && event.target.id !== 'buscador') {
             resultadosDiv.style.display = 'none';
         }
+    });
+
+    // Editar cliente
+    let editarClienteBtns = document.querySelectorAll(".editarClienteBtn");
+
+    editarClienteBtns.forEach(btn => {
+        btn.addEventListener("click", function() {
+            let clienteId = this.getAttribute("data-cliente-id");
+
+            // Hacemos una solicitud AJAX para obtener los datos del cliente
+            fetch(`/get_cliente_data/${clienteId}/`)
+            .then(response => response.json())
+            .then(data => {
+                // Llenamos el formulario dentro del modal con esos datos
+                document.getElementById("clienteId").value = clienteId;
+                document.getElementById("nombre").value = data.nombre;
+                document.getElementById("ruc").value = data.ruc;
+                document.getElementById("email").value = data.email;
+                document.getElementById("tipo_persona").value = data.tipo_persona;
+                document.getElementById("direccion").value = data.direccion;
+                document.getElementById("telefono").value = data.telefono;
+                document.getElementById("observaciones").value = data.observaciones;
+                document.getElementById("ciudad").value = data.ciudad;
+
+                // Establecemos la URL correcta para el formulario en el modal
+                document.getElementById("editarClienteForm").action = `/editar_cliente/${clienteId}/`;
+
+                // Muestra el modal usando Bootstrap
+                let modal = new bootstrap.Modal(document.getElementById('editarClienteModal'));
+                modal.show();
+            });
+        });
+    });
+
+    // Manejo del envío del formulario de edición de cliente
+    document.getElementById("editarClienteForm").addEventListener("submit", function(event) {
+        event.preventDefault();  // Previene el envío normal del formulario
+
+        let formData = new FormData(document.getElementById("editarClienteForm"));
+
+        // Obtener el token CSRF del formulario
+        let csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                "X-CSRFToken": csrfToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                location.reload(); // Recargamos la página para ver los cambios
+            } else if (data.status === "error") {
+                // Mostramos los errores en el modal
+                let errorContainer = document.getElementById("errorContainerCliente");
+                errorContainer.innerHTML = data.message;
+                errorContainer.style.display = "block";
+            }
+        });
     });
 });
 </script>
