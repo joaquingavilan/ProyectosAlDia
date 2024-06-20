@@ -36,7 +36,8 @@
                   {% endif %}
                   <td>{{ material.precio }}</td>
                   <td>
-                    <a href="{% url 'editar_material' material.id %}" class="btn btn-primary">Editar</a>
+                    <!-- se comenta editar para que no permita cambiar las unidades en stock, solo puede cambiar los del área administrativa
+                    <a href="{% url 'editar_material' material.id %}" class="btn btn-primary">Editar</a> -->
                     <!-- Actualización del enlace de eliminación -->
                     <a href="{% url 'ver_materiales' %}?eliminar_material_id={{ material.id }}" class="btn btn-danger">Eliminar</a>
                   </td>
@@ -44,7 +45,7 @@
             </tbody>
           </table>
 
-      <a href="{% url 'ver_materiales' %}" class="btn btn-secondary">Volver a Materiales</a>
+      <a href="{% url 'ver_inventario' %}" class="btn btn-secondary">Volver a Inventario</a>
       <a href="{% url 'inicio' %}" class="btn btn-primary">Inicio</a>
     </div>
   </div>

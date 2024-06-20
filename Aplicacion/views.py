@@ -750,29 +750,33 @@ def editar_cliente(request, pk):
         ruc = request.POST.get('ruc')
         email = request.POST.get('email')
         direccion = request.POST.get('direccion', '')
-        nombre_ciudad = request.POST.get('ciudad', '')
+        telefono = request.POST.get('telefono')
+        ciudad_id = request.POST.get('ciudad', '')
 
-        # Si deseas realizar algunas validaciones básicas, puedes hacerlo aquí
-        # Por ejemplo:
+        # Validación básica de campos requeridos
         if not nombre or not tipo_persona or not ruc or not email:
             return JsonResponse({"status": "error", "message": "Faltan campos requeridos."}, status=400)
 
         try:
-            if nombre_ciudad:
-                ciudad = Ciudad.objects.get(nombre=nombre_ciudad)
-                cliente.ciudad = ciudad
+            # Si se ha proporcionado una ciudad, tratar de asignarla al cliente
+            if ciudad_id:
+                try:
+                    ciudad = Ciudad.objects.get(id=ciudad_id)
+                    cliente.ciudad = ciudad
+                except Ciudad.DoesNotExist:
+                    return JsonResponse({"status": "error", "message": "La ciudad proporcionada no existe."}, status=400)
+
             cliente.nombre = nombre
             cliente.tipo_persona = tipo_persona
             cliente.ruc = ruc
             cliente.email = email
+            cliente.telefono = telefono
             if direccion:
                 cliente.direccion = direccion
             cliente.save()
 
             return JsonResponse({"status": "success"})
 
-        except Ciudad.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "La ciudad proporcionada no existe."}, status=400)
         except Exception as e:
             # En caso de cualquier otro error
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
@@ -1358,7 +1362,12 @@ def buscar_materiales(request):
 
 def ver_material(request, id_material):
     material = Material.objects.get(pk=id_material)
-    return render(request, 'ABM/materiales/ver_material.html', {'material': material})
+    if request.user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        template_name = 'pantallas_deposito/ver_material_inventario.html'
+    else:
+        template_name = 'ABM/materiales/ver_material.html'
+
+    return render(request, template_name, {'material': material})
 
 
 #                   VISTAS PARA PROYECTOS
@@ -3882,20 +3891,6 @@ def ver_obras_filtrados(request):
 
     # Devolver una respuesta JSON con la URL de redirección
     return JsonResponse({'redirect_url': redirect_url})
-
-
-def buscar_materiales(request):
-    search_query = request.GET.get('search', '')
-
-    # Realiza una búsqueda en la base de datos utilizando el modelo Material
-    # Puedes ajustar esta consulta según tus necesidades específicas
-    resultados = Material.objects.filter(Q(nombre__icontains=search_query))
-
-    # Crea una lista de diccionarios con los resultados
-    resultados_list = [{'id': material.id, 'nombre': material.nombre} for material in resultados]
-
-    # Devuelve los resultados en formato JSON
-    return JsonResponse(resultados_list, safe=False)
 
 
 def ver_pedido(request, pedido_id):
