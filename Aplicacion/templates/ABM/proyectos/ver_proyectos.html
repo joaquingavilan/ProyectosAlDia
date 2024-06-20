@@ -17,7 +17,7 @@
             </div>
         {% endfor %}
         <div class="row mb-4">
-            <div class="col-md-3">
+            <div class="col-md-3 position-relative">
                 <div class="input-group">
                     <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre">
                     <div class="input-group-append">
@@ -25,7 +25,7 @@
                     </div>
                     <input type="hidden" id="proyectoUrl" value="{% url 'ver_proyecto' 999999 %}">
                 </div>
-                <div id="resultadosBusqueda"></div>
+                <div id="resultadosBusqueda" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;"></div>
             </div>
             <div class="col-md-2">
                 <select id="filtroCampo" class="custom-select">
@@ -42,7 +42,7 @@
             <div class="col-md-2">
                 <button onclick="window.location.href='{% url 'ver_proyectos' %}'" class="btn btn-secondary btn-block">Borrar Filtros</button>
             </div>
-            <div class="col-md-3 d-flex justify-content-end">
+            <div class="col-md-3 text-right">
                 <a href="{% url 'registrar_proyecto' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir proyecto</a>
             </div>
         </div>
@@ -120,7 +120,7 @@
 document.addEventListener('DOMContentLoaded', (event) => {
     inicializarFiltroValorProyectos();  // Llamar a la función al cargar la página
 
-        //buscador
+    // Buscador
     document.getElementById('buscador').addEventListener('input', function() {
         let query = this.value;
         let resultadosDiv = document.getElementById('resultadosBusqueda');
@@ -134,109 +134,117 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 data.forEach(proyecto => {
                     let div = document.createElement('div');
                     let proyectoUrl = baseUrl.replace('999999', proyecto.id);
-                    div.innerHTML = `<a class="container" href="${proyectoUrl}">${proyecto.nombre}</a>`;
+                    div.innerHTML = `<a class="dropdown-item" href="${proyectoUrl}">${proyecto.nombre}</a>`;
                     resultadosDiv.appendChild(div);
                 });
+                resultadosDiv.style.display = 'block';  // Mostrar el menú desplegable
             });
         } else {
-            resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+            resultadosDiv.style.display = 'none';  // Ocultar el menú desplegable si la consulta es demasiado corta
         }
     });
-//inicializar primer dropdown
-// Función de inicialización para el dropdown filtroValor
-function inicializarFiltroValorProyectos() {
-    let campoSeleccionado = document.getElementById('filtroCampo').value;
-    let dropdownValor = document.getElementById('filtroValor');
 
-    // Limpiar opciones previas excepto la primera opción "Seleccione"
-    let options = dropdownValor.options;
-    for (let i = options.length - 1; i > 0; i--) {
-        dropdownValor.remove(i);
-    }
+    // Ocultar los resultados de la búsqueda cuando se hace clic fuera del buscador
+    document.addEventListener('click', function(event) {
+        let resultadosDiv = document.getElementById('resultadosBusqueda');
+        if (!resultadosDiv.contains(event.target) && event.target.id !== 'buscador') {
+            resultadosDiv.style.display = 'none';
+        }
+    });
 
-    // Agregar la opción "Seleccione" si no está presente
-    if (dropdownValor.options.length === 0) {
-        let defaultOption = document.createElement('option');
-        defaultOption.value = "";
-        defaultOption.text = "-- Seleccione --";
-        dropdownValor.appendChild(defaultOption);
-    }
+    // Inicializar primer dropdown
+    // Función de inicialización para el dropdown filtroValor
+    function inicializarFiltroValorProyectos() {
+        let campoSeleccionado = document.getElementById('filtroCampo').value;
+        let dropdownValor = document.getElementById('filtroValor');
 
-    let url = '';  // URL de donde obtener los datos
+        // Limpiar opciones previas excepto la primera opción "Seleccione"
+        let options = dropdownValor.options;
+        for (let i = options.length - 1; i > 0; i--) {
+            dropdownValor.remove(i);
+        }
 
-    switch (campoSeleccionado) {
-        case 'cliente':
-            url = '/obtener_clientes_con_proyectos/';
-            break;
-        case 'encargadoPresupuesto':
-            url = '/obtener_ingenieros_presupuesto/';
-            break;
-        case 'estadoPresupuesto':
-            url = '/obtener_estados_presupuesto/';
-            break;
-        case 'encargadoObra':
-            url = '/obtener_ingenieros_obra/';
-            break;
-        case 'estadoObra':
-            url = '/obtener_estados_obra/';
-            break;
-    }
+        // Agregar la opción "Seleccione" si no está presente
+        if (dropdownValor.options.length === 0) {
+            let defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.text = "-- Seleccione --";
+            dropdownValor.appendChild(defaultOption);
+        }
 
-    // Si hay una URL válida, hacer la solicitud AJAX
-    if (url) {
-        fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            data.forEach(item => {
-                let option = document.createElement('option');
-                option.value = item;
-                option.text = item;
-                dropdownValor.appendChild(option);
+        let url = '';  // URL de donde obtener los datos
+
+        switch (campoSeleccionado) {
+            case 'cliente':
+                url = '/obtener_clientes_con_proyectos/';
+                break;
+            case 'encargadoPresupuesto':
+                url = '/obtener_ingenieros_presupuesto/';
+                break;
+            case 'estadoPresupuesto':
+                url = '/obtener_estados_presupuesto/';
+                break;
+            case 'encargadoObra':
+                url = '/obtener_ingenieros_obra/';
+                break;
+            case 'estadoObra':
+                url = '/obtener_estados_obra/';
+                break;
+        }
+
+        // Si hay una URL válida, hacer la solicitud AJAX
+        if (url) {
+            fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(item => {
+                    let option = document.createElement('option');
+                    option.value = item;
+                    option.text = item;
+                    dropdownValor.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error al obtener datos:', error);
             });
-        })
-        .catch(error => {
-            console.error('Error al obtener datos:', error);
-        });
-    }
-}
-
-
-
-// Inicializar el dropdown al cambiar el valor del primer dropdown
-document.getElementById('filtroCampo').addEventListener('change', function() {
-    inicializarFiltroValorProyectos();
-});
-
-// Función para filtrar proyectos basado en la selección del usuario
-function filtrarProyectos() {
-    let campoSeleccionado = document.getElementById('filtroCampo').value;
-    let valorSeleccionado = document.getElementById('filtroValor').value;
-    let url = '';
-
-    switch (campoSeleccionado) {
-        case 'cliente':
-            url = `/ver_proyectos_cliente/${valorSeleccionado}/`;
-            break;
-        case 'encargadoPresupuesto':
-            url = `/ver_proyectos_encargado_presupuesto/${valorSeleccionado}/`;
-            break;
-        case 'encargadoObra':
-            url = `/ver_proyectos_encargado_obra/${valorSeleccionado}/`;
-            break;
-        case 'estadoPresupuesto':
-            url = `/ver_proyectos_estado_presupuesto/${valorSeleccionado}/`;
-            break;
-        case 'estadoObra':
-            url = `/ver_proyectos_estado_obra/${valorSeleccionado}/`;
-            break;
+        }
     }
 
-    if (url) {
-        window.location.href = url;
-    }
-}
+    // Inicializar el dropdown al cambiar el valor del primer dropdown
+    document.getElementById('filtroCampo').addEventListener('change', function() {
+        inicializarFiltroValorProyectos();
+    });
 
-document.getElementById('filtroValor').addEventListener('change', filtrarProyectos);
+    // Función para filtrar proyectos basado en la selección del usuario
+    function filtrarProyectos() {
+        let campoSeleccionado = document.getElementById('filtroCampo').value;
+        let valorSeleccionado = document.getElementById('filtroValor').value;
+        let url = '';
+
+        switch (campoSeleccionado) {
+            case 'cliente':
+                url = `/ver_proyectos_cliente/${valorSeleccionado}/`;
+                break;
+            case 'encargadoPresupuesto':
+                url = `/ver_proyectos_encargado_presupuesto/${valorSeleccionado}/`;
+                break;
+            case 'encargadoObra':
+                url = `/ver_proyectos_encargado_obra/${valorSeleccionado}/`;
+                break;
+            case 'estadoPresupuesto':
+                url = `/ver_proyectos_estado_presupuesto/${valorSeleccionado}/`;
+                break;
+            case 'estadoObra':
+                url = `/ver_proyectos_estado_obra/${valorSeleccionado}/`;
+                break;
+        }
+
+        if (url) {
+            window.location.href = url;
+        }
+    }
+
+    document.getElementById('filtroValor').addEventListener('change', filtrarProyectos);
 
 });
 </script>

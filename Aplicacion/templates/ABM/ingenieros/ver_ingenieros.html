@@ -1,8 +1,6 @@
 {% extends request.base_template %}
 {% load static %}
 
-
-
 {% block content %}
 <div class="x_panel">
     <div class="x_title">
@@ -25,17 +23,25 @@
         <div class="clearfix"></div>
     </div>
 
-
     <div class="x_content">
-        <div class="mb-3 d-flex justify-content-between align-items-center">
-            <div class="input-group w-25">
-                <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre de usuario, nombre o apellido">
-                <input type="hidden" id="ingenieroUrl" value="{% url 'ver_ingeniero' 999999 %}">
+        <!-- Barra de búsqueda y filtros -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre de usuario, nombre o apellido">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fa fa-search"></i></span>
+                    </div>
+                    <input type="hidden" id="ingenieroUrl" value="{% url 'ver_ingeniero' 999999 %}">
+                </div>
+                <div id="resultadosBusqueda" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;"></div>
             </div>
-            <a href="{% url 'registrar_ingeniero' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir Ingeniero</a>
+            <div class="col-md-6 text-right">
+                <a href="{% url 'registrar_ingeniero' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir Ingeniero</a>
+            </div>
         </div>
-        <div id="resultadosBusqueda"></div>
-        <br>
+
+        <!-- Tabla de ingenieros -->
         <table class="table table-striped table-bordered">
             <thead>
                 <tr>
@@ -50,7 +56,7 @@
                 {% for ingeniero in page_obj %}
                 <tr>
                     <td>{{ ingeniero.username }}</td>
-                    <td>{{ ingeniero.first_name  }}</td>
+                    <td>{{ ingeniero.first_name }}</td>
                     <td>{{ ingeniero.last_name }}</td>
                     <td>{{ ingeniero.email }}</td>
                     <td>
@@ -126,8 +132,6 @@
                 {% endif %}
             </ul>
         </nav>
-
-
     </div>
 </div>
 {% endblock %}
@@ -139,7 +143,7 @@ document.getElementById('buscador').addEventListener('input', function() {
     let resultadosDiv = document.getElementById('resultadosBusqueda');
     let baseUrl = document.getElementById('ingenieroUrl').value;
 
-    if (query.length >= 3) {
+    if (query.length >= 1) {
         fetch(`/buscar_ingenieros/?q=${query}`)
         .then(response => response.json())
         .then(data => {
@@ -147,12 +151,22 @@ document.getElementById('buscador').addEventListener('input', function() {
             data.forEach(ingeniero => {
                 let div = document.createElement('div');
                 let ingenieroUrl = baseUrl.replace('999999', ingeniero.id);
-                div.innerHTML = `<a href="${ingenieroUrl}" class="list-group-item list-group-item-action">${ingeniero.nombre} ${ingeniero.apellido}</a>`;
+                div.innerHTML = `<a href="${ingenieroUrl}" class="dropdown-item">${ingeniero.nombre} ${ingeniero.apellido}</a>`;
                 resultadosDiv.appendChild(div);
             });
+            resultadosDiv.style.display = 'block';  // Mostrar resultados
         });
     } else {
         resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+        resultadosDiv.style.display = 'none';  // Ocultar resultados
+    }
+});
+
+// Ocultar los resultados de la búsqueda cuando se hace clic fuera del buscador
+document.addEventListener('click', function(event) {
+    let resultadosDiv = document.getElementById('resultadosBusqueda');
+    if (!resultadosDiv.contains(event.target) && event.target.id !== 'buscador') {
+        resultadosDiv.style.display = 'none';
     }
 });
 
@@ -215,7 +229,5 @@ document.getElementById("guardarIngenieroBtn").addEventListener("click", functio
         }
     });
 });
-
 </script>
 {% endblock %}
-

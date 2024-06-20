@@ -24,14 +24,29 @@
 
     <div class="x_content">
         <!-- Contenido principal -->
-        <div class="mb-3 d-flex justify-content-between align-items-center">
-            <div class="input-group w-25">
-                <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
-                <input type="hidden" id="clienteUrl" value="{% url 'ver_cliente' 999999 %}">
+        <div class="row mb-3">
+            <div class="col-md-3 position-relative">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre o RUC">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fa fa-search"></i></span>
+                    </div>
+                    <input type="hidden" id="clienteUrl" value="{% url 'ver_cliente' 999999 %}">
+                </div>
+                <div id="resultadosBusqueda" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;"></div>
             </div>
-            <a href="{% url 'registro_cliente' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir cliente</a>
+            <div class="col-md-3">
+                <select id="filtroCiudad" class="form-control">
+                    <option value="">Filtrar por ciudad...</option>
+                    {% for ciudad in ciudades %}
+                        <option value="{{ ciudad.id }}" {% if ciudad.id|stringformat:"s" == ciudad_seleccionada %}selected{% endif %}>{{ ciudad.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 text-right">
+                <a href="{% url 'registro_cliente' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir cliente</a>
+            </div>
         </div>
-        <div id="resultadosBusqueda"></div>
         <br>
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">
@@ -64,7 +79,7 @@
                         {% endif %}
                     </td>
                     <td>{{ cliente.email }}</td>
-                    <td>{{ cliente.ciudad|default:"-" }}</td>
+                    <td>{{ cliente.ciudad.nombre|default:"-" }}</td>
                     <td>
                         <button type="button" class="btn btn-primary btn-sm editarClienteBtn" data-cliente-id="{{ cliente.id }}"><i class="fa fa-pencil"></i></button>
                         <form method="POST" class="d-inline">
@@ -120,215 +135,88 @@
             <form method="post" action="{% url 'editar_cliente' 0 %}" id="editarClienteForm"> <!-- La URL se actualiza con JS -->
                 {% csrf_token %}
                 <div class="modal-body">
-                    <!-- Campo oculto para el ID del cliente -->
-                    <input type="hidden" name="cliente_id" id="clienteId">
-                    <!-- Contenedor para errores -->
-                    <div id="errorContainer" class="alert alert-danger" style="display: none;"></div>
-                    <!-- Campos del cliente -->
                     <div class="form-group">
                         <label for="nombre">Nombre:</label>
-                        <input type="text" class="form-control" id="nombre" name="nombre">
-                        <span class="text-danger" id="nombreError"></span>
+                        <input type="text" class="form-control" id="nombre" name="nombre" required>
                     </div>
                     <div class="form-group">
-                        <label for="tipo_persona">Tipo de persona:</label>
+                        <label for="tipo_persona">Tipo de Persona:</label>
                         <select class="form-control" id="tipo_persona" name="tipo_persona">
-                            <option value="Fisica">Física</option>
-                            <option value="Juridica">Jurídica</option>
+                            <option value="Física">Física</option>
+                            <option value="Jurídica">Jurídica</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="ruc">RUC:</label>
-                        <input type="text" class="form-control" id="ruc" name="ruc">
-                        <span class="text-danger" id="rucError"></span>
+                        <input type="text" class="form-control" id="ruc" name="ruc" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefono">Teléfono:</label>
+                        <input type="text" class="form-control" id="telefono" name="telefono">
                     </div>
                     <div class="form-group">
                         <label for="email">Email:</label>
                         <input type="email" class="form-control" id="email" name="email">
-                        <span class="text-danger" id="emailError"></span>
                     </div>
                     <div class="form-group">
-                        <label for="direccion">Direccion:</label>
-                        <input type="direccion" class="form-control" id="direccion" name="direccion">
-                    </div>
-                    <!-- Campo para el Teléfono -->
-                    <div class="form-group">
-                        <label for="telefono">Teléfono:</label>
-                        <input type="text" class="form-control" id="telefono" name="telefono">
-                        <span class="text-danger" id="telefonoError"></span>
-                    </div>
-
-                    <!-- Campo para las Observaciones -->
-                    <div class="form-group">
-                        <label for="observaciones">Observaciones:</label>
-                        <textarea class="form-control" id="observaciones" name="observaciones" rows="4"></textarea>
+                        <label for="ciudad">Ciudad:</label>
+                        <select class="form-control" id="ciudad" name="ciudad">
+                            <option value="">Selecciona una ciudad</option>
+                            {% for ciudad in ciudades %}
+                                <option value="{{ ciudad.id }}">{{ ciudad.nombre }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-{% endblock %}
-{% block extra_js %}
+<script src="{% static 'js/editar_cliente.js' %}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', (event) => {
-
-        let currentClienteId = null;
-        let editarClienteBtns = document.querySelectorAll(".editarClienteBtn");
-        let rucsActuales = {{ rucs_json|safe }};
-        let emailsActuales = {{ emails_json|safe }};
-        editarClienteBtns.forEach(btn => {
-            btn.addEventListener("click", function() {
-
-                let clienteId = this.getAttribute("data-cliente-id");
-                console.log(clienteId)
-                // Hacemos una solicitud AJAX para obtener los datos del cliente
-                fetch(`/get_cliente_data/${clienteId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    // Llenamos el formulario dentro del modal con esos datos.
-                    document.getElementById("clienteId").value = clienteId;
-                    document.getElementById("nombre").value = data.nombre;
-                    document.getElementById("ruc").value = data.ruc;
-                    document.getElementById("email").value = data.email;
-                    document.getElementById("direccion").value = data.direccion;
-                    document.getElementById("telefono").value = data.telefono;
-                    document.getElementById("observaciones").value = data.observaciones;
-                    let tipoPersonaSelect = document.getElementById("tipo_persona");
-                    tipoPersonaSelect.value = data.tipo_persona;
-                    document.getElementById("editarClienteForm").setAttribute('data-original-ruc', data.ruc);
-                    document.getElementById("editarClienteForm").setAttribute('data-original-email', data.email);
-                    // Establecemos la URL correcta para el formulario en el modal
-                    document.getElementById("editarClienteForm").action = `/editar_cliente/${clienteId}/`;
-                    // Muestra el modal
-                    $('#editarClienteModal').modal('show');
-                });
-            });
-        });
-
-
-        document.getElementById("editarClienteForm").addEventListener("submit", function(event) {
-        event.preventDefault();
-            let isValid = true;
-            // Validación Nombre
-            let nombreField = document.getElementById("nombre");
-            let nombre = nombreField.value;
-            let regexNombre = /^[\w\s]*$/;
-            if (!regexNombre.test(nombre)) {
-                document.getElementById("nombreError").innerText = "El nombre solo debe contener letras, números y espacios en blanco.";
-                nombreField.focus();
-                isValid = false;
-            } else {
-                document.getElementById("nombreError").innerText = "";
-            }
-
-            let rucOriginal = this.getAttribute('data-original-ruc'); // Asumiendo que ya tienes esto definido antes
-            let rucsSinActual = rucsActuales.filter(ruc => ruc !== rucOriginal);
-
-            // Validación Teléfono
-            let telefonoField = document.getElementById("telefono");
-            let telefonoIngresado = telefonoField.value;
-            let regexTelefono = /^\d{6,20}$/;
-
-            if (telefonoIngresado && !regexTelefono.test(telefonoIngresado)) {
-                document.getElementById("telefonoError").innerText = "Ingrese un teléfono válido (solo números)";
-                telefonoField.focus();
-                isValid = false;
-            } else {
-                document.getElementById("telefonoError").innerText = "";
-            }
-
-            // Validación RUC
-            let rucField = document.getElementById("ruc");
-            let rucIngresado = rucField.value;
-            let regexRUC = /^[\d\-]*$/;
-
-            if (!rucIngresado) {
-                document.getElementById("rucError").innerText = "El RUC no puede estar vacío.";
-                rucField.focus();
-                isValid = false;
-            } else if (!regexRUC.test(rucIngresado)) {
-                document.getElementById("rucError").innerText = "El RUC solo debe contener números y un guión, sin puntos.";
-                rucField.focus();
-                isValid = false;
-            } else if (rucsSinActual.includes(rucIngresado)) {
-                document.getElementById("rucError").innerText = "El RUC ingresado ya está registrado en el sistema.";
-                rucField.focus();
-                isValid = false;
-            } else {
-                document.getElementById("rucError").innerText = "";
-            }
-
-            // Validación Email
-            let emailField = document.getElementById("email");
-            let emailIngresado = emailField.value;
-            if (!emailField.value) {
-                document.getElementById("emailError").innerText = "El email es requerido.";
-                emailField.focus();
-                isValid = false;
-            } else {
-                document.getElementById("emailError").innerText = "";
-            }
-            let emailOriginal = this.getAttribute('data-original-email');
-            let emailsSinActual = emailsActuales.filter(email => email !== emailOriginal);
-            if (emailsSinActual.includes(emailIngresado)) {
-                event.preventDefault();  // Evitar que el formulario se envíe
-                alert("El email ingresado ya está registrado para otro proveedor");
-                emailField.value = emailOriginal;  // Restaurar el valor original del email
-                emailField.focus();     // Colocar el foco en el campo email
-            }
-
-            // Si todo es válido, procedemos con la solicitud
-            if (isValid) {
-                let formData = new FormData(this);
-
-                fetch(this.action, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === "success") {
-                        location.reload();
-                    } else if (data.status === "error") {
-                        let errorContainer = document.getElementById("errorContainer");
-                        errorContainer.innerHTML = "";
-                        for (let field in data.errors) {
-                            errorContainer.innerHTML += `${field}: ${data.errors[field]}<br>`;
-                        }
-                        errorContainer.style.display = "block";
-                    }
-                });
-            }
-        });
-
-    //buscador
-        document.getElementById('buscador').addEventListener('input', function() {
-            let query = this.value;
-            let resultadosDiv = document.getElementById('resultadosBusqueda');
-            let baseUrl = document.getElementById('clienteUrl').value;
-
-            if (query.length >= 3) {
-                fetch(`/buscar_clientes/?q=${query}`)
-                .then(response => response.json())
-                .then(data => {
-                    resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
-                    data.forEach(cliente => {
-                        let div = document.createElement('div');
-                        let clienteUrl = baseUrl.replace('999999', cliente.id);
-                        div.innerHTML = `<a class="container" href="${clienteUrl}">${cliente.nombre}</a>`;
-                        resultadosDiv.appendChild(div);
-                    });
-                });
-            } else {
-                resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
-            }
-        });
+    document.getElementById('filtroCiudad').addEventListener('change', function() {
+        const selectedCity = this.value;
+        const currentUrl = window.location.href.split('?')[0];
+        window.location.href = `${currentUrl}?ciudad=${selectedCity}`;
     });
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+    // Buscador de clientes
+    document.getElementById('buscador').addEventListener('input', function() {
+        let query = this.value;
+        let resultadosDiv = document.getElementById('resultadosBusqueda');
+        let baseUrl = document.getElementById('clienteUrl').value;
+
+        if (query.length >= 3) {
+            fetch(`/buscar_clientes/?q=${query}`)
+            .then(response => response.json())
+            .then(data => {
+                resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+                data.forEach(cliente => {
+                    let div = document.createElement('div');
+                    let clienteUrl = baseUrl.replace('999999', cliente.id);
+                    div.innerHTML = `<a class="dropdown-item" href="${clienteUrl}">${cliente.nombre}</a>`;
+                    resultadosDiv.appendChild(div);
+                });
+                resultadosDiv.style.display = 'block';  // Mostrar el menú desplegable
+            });
+        } else {
+            resultadosDiv.style.display = 'none';  // Ocultar el menú desplegable si la consulta es demasiado corta
+        }
+    });
+
+    // Ocultar los resultados de la búsqueda cuando se hace clic fuera del buscador
+    document.addEventListener('click', function(event) {
+        let resultadosDiv = document.getElementById('resultadosBusqueda');
+        if (!resultadosDiv.contains(event.target) && event.target.id !== 'buscador') {
+            resultadosDiv.style.display = 'none';
+        }
+    });
+});
 </script>
 {% endblock %}

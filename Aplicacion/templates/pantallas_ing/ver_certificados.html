@@ -3,63 +3,66 @@
 
 {% block content %}
 <div class="x_panel">
-    <div class="x_title d-flex align-items-center justify-content-center" style="height: 100px;"> <!-- Ajusta la altura según sea necesario -->
-    <h2 style="font-size: 36px;">{{ title }}</h2> <!-- Ajusta el tamaño de la fuente según sea necesario -->
+    <h2 class="x_title">{{ title }}</h2> <!-- Ajusta el tamaño de la fuente según sea necesario -->
     <div class="clearfix"></div>
-</div>
 
-    <div class="x_content">
+        <div class="x_content">
         <div class="d-flex justify-content-end mb-3">
             <a href="{% url 'elaborar_certificado' %}" class="btn btn-primary">Elaborar nuevo certificado</a>
         </div>
-        <table class="table table-striped table-bordered">
-            <thead>
-                <tr>
-                    <th>Proyecto</th>
-                    <th>Fecha de creación</th>
-                    <th>Estado</th>
-                    <th>Fecha de envio</th>
-                    <th>Fecha de pago</th>
-                    <th>Monto total</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for certificado in certificados %}
-                <tr>
-                    <td>{{ certificado.presupuesto.proyecto.nombre }}</td>
-                    <td>
-                        {{ certificado.fecha_creacion }}</td>
-                    <td>
-                        {{ certificado.get_estado_display }}</td>
-                    <td>
-                        {% if certificado.fecha_envio %}
-                        {{ certificado.fecha_envio }}
-                        {% else %}
-                        -
-                        {% endif %}
-                    </td>
-                    <td>{% if certificado.fecha_pago %}
-                        {{ certificado.fecha_pago }}
-                        {% else %}
-                        -
-                        {% endif %}</td>
-                    <td>
-                        {{ certificado.monto_total| intcomma }}
-                    </td>
-                    <td>
-                        <a href="{% url 'ver_archivo_certificado' certificado.id %}" class="btn btn-primary btn-sm">Ver Certificado</a>
-                        {% if certificado.estado == 'P' %}
-                        <button class="btn btn-primary btn-sm marcar-enviado-btn" data-id="{{ certificado.id }}">Marcar como enviado</button>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% if certificados %}
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th>Fecha de creación</th>
+                        <th>Estado</th>
+                        <th>Fecha de envio</th>
+                        <th>Fecha de pago</th>
+                        <th>Monto total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for certificado in certificados %}
+                    <tr>
+                        <td>{{ certificado.presupuesto.proyecto.nombre }}</td>
+                        <td>
+                            {{ certificado.fecha_creacion }}</td>
+                        <td>
+                            {{ certificado.get_estado_display }}</td>
+                        <td>
+                            {% if certificado.fecha_envio %}
+                            {{ certificado.fecha_envio }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>{% if certificado.fecha_pago %}
+                            {{ certificado.fecha_pago }}
+                            {% else %}
+                            -
+                            {% endif %}</td>
+                        <td>
+                            {{ certificado.monto_total| intcomma }}
+                        </td>
+                        <td>
+                            <a href="{% url 'ver_archivo_certificado' certificado.id %}" class="btn btn-primary btn-sm">Ver Certificado</a>
+                            {% if certificado.estado == 'P' %}
+                            <button class="btn btn-primary btn-sm marcar-enviado-btn" data-id="{{ certificado.id }}">Marcar como enviado</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="alert alert-light" role="alert">
+                No se encontraron certificados.
+            </div>
+        {% endif %}
     </div>
 </div>
-
 {% endblock %}
 {% block extra_js %}
 <script>

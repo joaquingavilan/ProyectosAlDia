@@ -1,55 +1,141 @@
 {% extends 'base_deposito.html' %}
 
 {% block content %}
-    <h1 class="display-4 text-center" style="margin-bottom: 0.5rem;">Devolución de Materiales</h1>
-    <div class="row" style="display: flex; flex-direction: column; align-items: center;"></div>
-    <div class="d-flex justify-content-end"></div>
-
-    {% csrf_token %}
-    {% if devoluciones %}
-        <table class="table table-striped table-bordered">
-            <thead>
-                <tr>
-                    <th>ID pedido</th>
-                    <th>Nombre de la obra</th>
-                    <th>Estado de la devolucion</th>
-                    <th>Fecha de solicitud</th>
-                    <th>Cantidad de materiales</th>
-                    <th>Monto total</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for devolucion in devoluciones %}
-                    {% if devolucion.get_estado_display == 'Pendiente' %}
-                            <tr class="table-danger">
-                                <td>{{devolucion.pedido.id}}</td>
-                                <td>{{devolucion.obra.proyecto.nombre}}</td>
-                                <td>{{devolucion.get_estado_display}}</td>
-                                <td>{{devolucion.fecha_solicitud}}</td>
-                                <td>{{devolucion.materiales.count}}</td>
-                                <td>{{devolucion.monto_total}}</td>
-                                <td><a href="{% url 'ver_devolucion_dep' devolucion_id=devolucion.id %}" class="btn btn-danger">Ver Devolución</a>
-                            </tr>
-                    {% else %}
-                            <tr>
-                                <td>{{devolucion.pedido.id}}</td>
-                                <td>{{devolucion.obra.proyecto.nombre}}</td>
-                                <td>{{devolucion.get_estado_display}}</td>
-                                <td>{{devolucion.fecha_solicitud}}</td>
-                                <td>{{devolucion.materiales.count}}
-                                <td>{{devolucion.monto_total}}</td>
-                                <td><a href="{% url 'ver_devolucion_dep' devolucion_id=devolucion.id %}" class="btn btn-info">Ver Devolución</a></td>
-                            </tr>
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Devolución de Materiales</h2>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        <div class="row mb-4">
+            <h2>Filtrar por:</h2>
+            <div class="col-md-3">
+                <select id="filtroCampo" class="form-control">
+                    <option value="" disabled selected>Seleccione una opción...</option>
+                    <option value="estado" {% if estado_seleccionado %}selected{% endif %}>Estado</option>
+                    <option value="obra" {% if obra_seleccionada %}selected{% endif %}>Obra</option>
+                    <option value="encargado" {% if encargado_seleccionado %}selected{% endif %}>Ingeniero Encargado</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroValor" class="form-control">
+                    <option value="" disabled selected>Seleccione un valor...</option>
+                    {% if estado_seleccionado %}
+                        <option value="P" {% if estado_seleccionado == "P" %}selected{% endif %}>Pendiente</option>
+                        <option value="D" {% if estado_seleccionado == "D" %}selected{% endif %}>Devuelto</option>
+                        <option value="R" {% if estado_seleccionado == "R" %}selected{% endif %}>Rechazado</option>
+                    {% elif obra_seleccionada %}
+                        {% for obra in obras %}
+                            <option value="{{ obra.id }}" {% if obra.id|stringformat:"s" == obra_seleccionada %}selected{% endif %}>{{ obra.proyecto__nombre }}</option>
+                        {% endfor %}
+                    {% elif encargado_seleccionado %}
+                        {% for encargado in encargados %}
+                            <option value="{{ encargado.id }}" {% if encargado.id|stringformat:"s" == encargado_seleccionado %}selected{% endif %}>{{ encargado.first_name }} {{ encargado.last_name }}</option>
+                        {% endfor %}
                     {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <div class="alert alert-light">
-            No se encontraron devoluciones realizadas.
+                </select>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'ver_devoluciones' %}" class="btn btn-secondary btn-block">Limpiar Filtros</a>
+            </div>
         </div>
-    {% endif %}
 
-    <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary"> Inicio</a>
+        {% if devoluciones %}
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID pedido</th>
+                        <th>Nombre de la obra</th>
+                        <th>Estado de la devolución</th>
+                        <th>Fecha de solicitud</th>
+                        <th>Cantidad de materiales</th>
+                        <th>Monto total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for devolucion in devoluciones %}
+                        <tr class="{% if devolucion.get_estado_display == 'Pendiente' %}table-danger{% endif %}">
+                            <td>{{ devolucion.pedido.id }}</td>
+                            <td>{{ devolucion.obra.proyecto.nombre }}</td>
+                            <td>{{ devolucion.get_estado_display }}</td>
+                            <td>{{ devolucion.fecha_solicitud }}</td>
+                            <td>{{ devolucion.materiales.count }}</td>
+                            <td>{{devolucion.monto_total}}</td>
+                            <td><a href="{% url 'ver_devolucion_dep' devolucion_id=devolucion.id %}" class="btn btn-{% if devolucion.get_estado_display == 'Pendiente' %}danger{% else %}info{% endif %} btn-sm">Ver Devolución</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="alert alert-light">
+                No se encontraron devoluciones realizadas.
+            </div>
+        {% endif %}
+
+        <a href="{% url 'inicio_ingenieros' %}" class="btn btn-primary">Inicio</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filtroCampo = document.getElementById('filtroCampo');
+    const filtroValor = document.getElementById('filtroValor');
+
+    const obras = {{ obras|safe }};
+    const encargados = {{ encargados|safe }};
+
+    function updateFiltroValor(campoSeleccionado) {
+        filtroValor.innerHTML = '<option value="" disabled selected>Seleccione un valor...</option>';
+
+        if (campoSeleccionado === 'estado') {
+            filtroValor.innerHTML += `
+                <option value="P">Pendiente</option>
+                <option value="D">Devuelto</option>
+                <option value="R">Rechazado</option>
+            `;
+        } else if (campoSeleccionado === 'obra') {
+            obras.forEach(obra => {
+                filtroValor.innerHTML += `
+                    <option value="${obra.id}">${obra.proyecto__nombre}</option>
+                `;
+            });
+        } else if (campoSeleccionado === 'encargado') {
+            encargados.forEach(encargado => {
+                filtroValor.innerHTML += `
+                    <option value="${encargado.id}">${encargado.first_name} ${encargado.last_name}</option>
+                `;
+            });
+        }
+    }
+
+    filtroCampo.addEventListener('change', function() {
+        const campoSeleccionado = filtroCampo.value;
+        updateFiltroValor(campoSeleccionado);
+    });
+
+    filtroValor.addEventListener('change', function() {
+        const campoSeleccionado = filtroCampo.value;
+        const valorSeleccionado = filtroValor.value;
+
+        let url = new URL(window.location.href);
+        if (campoSeleccionado === 'estado') {
+            url.searchParams.set('estado', valorSeleccionado);
+        } else if (campoSeleccionado === 'obra') {
+            url.searchParams.set('obra', valorSeleccionado);
+        } else if (campoSeleccionado === 'encargado') {
+            url.searchParams.set('encargado', valorSeleccionado);
+        }
+        window.location.href = url.toString();
+    });
+
+    // Inicializar el valor del filtro si ya hay uno seleccionado
+    const initialCampo = filtroCampo.value;
+    if (initialCampo) {
+        updateFiltroValor(initialCampo);
+    }
+});
+</script>
 {% endblock %}

@@ -2,9 +2,11 @@
 {% load custom_filters %}
 
 {% block content %}
-    <div style="text-align: center; margin-bottom: 1rem;">
-        <h1 style="display: inline-block; margin: 0;">Pedidos de Compra de Materiales</h1>
-    </div>
+    <div class="x_panel">
+            <div class="x_title">
+                <h2>Pedidos de Compra de Materiales</h2>
+                <div class="clearfix"></div>
+            </div>
 
     {% if pedidos_con_materiales %}
         <table class="table table-striped table-bordered">
@@ -49,32 +51,32 @@
         </div>
     {% endif %}
 
-    <div class="modal fade" id="modalCompra" tabindex="-1" role="dialog" aria-labelledby="modalCompraLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalCompraLabel">Registrar Compra</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p id="modalPedido">Registro de compra del Pedido #</p>
-                    <div class="form-group">
-                        <label for="comprobante" class="form-label">Adjuntar comprobante</label>
-                        <input type="file" class="form-control-file" id="comprobante" data-pedido-id="">
+            <div class="modal fade" id="modalCompra" tabindex="-1" role="dialog" aria-labelledby="modalCompraLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalCompraLabel">Registrar Compra</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <p id="modalPedido">Registro de compra del Pedido #</p>
+                            <div class="form-group">
+                                <label for="comprobante" class="form-label">Adjuntar comprobante</label>
+                                <input type="file" class="form-control-file" id="comprobante" data-pedido-id="">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-primary" id="botonRegistrarCompra">Confirmar Compra</button>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-primary" id="botonRegistrarCompra">Confirmar Compra</button>
-                </div>
             </div>
-        </div>
+
+            <a href="{% url 'inicio_adm' %}" class="btn btn-primary">Inicio</a>
     </div>
-
-    <a href="{% url 'inicio_adm' %}" class="btn btn-primary">Inicio</a>
-
 {% endblock %}
 
 {% block extra_js %}
