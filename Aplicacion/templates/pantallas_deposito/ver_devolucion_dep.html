@@ -12,6 +12,7 @@
             <h2>Fecha de Devolución: {{devolucion.fecha_devolucion}}</h2>
         {% endif %}
         <h2>Estado: {{devolucion.get_estado_display}}</h2>
+        <h2>Monto total: {{devolucion.monto_total}}</h2>
     </div>
 
     <div class="clearfix"></div>
@@ -35,6 +36,7 @@
                           <th class="column-title" style="width: 20%;">Fotografía</th> <!-- Aumentado el ancho -->
                           <th class="column-title" style="width: 10%;">Cantidad devuelta</th> <!-- Reducido el ancho -->
                           <th class="column-title" style="width: 10%;">Unidad de medida</th> <!-- Reducido el ancho -->
+                          <th class="column-title" style="width: 10%;">Monto</th> <!-- Reducido el ancho -->
                           {% if devolucion.observaciones %}
                             <th class="column-title" style="width: 20%;">Observaciones</th>
                           {% endif %}
@@ -48,6 +50,7 @@
                                 <td><img src="{{ material_devuelto.material.foto.url }}" alt="Foto" style="max-width: 100%; height: auto;"></td>
                                 <td>{{ material_devuelto.cantidad }}</td>
                                 <td>{{ material_devuelto.material.medida }}</td>
+                                <td>{{ material_devuelto.monto }}</td>
                                 {% if devolucion.observaciones %}
                                     <td>{{ devolucion.observaciones }}</td>
                                 {% endif %}

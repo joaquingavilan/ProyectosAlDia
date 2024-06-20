@@ -56,7 +56,8 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 from django.core.serializers.json import DjangoJSONEncoder
-
+import calendar
+from django.db.models.functions import ExtractYear
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,34 @@ def plot_certificados_pendientes():
     return graph_data
 
 
+def plot_presupuestos_pendientes():
+    presupuestos = HechoPresupuesto.objects.filter(estado='S')
+    proyectos_dict = {proyecto.proyecto_id: proyecto.cliente_id for proyecto in DimProyecto.objects.all()}
+    proyectos_names_dict = {proyecto.proyecto_id: proyecto.nombre for proyecto in DimProyecto.objects.all()}
+    clientes_dict = {cliente.cliente_id: cliente.nombre for cliente in DimCliente.objects.all()}
+
+    clientes_presupuestos = {}
+
+    for presupuesto in presupuestos:
+        proyecto_id = presupuesto.proyecto_id #se obtiene el id del proyecto al que corresponde
+        proyecto_nombre= proyectos_names_dict[proyecto_id]
+        cliente_id = proyectos_dict[proyecto_id] #se obtiene el id del cliente
+        cliente_nombre = clientes_dict[cliente_id] #se obtiene el nombre del cliente
+        if cliente_nombre not in clientes_presupuestos:
+            clientes_presupuestos[cliente_nombre] = []
+        clientes_presupuestos[cliente_nombre].append({
+            'id': presupuesto.id,
+            'proyecto_nombre': proyecto_nombre,
+            'proyecto_id': proyecto_id
+        })
+    if presupuestos:
+        graph_data = {
+            'clientes': list(clientes_presupuestos.keys()),
+            'presupuestos_cliente': clientes_presupuestos
+        }
+    else:
+        graph_data = {}
+    return graph_data
 
 
 def actualizar_dimensiones():
@@ -289,7 +318,22 @@ def actualizar_dimensiones():
 def actualizar_hechos():
     with connection.cursor() as cursor:
         # Bloque de consultas
-
+        # Consulta para obtener el monto total de cada pedido
+        cursor.execute("""
+                    SELECT 
+                        p.id,
+                        p.obra_id,
+                        p.solicitante_id,
+                        p.fecha_solicitud,
+                        p.fecha_entrega,
+                        p.estado,
+                        SUM(mp.cantidad * m.precio) AS monto_total
+                    FROM public."Aplicacion_pedido" p
+                    JOIN public."Aplicacion_materialpedido" mp ON p.id = mp.pedido_id
+                    JOIN public."Aplicacion_material" m ON mp.material_id = m.id
+                    GROUP BY p.id, p.obra_id, p.solicitante_id, p.fecha_solicitud, p.fecha_entrega, p.estado
+                """)
+        hechos_pedidos = cursor.fetchall()
         # Consulta para HechoEstadoIngeniero
         cursor.execute("""
             SELECT 
@@ -396,7 +440,19 @@ def actualizar_hechos():
         cursor.execute("TRUNCATE TABLE datamart.hechomaterialporobra;")
         cursor.execute("TRUNCATE TABLE datamart.hechocronograma;")
         cursor.execute("TRUNCATE TABLE datamart.hecho_obra;")
+        cursor.execute("TRUNCATE TABLE datamart.hecho_pedido;")
 
+        # Inserciones para HechoPedido
+        for hecho in hechos_pedidos:
+            id, obra_id, solicitante_id, fecha_solicitud, fecha_entrega, estado, monto_total = hecho
+            cursor.execute("""
+                        INSERT INTO datamart.hecho_pedido (
+                            id, obra_id, solicitante_id, fecha_solicitud, fecha_entrega, estado, monto_total
+                        ) 
+                        VALUES (%s, %s, %s, %s, %s, %s, %s);
+                    """, [
+                id, obra_id, solicitante_id, fecha_solicitud, fecha_entrega, estado, monto_total
+            ])
         # Inserciones para HechoEstadoIngeniero
         for hecho in hechos_estado_ingeniero:
             ingeniero_id, nombre_ingeniero, cantidad_obras_ejecucion, cantidad_presupuestos_elaboracion = hecho
@@ -482,6 +538,7 @@ def actualizar_hechos():
         cursor.execute('COMMIT;')
 
 
+
 def inicio(request):
     verificar_obras_agendadas()
     cargar_distritos()
@@ -492,16 +549,21 @@ def inicio(request):
         ingenieros = HechoEstadoIngeniero.objects.all()
         graph_data_estado_ingenieros = plot_estado_ingenieros_json(ingenieros)
         graph_data_certificados_pendientes = plot_certificados_pendientes()
+        graph_data_presupuestos_pendientes = plot_presupuestos_pendientes()
         obras_activas = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
         clientes, ingenieros_encargados = get_ingenieros_clientes_obras_activas()
+        clientes_pres, ingenieros_encargados_pres = get_ingenieros_clientes_presupuestos_elaboracion()
         # Paginación
-        paginator = Paginator(obras_activas, 5)  # Mostrar 5 obras por página
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
+        paginator1 = Paginator(obras_activas, 5)  # Mostrar 5 obras por página
+        page_number1 = request.GET.get('page')
+        page_obj = paginator1.get_page(page_number1)
 
         context = {'graph_data_estado_ingenieros': json.dumps(graph_data_estado_ingenieros),
                    'graph_data_certificados_pendientes': json.dumps(graph_data_certificados_pendientes),
+                   'graph_data_presupuestos_pendientes': json.dumps(graph_data_presupuestos_pendientes),
                    'clientes': clientes,
+                   'clientes_pres': clientes_pres,
+                   'ingenieros_pres': ingenieros_encargados_pres,
                    'ingenieros_encargados': ingenieros_encargados,
                    'page_obj': page_obj,
                    }
@@ -2448,7 +2510,9 @@ def ver_archivo_presupuesto(request, pk):
         'proyecto': proyecto,
         'cliente': cliente,
         'presupuesto_id': presupuesto.id,
-        'archivo_presupuesto_id': archivo_presupuesto.id
+        'archivo_presupuesto_id': archivo_presupuesto.id,
+        'user': request.user,
+        'encargado_id': presupuesto.encargado.id
     }
 
     return render(request, 'pantallas_ing/ver_presupuesto.html', context)
@@ -4505,7 +4569,6 @@ def get_obras_activas(request):
     page_number = request.GET.get('page', 1)
 
     obras_activas = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
-    print(obras_activas)
     if cliente_id:
         obras_activas = obras_activas.filter(proyecto__cliente_id=cliente_id)
     if ingeniero_id:
@@ -4546,6 +4609,53 @@ def get_obras_activas(request):
     return JsonResponse(data)
 
 
+def get_presupuestos_elaboracion(request):
+    cliente_id = request.GET.get('cliente')
+    ingeniero_id = request.GET.get('ingeniero')
+    page_number = request.GET.get('page', 1)
+
+    presupuestos_elaboracion = Presupuesto.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
+    if cliente_id:
+        presupuestos_elaboracion = presupuestos_elaboracion.filter(proyecto__cliente_id=cliente_id)
+    if ingeniero_id:
+        presupuestos_elaboracion = presupuestos_elaboracion.filter(encargado_id=ingeniero_id)
+
+    paginator = Paginator(presupuestos_elaboracion, 10)
+    page_obj = paginator.get_page(page_number)
+
+    presupuestos_data = []
+    for presupuesto in page_obj:
+        presupuestos_data.append({
+            'id': presupuesto.id,
+            'proyecto': {
+                'nombre': presupuesto.proyecto.nombre,
+                'cliente': {
+                    'nombre': presupuesto.proyecto.cliente.nombre
+                }
+            },
+            'fecha_asignacion': presupuesto.fecha_asignacion,
+            'encargado': {
+                'get_full_name': presupuesto.encargado.get_full_name()
+            }
+        })
+
+    data = {
+        'presupuestos': presupuestos_data,
+        'page_obj': {
+            'number': page_obj.number,
+            'paginator': {
+                'num_pages': paginator.num_pages,
+            },
+            'has_previous': page_obj.has_previous(),
+            'previous_page_number': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'has_next': page_obj.has_next(),
+            'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
+        }
+    }
+
+    return JsonResponse(data)
+
+
 def get_ingenieros_clientes_obras_activas():
     # Filtrar obras activas
     obras_activas = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
@@ -4560,7 +4670,19 @@ def get_ingenieros_clientes_obras_activas():
 
     return clientes, ingenieros_encargados
 
+def get_ingenieros_clientes_presupuestos_elaboracion():
+    # Filtrar obras activas
+    presupuestos_elaboracion = Presupuesto.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
 
+    # Obtener clientes únicos de las obras activas
+    clientes_ids = presupuestos_elaboracion.values_list('proyecto__cliente_id', flat=True).distinct()
+    clientes = Cliente.objects.filter(id__in=clientes_ids)
+
+    # Obtener ingenieros encargados únicos de las obras activas
+    ingenieros_ids = presupuestos_elaboracion.values_list('encargado_id', flat=True).distinct()
+    ingenieros_encargados = User.objects.filter(id__in=ingenieros_ids)
+
+    return clientes, ingenieros_encargados
 def generar_grafico_materiales(hechos_materiales):
     df = pd.DataFrame(list(hechos_materiales.values('material_id', 'material_nombre', 'cantidad_total')))
 
@@ -4618,88 +4740,23 @@ def generar_grafico_certificados(hechos_certificados):
 
 
 def generar_grafico_cronograma(hechos_cronograma):
-    # Leer los datos en un DataFrame de pandas
     df = pd.DataFrame(list(hechos_cronograma.values('detalle_id', 'fecha_programada', 'fecha_culminacion')))
     df.rename(columns={'detalle_id': 'detalle_id_cronograma'}, inplace=True)
 
-    # Obtener los datos del modelo DetalleCronograma
     detalles_cronograma = DetalleCronograma.objects.all().values('id', 'detalle_id')
     df_detalles_cronograma = pd.DataFrame(list(detalles_cronograma))
     df_detalles_cronograma.rename(columns={'id': 'detalle_id_cronograma'}, inplace=True)
 
-    # Obtener los datos del modelo Detalle
     detalles = Detalle.objects.all().values('id', 'rubro')
     df_detalles = pd.DataFrame(list(detalles))
     df_detalles.rename(columns={'id': 'detalle_id'}, inplace=True)
-    # Realizar la unión entre los DataFrames de detalles_cronograma y detalles
+
     df_completo = df_detalles_cronograma.merge(df_detalles, on='detalle_id', how='left')
-    # Realizar la unión entre el DataFrame original y el DataFrame completo
     df = df.merge(df_completo, on='detalle_id_cronograma', how='left')
     df.drop(['detalle_id'], axis=1, inplace=True)
     df.rename(columns={'detalle_id_cronograma': 'detalle_id'}, inplace=True)
-
     print(df)
-
-    # Crear el gráfico de líneas
-    fig = go.Figure()
-    if not df.empty:
-        # Añadir los puntos de las fechas programadas
-        fig.add_trace(go.Scatter(
-            x=df['fecha_programada'],
-            y=df['detalle_id'],
-            mode='markers',
-            name='Fechas Programadas',
-            text=df['rubro'],
-            marker=dict(
-                symbol='circle',
-                color='blue',
-                size=10,
-                opacity=0.6
-            ),
-            hovertemplate='<b>Rubro:</b> %{text}<extra></extra>'
-        ))
-
-    # Filtrar solo las filas donde fecha_culminacion no es None
-    df_culminacion = df.dropna(subset=['fecha_culminacion'])
-
-    if not df_culminacion.empty:
-        # Añadir los puntos de las fechas de culminación
-        fig.add_trace(go.Scatter(
-            x=df_culminacion['fecha_culminacion'],
-            y=df_culminacion['detalle_id'],
-            mode='markers',
-            name='Fechas de Culminación',
-            text=df_culminacion['rubro'],
-            marker=dict(
-                symbol='triangle-up',
-                color=['orange' if x > y else 'green' if x == y else 'red' for x, y in zip(df_culminacion['fecha_programada'], df_culminacion['fecha_culminacion'])],
-                size=10,
-                opacity=0.6
-            ),
-            hovertemplate='<b>Rubro:</b> %{text}<extra></extra>'
-        ))
-    if fig.data:
-        fig.update_layout(
-            title='Cronograma de Actividades',
-            xaxis_title='Fecha',
-            yaxis_title='Rubro',
-            yaxis=dict(
-                type='category',  # Establecer el tipo de eje como categoría
-                categoryorder='category ascending'
-            ),
-            xaxis=dict(
-                tickformat='%d %b %Y',  # Formato para mostrar solo la fecha
-                tickmode='array',
-                tickvals=pd.concat([df['fecha_programada'], df['fecha_culminacion']]).dropna().unique(),
-                # Mostrar solo fechas únicas
-                ticktext=[date.strftime('%d %b %Y') for date in pd.concat([df['fecha_programada'], df['fecha_culminacion']]).dropna().unique()]
-            ),
-            legend=dict(x=0.1, y=1.1, orientation='h')
-        )
-
-    # Convertir el gráfico a JSON
-    graph_json = pio.to_json(fig)
-    return graph_json
+    return df.to_json(orient='records', date_format='iso')
 
 
 def ver_resumen_obra(request, obra_id):
@@ -4716,12 +4773,9 @@ def ver_resumen_obra(request, obra_id):
     devoluciones = Devolucion.objects.filter(obra=obra).order_by('-estado', 'fecha_solicitud')
     # Obtener los datos de HechoMaterialPorObra
 
-
-
     hechos_cronograma = HechoCronograma.objects.filter(cronograma_id=cronograma.id)
     if hechos_cronograma:
         graph_json_cronograma = generar_grafico_cronograma(hechos_cronograma)
-        print(graph_json_cronograma)
     else:
         graph_json_cronograma = None
 
@@ -4734,6 +4788,10 @@ def ver_resumen_obra(request, obra_id):
 
     hechos_certificados = HechoCertificado.objects.filter(presupuesto_id=presupuesto.id)
     certificados_json = generar_grafico_certificados(hechos_certificados) if hechos_certificados.exists() else json.dumps({})
+
+    # Calcular los montos de presupuesto y materiales
+    monto_presupuesto = float(presupuesto.monto_total) if presupuesto.monto_total else 0
+    monto_materiales = float(obra.monto_total)
 
     context = {
         'pedidos': pedidos,
@@ -4749,7 +4807,9 @@ def ver_resumen_obra(request, obra_id):
         'graph_json_cronograma': graph_json_cronograma,
         'certificados_json': certificados_json,
         'unidades_medida': unidades_medida,
-        'devoluciones': devoluciones
+        'devoluciones': devoluciones,
+        'monto_presupuesto': monto_presupuesto,
+        'monto_materiales': monto_materiales
     }
     return render(request, 'pantallas_gerente/ver_resumen_obra.html', context)
 
@@ -4945,7 +5005,8 @@ def get_gestion_pedidos_devoluciones(request):
                 'id': item.id,
                 'tipo': 'Pedido' if isinstance(item, Pedido) else 'Devolución',
                 'obra': item.obra.proyecto.nombre,
-                'estado': item.get_estado_display()
+                'estado': item.get_estado_display(),
+                'monto_total': item.monto_total
             } for item in page_obj],
         'estados': [{'valor': estado[0], 'nombre': estado[1]} for estado in
                     (Pedido.ESTADOS if tipo == 'Pedido' else Devolucion.ESTADOS)] if tipo in ['Pedido', 'Devolucion'] else [],
@@ -4963,13 +5024,21 @@ def get_estados_por_tipo_pedido_devolucion(request):
 def get_obras(request):
     cliente_id = request.GET.get('cliente')
     ingeniero_id = request.GET.get('ingeniero')
+    anho = request.GET.get('anho')
+    estado = request.GET.get('estado')
     page_number = request.GET.get('page', 1)
 
-    obras= Obra.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente')
+    obras = Obra.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente').exclude(
+        encargado__isnull=True)
+
     if cliente_id:
-        obras= obras.filter(proyecto__cliente_id=cliente_id)
+        obras = obras.filter(proyecto__cliente_id=cliente_id)
     if ingeniero_id:
         obras = obras.filter(encargado_id=ingeniero_id)
+    if anho:
+        obras = obras.filter(fecha_inicio__year=anho)
+    if estado:
+        obras = obras.filter(estado=estado)
 
     paginator = Paginator(obras, 10)
     page_obj = paginator.get_page(page_number)
@@ -5012,20 +5081,110 @@ def ver_obras_gerente(request):
     clientes = Cliente.objects.filter(id__in=clientes_ids)
     ingenieros_ids = obras.values_list('encargado_id', flat=True).distinct()
     ingenieros_encargados = User.objects.filter(id__in=ingenieros_ids)
+
     # Paginación
     paginator = Paginator(obras, 5)  # Mostrar 5 obras por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    cronograma_data, certificado_data = fetch_cronograma_certificado_data()
 
-    context={
+    estado_seleccionado_progreso = request.GET.get('estado_progreso', 'E')
+    # Obtener los datos de cronograma y certificado
+    cronograma_data, certificado_data = fetch_cronograma_certificado_data(estado=estado_seleccionado_progreso)
+
+    # Obtener los años distintos de la fecha de inicio de las obras, excluyendo nulos
+    anhos = HechoObra.objects.exclude(fecha_inicio__isnull=True).annotate(year=ExtractYear('fecha_inicio')).values_list(
+        'year', flat=True).distinct().order_by('-year')
+    anho_mayor = anhos[0] if anhos else None
+
+    anho = request.GET.get('anho', anho_mayor)  # Usar el año más reciente por defecto
+
+    # Obtener las obras del período seleccionado
+    obras_data = get_obras_periodo(anho=anho)
+
+    # Obtener los estados distintos
+    estados = obras.values_list('estado', flat=True).distinct()
+
+    # Traducción de nombres de meses
+    meses_ingles = [calendar.month_name[i] for i in range(1, 13)]
+    meses_espanol = [traducir_mes(mes) for mes in meses_ingles]
+
+    # Obtener el estado del filtro y los montos de obras
+    estado_seleccionado_montos = request.GET.get('estado_monto', 'E')
+    montos = get_montos_obra(estado=estado_seleccionado_montos)
+    context = {
         'clientes': clientes,
         'ingenieros_encargados': ingenieros_encargados,
         'page_obj': page_obj,
         'certificado_data': json.dumps(certificado_data),
-        'cronograma_data': json.dumps(cronograma_data)
+        'cronograma_data': json.dumps(cronograma_data),
+        'obras_data': obras_data,
+        'anhos': anhos,
+        'meses_espanol': meses_espanol,
+        'anho_seleccionado': anho,
+        'estados': estados,
+        'estado_seleccionado_progreso': estado_seleccionado_progreso,
+        'estado_seleccionado_montos': estado_seleccionado_montos,
+        'montos': montos
     }
     return render(request, 'pantallas_gerente/ver_obras_gerente.html', context)
+
+
+def obtener_montos_obra(request):
+    estado = request.GET.get('estado', 'E')
+    data = get_montos_obra(estado=estado)
+    return JsonResponse(data, safe=False)
+
+
+def get_montos_obra(estado='E'):
+    if estado not in ['E', 'F']:
+        estado = 'E'  # Valor por defecto si el estado no es válido
+
+    obras = Obra.objects.filter(estado=estado).select_related('proyecto', 'encargado', 'proyecto__cliente').exclude(
+        encargado__isnull=True)
+
+    data = [
+        {
+            'proyecto': obra.proyecto.nombre,
+            'monto_presupuesto': float(
+                obra.proyecto.presupuesto.monto_total) if obra.proyecto.presupuesto.monto_total is not None else 0,
+            'monto_total_pedidos': float(obra.monto_total),
+            'proporcion': float(obra.monto_total) / float(
+                obra.proyecto.presupuesto.monto_total) if obra.proyecto.presupuesto.monto_total and obra.proyecto.presupuesto.monto_total > 0 else 0,
+            'obra_id': obra.id
+        }
+        for obra in obras if obra.monto_total > 0
+    ]
+
+    # Ordenar las obras por la proporción de mayor a menor
+    data.sort(key=lambda x: x['proporcion'], reverse=True)
+
+    return data
+
+
+def get_obras_periodo(mes=None, anho=None):
+    if not mes and not anho:
+        obras = HechoObra.objects.all().exclude(fecha_inicio__isnull=True)
+    elif mes and anho:
+        obras = HechoObra.objects.filter(fecha_inicio__year=anho, fecha_inicio__month=mes)
+    elif mes:
+        obras = HechoObra.objects.filter(fecha_inicio__month=mes).exclude(fecha_inicio__isnull=True)
+    elif anho:
+        obras = HechoObra.objects.filter(fecha_inicio__year=anho).exclude(fecha_inicio__isnull=True)
+
+    obras_data = list(obras.values('id', 'fecha_inicio'))
+
+    # Convertir fechas a cadenas
+    for obra in obras_data:
+        if obra['fecha_inicio']:
+            obra['fecha_inicio'] = obra['fecha_inicio'].strftime('%Y-%m-%d')
+
+    return json.dumps(obras_data)
+
+
+def obtener_datos_progreso(request):
+    estado = request.GET.get('estado', 'E')
+    cronograma_data, certificado_data = fetch_cronograma_certificado_data(estado=estado)
+    return JsonResponse({'cronograma_data': cronograma_data, 'certificado_data': certificado_data}, safe=False)
 
 
 def fetch_cronograma_certificado_data(estado=None):
@@ -5033,22 +5192,25 @@ def fetch_cronograma_certificado_data(estado=None):
     certificado_data = []
 
     if not estado:
-        obras = Obra.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente')
+        obras = Obra.objects.all().select_related('proyecto', 'encargado', 'proyecto__cliente').exclude(
+            encargado__isnull=True)
     elif estado == 'E':
         obras = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
     elif estado == 'F':
         obras = Obra.objects.filter(estado='F').select_related('proyecto', 'encargado', 'proyecto__cliente')
     else:
         obras = Obra.objects.none()
-    print(obras)
+
     for obra in obras:
         archivo_presupuesto = ArchivoPresupuesto.objects.filter(presupuesto__proyecto_id=obra.proyecto_id).first()
         if archivo_presupuesto:
             try:
                 cronograma = Cronograma.objects.get(archivo_presupuesto=archivo_presupuesto)
                 total_actividades = HechoCronograma.objects.filter(cronograma_id=cronograma.id).count()
-                actividades_realizadas = HechoCronograma.objects.filter(cronograma_id=cronograma.id, fecha_culminacion__isnull=False).count()
-                porcentaje_actividades = (actividades_realizadas / total_actividades * 100) if total_actividades > 0 else 0
+                actividades_realizadas = HechoCronograma.objects.filter(cronograma_id=cronograma.id,
+                                                                        fecha_culminacion__isnull=False).count()
+                porcentaje_actividades = (
+                            actividades_realizadas / total_actividades * 100) if total_actividades > 0 else 0
                 cronograma_data.append({
                     'obra': obra.proyecto.nombre,
                     'porcentaje_actividades': porcentaje_actividades,
@@ -5060,15 +5222,20 @@ def fetch_cronograma_certificado_data(estado=None):
         presupuesto = HechoPresupuesto.objects.filter(proyecto_id=obra.proyecto.id).first()
         if presupuesto:
             total_monto = float(presupuesto.monto_total)  # Convertir Decimal a float
-            monto_aprobado = HechoCertificado.objects.filter(presupuesto_id=presupuesto.id, estado='A').aggregate(total=Sum('monto_total'))['total']
+            monto_aprobado = HechoCertificado.objects.filter(presupuesto_id=presupuesto.id, estado='A').aggregate(
+                total=Sum('monto_total'))['total']
             monto_aprobado = float(monto_aprobado) if monto_aprobado else 0
             porcentaje_monto = (monto_aprobado / total_monto * 100) if total_monto > 0 else 0
-            certificado_data.append({
-                'obra': obra.proyecto.nombre,
-                'porcentaje_monto': porcentaje_monto
-            })
+
+            if estado != 'F' or porcentaje_monto < 100:
+                certificado_data.append({
+                    'obra': obra.proyecto.nombre,
+                    'porcentaje_monto': porcentaje_monto
+                })
 
     return cronograma_data, certificado_data
+
+
 
 
 def get_cronograma_certificado_data(request, estado=None):

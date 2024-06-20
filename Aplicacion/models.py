@@ -105,6 +105,7 @@ class Material(models.Model):
     minimo = models.PositiveIntegerField()
     unidades_stock = models.PositiveIntegerField()
     fotografia = models.ImageField(upload_to='imagenes/', blank=True, null=True)
+    precio = models.PositiveIntegerField()  # Añadido campo precio
 
     def __str__(self):
         return self.nombre
@@ -123,6 +124,10 @@ class Obra(models.Model):
     )
     estado = models.CharField(_('estado'), max_length=2, choices=ESTADOS, default='NI')
 
+    @property
+    def monto_total(self):
+        total = sum(item.monto_total for item in self.pedido_set.all())
+        return total
     class Meta:
         verbose_name = _('obra')
         verbose_name_plural = _('obras')
@@ -144,6 +149,7 @@ class Presupuesto(models.Model):
         ('A', _('Aprobado')),
     )
     estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='E')
+    fecha_asignacion = models.DateField(_('fecha de asignación'), auto_now_add=True, null=True, blank=True)
 
     def get_estado_display(self):
         return dict(Presupuesto.ESTADOS)[self.estado]
@@ -183,7 +189,10 @@ class Pedido(models.Model):
 
     def __str__(self):
         return f'{self.obra} - {self.estado}'
-
+    @property
+    def monto_total(self):
+        total = sum(item.monto for item in self.materialpedido_set.all())
+        return total
 
 class MaterialPedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
@@ -196,7 +205,9 @@ class MaterialPedido(models.Model):
 
     def __str__(self):
         return f'{self.material} - {self.pedido}'
-
+    @property
+    def monto(self):
+        return self.material.precio * self.cantidad
 
 class Seccion(models.Model):
     nombre = models.CharField(max_length=255)
@@ -262,6 +273,10 @@ class Devolucion(models.Model):
     estado = models.CharField(_('estado'), max_length=1, choices=ESTADOS, default='P')
     materiales = models.ManyToManyField('Material', through='MaterialDevuelto', null=True)
 
+    @property
+    def monto_total(self):
+        total = sum(item.monto for item in self.materialdevuelto_set.all())
+        return total
     class Meta:
         verbose_name = _('devolución')
         verbose_name_plural = _('devoluciones')
@@ -279,6 +294,9 @@ class MaterialDevuelto(models.Model):
         verbose_name = _('material devuelto')
         verbose_name_plural = _('materiales devueltos')
 
+    @property
+    def monto(self):
+        return self.material.precio * self.cantidad
     def str__(self):
         return f'{self.material} - {self.pedido}'
 
@@ -330,6 +348,10 @@ class PedidoCompra(models.Model):
         verbose_name = _('pedido')
         verbose_name_plural = _('pedidos')
 
+    @property
+    def monto_total(self):
+        total = sum(item.monto for item in self.materialpedidocompra_set.all())
+        return total
     def str(self):
         return f'{self.estado}'
 
@@ -343,6 +365,9 @@ class MaterialPedidoCompra(models.Model):
         verbose_name = _('material en pedido de compra')
         verbose_name_plural = _('materiales en pedido de compra')
 
+    @property
+    def monto(self):
+        return self.material.precio * self.cantidad
     def str(self):
         return f'{self.material} - {self.pedido_compra}'
 
@@ -481,6 +506,7 @@ class HechoPedido(models.Model):
     fecha_solicitud = models.DateField()
     fecha_entrega = models.DateField()
     estado = models.CharField(max_length=50)
+    monto_total = models.PositiveIntegerField()  # Nuevo campo
 
     class Meta:
         managed = False
@@ -550,4 +576,4 @@ class HechoObra(models.Model):
     plazo = models.IntegerField()
     class Meta:
         managed = False
-        db_table = 'datamart.hecho_obra'
+        db_table = 'hecho_obra'

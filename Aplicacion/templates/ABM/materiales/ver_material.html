@@ -14,6 +14,7 @@
           <th>Mínimo</th>
           <th>Unidades en Stock</th>
           <th>Imagen</th>
+          <th>Precio </th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -31,6 +32,7 @@
             {% else %}
               <td>--</td>
             {% endif %}
+            <td>{{ material.precio }}</td>
             <td>
               <a href="{% url 'editar_material' material.id %}" class="btn btn-primary">Editar</a>
               <!-- Actualización del enlace de eliminación -->

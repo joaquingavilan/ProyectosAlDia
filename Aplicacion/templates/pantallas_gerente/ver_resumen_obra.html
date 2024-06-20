@@ -15,20 +15,33 @@
 <div class="clearfix"></div>
 
 <div class="row">
-        {% block grafico_5 %}
-    <div class="col-md-8 col-sm-8">
-        <div class="x_panel">
-            <div class="x_title">
-                <h2>Cronograma de la Obra</h2>
-                <div class="clearfix"></div>
-            </div>
-            <div class="x_content">
-                <div id="grafico-cronograma"></div>
-            </div>
+        {% block grafico_2 %}
+<div class="col-md-4 col-sm-4">
+    <div class="x_panel">
+        <div class="x_title">
+            <h2>Cronograma de la Obra</h2>
+            <div class="clearfix"></div>
+        </div>
+        <div class="x_content">
+            <div id="grafico-gantt" style="width:100%; height:400px;"></div>
         </div>
     </div>
-    {% endblock %}
+</div>
+{% endblock %}
 
+{% block grafico_7 %}
+<div class="col-md-4 col-sm-4">
+    <div class="x_panel">
+        <div class="x_title">
+            <h2>Presupuesto vs Materiales</h2>
+            <div class="clearfix"></div>
+        </div>
+        <div class="x_content">
+            <div id="chart" style="width:100%;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
 
 
@@ -51,11 +64,11 @@
 </div>
 
 <div class="row">
-    {% block grafico_2 %}
+    {% block grafico_8 %}
 <div class="col-md-4 col-sm-4">
     <div class="x_panel">
         <div class="x_title">
-            <h2>Gráfico de Materiales por Obra</h2>
+            <h2>Cantidad por material</h2>
             <div class="clearfix"></div>
         </div>
         <div class="x_content">
@@ -88,6 +101,7 @@
                             <th>Id de la devolucion</th>
                             <th>Id del pedido </th>
                             <th>Estado</th>
+                            <th>Monto</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -97,6 +111,7 @@
                             <td>{{ devolucion.id }}</td>
                             <td>{{ devolucion.pedido.id }}</td>
                             <td>{{ devolucion.get_estado_display }}
+                            <td>{{ devolucion.monto_total }}
                             </td>
                             <td><a href="{% url 'ver_devolucion' devolucion.id %}" class="btn btn-info btn-sm">Ver</a></td>
                         </tr>
@@ -125,6 +140,7 @@
                         <th>Id del pedido</th>
                         <th>Fecha de solicitud</th>
                         <th>Fecha de entrega</th>
+                        <th>Monto</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -139,6 +155,7 @@
                             No entregado
                             {% endif %}
                         </td>
+                        <td>{{ pedido.monto_total }}</td>
                         <td><a href="{% url 'ver_pedido_gerente' pedido.id %}" class="btn btn-info btn-sm">Ver</a></td>
                     </tr>
                     {% endfor %}
@@ -162,15 +179,49 @@
 document.addEventListener('DOMContentLoaded', function () {
     var graphJSON = "{{ graph_json|escapejs }}";
     var certificadosJSON = "{{ certificados_json|escapejs }}";
-    var cronogramaJSON = "{{ graph_json_cronograma|escapejs }}";
-    var cronogramaData = JSON.parse(cronogramaJSON);
 
-    // Renderizar gráfico de cronograma
-    if (cronogramaData.data.length > 0) {
-        Plotly.react('grafico-cronograma', cronogramaData.data, cronogramaData.layout);
-    } else {
-        document.getElementById('grafico-cronograma').innerHTML = '<p>No hay datos disponibles para mostrar.</p>';
-    }
+        var cronogramaData = JSON.parse('{{ graph_json_cronograma|escapejs }}');
+        console.log(cronogramaData);
+        if (cronogramaData.length === 0) {
+            document.getElementById('grafico-gantt').innerHTML = '<p>No hay cronograma definido</p>';
+        } else {
+        var startDates = cronogramaData.map(d => new Date(d.fecha_programada).toISOString().split('T')[0]);
+        var finishDates = cronogramaData.map(d => d.fecha_culminacion ? new Date(d.fecha_culminacion).toISOString().split('T')[0] : null);
+        var tasks = cronogramaData.map(d => d.rubro);
+
+        var trace11 = {
+            type: 'scatter',
+            mode: 'markers',
+            x: startDates,
+            y: tasks,
+            marker: { color: 'rgba(0, 102, 255, 1)', size: 10 },
+            name: 'Fecha Programada'
+        };
+
+        var trace21 = {
+            type: 'scatter',
+            mode: 'markers',
+            x: finishDates,
+            y: tasks,
+            marker: { color: 'rgba(255, 153, 0, 1)', size: 10 },
+            name: 'Fecha de Culminación'
+        };
+
+        var layout = {
+            xaxis: { title: 'Fecha', type: 'date' },
+            yaxis: { title: 'Rubro', type: 'category' },
+            height: 400,
+            autosize: true,
+            margin: {
+                l: 100,
+                r: 20,
+                t: 0,
+                b: 100
+            }
+        };
+
+        Plotly.newPlot('grafico-gantt', [trace11, trace21], layout);
+}
 
     var data = JSON.parse(graphJSON);
     var certificadosData = JSON.parse(certificadosJSON);
@@ -180,8 +231,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var layout = data.layout;
 
     var unidadesMedida = {{ unidades_medida|safe }};
-    // Verificar los datos en la consola
-    console.log('cronogramaData:', cronogramaData);
     // Renderizar gráfico de materiales
     document.getElementById('material-select').addEventListener('change', function (e) {
         var selectedMaterial = e.target.value;
@@ -217,7 +266,40 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('grafico-certificados').innerHTML = '<p>No hay datos disponibles para mostrar.</p>';
     }
 
+// Datos para el gráfico
+        const proyecto = "{{ nombre_obra }}";
+        const montoPresupuesto = parseFloat("{{ monto_presupuesto|floatformat:2 }}".replace(',', '.'));
+        const montoMateriales = parseFloat("{{ monto_materiales|floatformat:2 }}".replace(',', '.'));
 
+        const trace1 = {
+            x: [proyecto],
+            y: [montoPresupuesto],
+            name: 'Presupuesto',
+            type: 'bar'
+        };
+
+        const trace2 = {
+            x: [proyecto],
+            y: [montoMateriales],
+            name: 'Materiales',
+            type: 'bar'
+        };
+
+        const layout2 = {
+            barmode: 'group',
+            xaxis: { title: 'Proyecto' },
+            yaxis: { title: 'Montos' },
+            autosize: true,
+            margin: {
+                l: 50,
+                r: 50,
+                t: 50,
+                b: 50,
+                pad: 4
+            },
+        };
+
+        Plotly.newPlot('chart', [trace1, trace2], layout2);
 });
 </script>
 

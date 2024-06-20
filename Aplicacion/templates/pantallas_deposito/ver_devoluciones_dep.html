@@ -15,6 +15,7 @@
                     <th>Estado de la devolucion</th>
                     <th>Fecha de solicitud</th>
                     <th>Cantidad de materiales</th>
+                    <th>Monto total</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -27,6 +28,7 @@
                                 <td>{{devolucion.get_estado_display}}</td>
                                 <td>{{devolucion.fecha_solicitud}}</td>
                                 <td>{{devolucion.materiales.count}}</td>
+                                <td>{{devolucion.monto_total}}</td>
                                 <td><a href="{% url 'ver_devolucion_dep' devolucion_id=devolucion.id %}" class="btn btn-danger">Ver Devolución</a>
                             </tr>
                     {% else %}
@@ -35,7 +37,8 @@
                                 <td>{{devolucion.obra.proyecto.nombre}}</td>
                                 <td>{{devolucion.get_estado_display}}</td>
                                 <td>{{devolucion.fecha_solicitud}}</td>
-                                <td>{{devolucion.materiales.count}}</td>
+                                <td>{{devolucion.materiales.count}}
+                                <td>{{devolucion.monto_total}}</td>
                                 <td><a href="{% url 'ver_devolucion_dep' devolucion_id=devolucion.id %}" class="btn btn-info">Ver Devolución</a></td>
                             </tr>
                     {% endif %}

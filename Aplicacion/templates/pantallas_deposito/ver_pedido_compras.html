@@ -10,6 +10,7 @@
             <h2>Fecha de Devolución: {{ pedido.fecha_devolucion }}</h2>
         {% endif %}
         <h2>Estado: {{ pedido.get_estado_display }}</h2>
+        <h2>Monto total: {{ pedido.monto_total }}</h2>
     </div>
 
     <div class="table-responsive">
@@ -20,6 +21,7 @@
                     <th class="column-title">Marca</th>
                     <th class="column-title">Unidad de medida</th>
                     <th class="column-title">Cantidad Solicitada</th>
+                    <th class="column-title">Monto</th>
                     <th class="column-title">Comprobante</th>
                 </tr>
             </thead>
@@ -30,6 +32,7 @@
                         <td>{{ material_pedido.material.marca }}</td>
                         <td>{{ material_pedido.material.medida }}</td>
                         <td>{{ material_pedido.cantidad }}</td>
+                        <td>{{ material_pedido.monto }}</td>
                         <td>
                         {% if pedido.comprobante %}
                             <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#modalComprobante{{ material_pedido.id }}">
