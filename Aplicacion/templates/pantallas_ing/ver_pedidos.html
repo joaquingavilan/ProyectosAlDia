@@ -6,7 +6,10 @@
         <h2>Pedidos de materiales</h2>
         <div class="clearfix"></div>
     </div>
-    <a href="{% url 'pedido_materiales' %}" class="btn btn-primary btn-lg" style="float: right;">Solicitar Materiales</a>
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{% url 'pedido_materiales' %}" class="btn btn-primary btn-lg">Solicitar Materiales</a>
+    </div>
+
     {% if pedidos %}
         <table class="table table-striped table-bordered">
             <thead>
@@ -35,7 +38,7 @@
             </tbody>
         </table>
     {% else %}
-        <div class="alert alert-warning">
+        <div class="alert alert-light mb-3">
             No se encontraron pedidos realizados.
         </div>
     {% endif %}

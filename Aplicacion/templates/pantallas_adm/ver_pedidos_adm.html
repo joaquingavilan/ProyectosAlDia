@@ -10,69 +10,71 @@
 
     <div class="x_content">
         {% if pedidos %}
-        <div style="width: 70%; margin: auto;">
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th style="width: 10%;">ID pedido</th>
-                        <th style="width: 20%;">Estado del pedido</th>
-                        <th style="width: 20%;">Fecha de solicitud</th>
-                        <th style="width: 10%;">Cantidad de materiales</th>
-                        <th style="width: 10%;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for pedido in pedidos %}
-                    <tr>
-                        <td>{{ pedido.id }}</td>
-                        <td>{{ pedido.get_estado_display }}</td>
-                        <td>{{ pedido.fecha_solicitud }}</td>
-                        <td>{{ pedido.materialpedido_set.count }}</td>
-                        <td>
-                            <a href="{% url 'ver_pedido_adm' pedido.id %}" class="btn btn-primary btn-xs">Ver Pedido</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            <div style="width: 70%; margin: auto;">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%;">ID pedido</th>
+                                <th style="width: 20%;">Estado del pedido</th>
+                                <th style="width: 20%;">Fecha de solicitud</th>
+                                <th style="width: 10%;">Cantidad de materiales</th>
+                                <th style="width: 10%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pedido in pedidos %}
+                            <tr>
+                                <td>{{ pedido.id }}</td>
+                                <td>{{ pedido.get_estado_display }}</td>
+                                <td>{{ pedido.fecha_solicitud }}</td>
+                                <td>{{ pedido.materialpedido_set.count }}</td>
+                                <td>
+                                    <a href="{% url 'ver_pedido_adm' pedido.id %}" class="btn btn-primary btn-xs">Ver Pedido</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        <div class="x_title text-center">
-        <h1 style="vertical-align: middle; display: inline-block;">Total de materiales utilizados:</h1><br>
-        <div class="clearfix"></div>
-        </div>
-        <div style="width: 60%; margin: auto;">
-        <div class="table-responsive">
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th style="width: 50%;">Material</th>
-                <th style="width: 25%;">Unidad de medida</th>
-                <th style="width: 25%;">Cantidad Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for material in materiales_con_cantidad %}
-            <tr>
-                <td>{{ material.nombre }}</td>
-                <td>{{ material.medida }}</td>
-                <td>{{ material.total_cantidad }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+
+            <div class="x_title text-center">
+                <h1 style="vertical-align: middle; display: inline-block;">Total de materiales utilizados:</h1><br>
+                <div class="clearfix"></div>
+            </div>
+
+            <div style="width: 60%; margin: auto;">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">Material</th>
+                                <th style="width: 25%;">Unidad de medida</th>
+                                <th style="width: 25%;">Cantidad Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for material in materiales_con_cantidad %}
+                            <tr>
+                                <td>{{ material.nombre }}</td>
+                                <td>{{ material.medida }}</td>
+                                <td>{{ material.total_cantidad }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
         {% else %}
-        <div class="alert alert-warning">
-            No se encontraron pedidos realizados.
-        </div>
+            <div class="alert alert-light">
+                No se encontraron pedidos realizados.
+            </div>
         {% endif %}
     </div>
 </div>
-    <a href="{% url 'ver_obras_adm' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Obras</a>
+
+<a href="{% url 'ver_obras_adm' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Obras</a>
 
 {% endblock %}
-
