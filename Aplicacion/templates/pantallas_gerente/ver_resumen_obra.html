@@ -37,6 +37,7 @@
         </div>
         <div class="x_content">
             <div id="grafico-certificados"></div>
+            <div id="mensaje-certificados" style="display:none;"><p>No hay certificados realizados</p></div>
         </div>
     </div>
 </div>
@@ -52,7 +53,11 @@
             <div class="clearfix"></div>
         </div>
         <div class="x_content">
+            {% if pedidos %}
             <div id="chart" style="width:100%;"></div>
+            {%else %}
+            <h6>Aún no se realizaron pedidos de materiales</h6>
+            {%endif %}
         </div>
     </div>
 </div>
@@ -65,6 +70,7 @@
             <div class="clearfix"></div>
         </div>
         <div class="x_content">
+            {% if pedidos %}
             <select id="material-select" class="form-control">
                 <option value="">Selecciona un Material</option>
                 {% for material in hechos_materiales %}
@@ -75,6 +81,9 @@
             <div id="grafico-materiales">
                 <p id="texto-inicial">Seleccione un material para ver el consumo</p>
             </div>
+            {%else %}
+            <h6>Aún no se realizaron pedidos de materiales</h6>
+            {%endif %}
         </div>
     </div>
 </div>
@@ -256,7 +265,8 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     } else {
-        document.getElementById('grafico-certificados').innerHTML = '<p>No hay datos disponibles para mostrar.</p>';
+        document.getElementById('grafico-certificados').style.display = 'none';
+        document.getElementById('mensaje-certificados').style.display = 'block';
     }
 
 // Datos para el gráfico

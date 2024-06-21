@@ -55,6 +55,7 @@
                 </div>
                 <div class="x_content">
                     <div id="plotly-graph-div-progreso"></div>
+                    <div id="mensaje-sin-obras" style="display:none;"><p>El ingeniero no tiene obras asignadas</p></div>
                 </div>
             </div>
         </div>
@@ -73,6 +74,7 @@
                 <div id="grafico-precision-cumplimiento" style="display: flex; justify-content: space-around;">
                     <div id="grafico-precision-cronograma"></div>
                     <div id="grafico-cumplimiento-fecha-fin"></div>
+                    <div id="mensaje-sin-obras2" style="display:none;"><p>El ingeniero no tiene obras asignadas</p></div>
                 </div>
             </div>
         </div>
@@ -158,21 +160,7 @@
     {% endif %}
     {% endblock %}
 
-    {% block grafico_6 %}
-    {% if ingeniero_seleccionado %}
-    <div class="col-md-4 col-sm-4">
-        <div class="x_panel">
-            <div class="x_title">
-                <h2>Gráfico 6</h2>
-                <div class="clearfix"></div>
-            </div>
-            <div class="x_content">
-                <!-- Aquí irá la imagen de la visualización -->
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    {% endblock %}
+
 </div>
 {% endblock %}
 
@@ -405,6 +393,11 @@ function mostrarOcultarContenedor() {
     var certificadoData = JSON.parse('{{ certificado_data|escapejs }}');
 
 function plotearProgreso() {
+        if (cronogramaData.length === 0 || certificadoData.length === 0) {
+            document.getElementById('plotly-graph-div-progreso').style.display = 'none';
+            document.getElementById('mensaje-sin-obras').style.display = 'block';
+            return;
+        }
         var obrasNombres = cronogramaData.map(d => d.obra);
         var porcentajeActividades = cronogramaData.map(d => d.porcentaje_actividades);
         var porcentajeMontos = certificadoData.map(d => d.porcentaje_monto);
@@ -546,8 +539,9 @@ function plotearProgreso() {
             }
         ]
     };
-
     Plotly.newPlot('grafico-precision-cumplimiento', data, layout);
+
+
     });
 </script>
 {% endblock %}
