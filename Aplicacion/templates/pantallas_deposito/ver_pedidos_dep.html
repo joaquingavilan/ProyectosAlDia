@@ -8,38 +8,38 @@
     </div>
 
     <div class="x_content">
-        <div class="row mb-4">
-            <h2>Filtrar por:</h2>
-            <div class="col-md-3">
-                <select id="filtroCampo" class="form-control">
-                    <option value="" disabled selected>Seleccione una opción...</option>
-                    <option value="estado" {% if estado_seleccionado %}selected{% endif %}>Estado</option>
-                    <option value="obra" {% if obra_seleccionada %}selected{% endif %}>Obra</option>
-                    <option value="encargado" {% if encargado_seleccionado %}selected{% endif %}>Ingeniero Encargado</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select id="filtroValor" class="form-control">
-                    <option value="">Seleccione un valor...</option>
-                    {% if estado_seleccionado %}
-                        <option value="P" {% if estado_seleccionado == "P" %}selected{% endif %}>Pendiente</option>
-                        <option value="E" {% if estado_seleccionado == "R" %}selected{% endif %}>Entregado</option>
-                    {% elif obra_seleccionada %}
-                        {% for obra in obras %}
-                            <option value="{{ obra.id }}" {% if obra.id|stringformat:"s" == obra_seleccionada %}selected{% endif %}>{{ obra.proyecto.nombre }}</option>
-                        {% endfor %}
-                    {% elif encargado_seleccionado %}
-                        {% for encargado in encargados %}
-                            <option value="{{ encargado.id }}" {% if encargado.id|stringformat:"s" == encargado_seleccionado %}selected{% endif %}>{{ encargado.get_full_name }}</option>
-                        {% endfor %}
-                    {% endif %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <a href="{% url 'ver_pedidos_dep' %}" class="btn btn-secondary btn-block">Limpiar Filtros</a>
-            </div>
-        </div>
         {% if pedidos %}
+            <div class="row mb-4">
+                <h2>Filtrar por:</h2>
+                <div class="col-md-3">
+                    <select id="filtroCampo" class="form-control">
+                        <option value="" disabled selected>Seleccione una opción...</option>
+                        <option value="estado" {% if estado_seleccionado %}selected{% endif %}>Estado</option>
+                        <option value="obra" {% if obra_seleccionada %}selected{% endif %}>Obra</option>
+                        <option value="encargado" {% if encargado_seleccionado %}selected{% endif %}>Ingeniero Encargado</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="filtroValor" class="form-control">
+                        <option value="">Seleccione un valor...</option>
+                        {% if estado_seleccionado %}
+                            <option value="P" {% if estado_seleccionado == "P" %}selected{% endif %}>Pendiente</option>
+                            <option value="E" {% if estado_seleccionado == "R" %}selected{% endif %}>Entregado</option>
+                        {% elif obra_seleccionada %}
+                            {% for obra in obras %}
+                                <option value="{{ obra.id }}" {% if obra.id|stringformat:"s" == obra_seleccionada %}selected{% endif %}>{{ obra.proyecto.nombre }}</option>
+                            {% endfor %}
+                        {% elif encargado_seleccionado %}
+                            {% for encargado in encargados %}
+                                <option value="{{ encargado.id }}" {% if encargado.id|stringformat:"s" == encargado_seleccionado %}selected{% endif %}>{{ encargado.get_full_name }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <a href="{% url 'ver_pedidos_dep' %}" class="btn btn-secondary btn-block">Limpiar Filtros</a>
+                </div>
+            </div>
             <table class="table table-striped table-bordered">
                 <thead>
                     <tr>
