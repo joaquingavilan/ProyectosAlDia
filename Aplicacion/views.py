@@ -32,7 +32,7 @@ from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, Paragraph
 from django.core.exceptions import ObjectDoesNotExist
-from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.forms import SetPasswordForm
 from reportlab.pdfgen import canvas
 import logging
 from collections import defaultdict
@@ -538,10 +538,15 @@ def actualizar_hechos():
         cursor.execute('COMMIT;')
 
 
-
+@login_required
 def inicio(request):
+    if request.session.get('must_change_password', False):
+        return redirect('cambiar_password')
+
     verificar_obras_agendadas()
     cargar_distritos()
+
+    success_message = request.session.pop('password_change_success', None)
 
     if request.user.groups.filter(name='GERENTE').exists():
         actualizar_dimensiones()
@@ -553,24 +558,28 @@ def inicio(request):
         obras_activas = Obra.objects.filter(estado='E').select_related('proyecto', 'encargado', 'proyecto__cliente')
         clientes, ingenieros_encargados = get_ingenieros_clientes_obras_activas()
         clientes_pres, ingenieros_encargados_pres = get_ingenieros_clientes_presupuestos_elaboracion()
+
         # Paginación
         paginator1 = Paginator(obras_activas, 5)  # Mostrar 5 obras por página
         page_number1 = request.GET.get('page')
         page_obj = paginator1.get_page(page_number1)
 
-        context = {'graph_data_estado_ingenieros': json.dumps(graph_data_estado_ingenieros),
-                   'graph_data_certificados_pendientes': json.dumps(graph_data_certificados_pendientes),
-                   'graph_data_presupuestos_pendientes': json.dumps(graph_data_presupuestos_pendientes),
-                   'clientes': clientes,
-                   'clientes_pres': clientes_pres,
-                   'ingenieros_pres': ingenieros_encargados_pres,
-                   'ingenieros_encargados': ingenieros_encargados,
-                   'page_obj': page_obj,
-                   }
+        context = {
+            'graph_data_estado_ingenieros': json.dumps(graph_data_estado_ingenieros),
+            'graph_data_certificados_pendientes': json.dumps(graph_data_certificados_pendientes),
+            'graph_data_presupuestos_pendientes': json.dumps(graph_data_presupuestos_pendientes),
+            'clientes': clientes,
+            'clientes_pres': clientes_pres,
+            'ingenieros_pres': ingenieros_encargados_pres,
+            'ingenieros_encargados': ingenieros_encargados,
+            'page_obj': page_obj,
+            'success_message': success_message,
+        }
         return render(request, 'Inicios/inicio.html', context)
 
     elif request.user.groups.filter(name='ADMINISTRADOR').exists():
-        return render(request, 'Inicios/inicio_adm.html')
+        context = {'success_message': success_message}
+        return render(request, 'Inicios/inicio_adm.html', context)
 
     elif request.user.groups.filter(name='INGENIERO').exists():
         return redirect(inicio_ingenieros)
@@ -594,11 +603,14 @@ def inicio_deposito(request):
     # Contar los pedidos de compras pendientes
     pedidos_compras_pendientes = PedidoCompra.objects.filter(estado='P').count()
 
+    success_message = request.session.pop('password_change_success', None)
+
     context = {
         'nombre': nombre,
         'pedidos_pendientes': pedidos_pendientes,
         'devoluciones_pendientes': devoluciones_pendientes,
         'pedidos_compras_pendientes': pedidos_compras_pendientes,
+        'success_message': success_message,
     }
 
     return render(request, 'Inicios/inicio_deposito.html', context)
@@ -606,12 +618,14 @@ def inicio_deposito(request):
 
 def inicio_ingenieros(request):
     nombre = request.user.first_name
-    return render(request, 'Inicios/inicio_ingenieros.html', {'nombre': nombre})
+    success_message = request.session.pop('password_change_success', None)
+    return render(request, 'Inicios/inicio_ingenieros.html', {'nombre': nombre, 'success_message': success_message})
 
 
 def inicio_adm(request):
     nombre = request.user.first_name
-    return render(request, 'Inicios/inicio_adm.html', {'nombre': nombre})
+    success_message = request.session.pop('password_change_success', None)
+    return render(request, 'Inicios/inicio_adm.html', {'nombre': nombre, 'success_message': success_message})
 
 
 # VISTAS PARA USUARIOS
@@ -644,32 +658,41 @@ def loguear_usuario(request):
             login(request, user)
             try:
                 perfil = Personal.objects.get(user=user)
-            except:
-                return redirect('inicio')
-            if perfil.must_change_password:
+                if perfil.must_change_password:
+                    request.session['must_change_password'] = True
+                    return redirect('cambiar_password')
+            except Personal.DoesNotExist:
+                perfil = Personal.objects.create(user=user)
+                request.session['must_change_password'] = True
                 return redirect('cambiar_password')
-            else:
-                return redirect('inicio')
+
+            request.session['must_change_password'] = False
+            return redirect('inicio')
         else:
             error = 'Nombre de usuario o contraseña incorrectos.'
     else:
         error = ''
-    return render(request, 'ABM/usuarios/login.html', {'error': error, 'login_page': True} )
+    return render(request, 'ABM/usuarios/login.html', {'error': error, 'login_page': True})
 
 
 @login_required
 def cambiar_password(request):
     if request.method == 'POST':
-        form = PasswordChangeForm(user=request.user, data=request.POST)
+        form = SetPasswordForm(user=request.user, data=request.POST)
         if form.is_valid():
             user = form.save()
+            perfil = Personal.objects.get(user=user)
+            perfil.must_change_password = False
+            perfil.save()
+            request.session['must_change_password'] = False
             update_session_auth_hash(request, user)  # Importante para mantener la sesión del usuario
-            messages.success(request, 'Tu contraseña ha sido actualizada exitosamente.')
-            return redirect('inicio')  # Redirige a la URL donde el usuario vea un mensaje de éxito
+            request.session['password_change_success'] = 'Tu contraseña ha sido actualizada exitosamente.'
+            return redirect(get_inicio_redirect(user))  # Redirige a la URL correspondiente
         else:
-            messages.error(request, 'Por favor corrige los errores.')
+            for error in form.errors.values():
+                messages.error(request, error)
     else:
-        form = PasswordChangeForm(user=request.user)
+        form = SetPasswordForm(user=request.user)
     return render(request, 'ABM/usuarios/cambiar_password.html', {'form': form})
 
 
@@ -677,6 +700,17 @@ def salir_usuario(request):
     logout(request)
     return redirect('login')
 
+def get_inicio_redirect(user):
+    if user.groups.filter(name='GERENTE').exists():
+        return 'inicio'
+    elif user.groups.filter(name='ADMINISTRADOR').exists():
+        return 'inicio_adm'
+    elif user.groups.filter(name='INGENIERO').exists():
+        return 'inicio_ingenieros'
+    elif user.groups.filter(name='ENCARGADO_DEPOSITO').exists():
+        return 'inicio_deposito'
+    else:
+        return 'inicio_deposito'  # O una vista predeterminada si no pertenece a ningún grupo específico
 
 #                   VISTAS PARA CLIENTE
 
