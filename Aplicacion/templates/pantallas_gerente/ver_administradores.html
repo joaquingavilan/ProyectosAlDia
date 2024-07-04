@@ -4,7 +4,7 @@
 {% block content %}
 <div class="x_panel">
     <div class="x_title">
-        <h2>Administrativos</h2>
+        <h2>Administradores</h2>
         <div class="btn-group pull-right">
             <form action="{% url 'exportar_excel' %}" method="post">
                 {% csrf_token %}
@@ -32,12 +32,12 @@
                     <div class="input-group-append">
                         <span class="input-group-text"><i class="fa fa-search"></i></span>
                     </div>
-                    <input type="hidden" id="ingenieroUrl" value="{% url 'ver_ingeniero' 999999 %}">
+                    <input type="hidden" id="ingenieroUrl" value="{% url 'ver_administrador' 999999 %}">
                 </div>
                 <div id="resultadosBusqueda" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;"></div>
             </div>
             <div class="col-md-6 text-right">
-                <a href="{% url 'registrar_ingeniero' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir Ingeniero</a>
+                <a href="{% url 'registrar_administrador' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir Administrador</a>
             </div>
         </div>
 
@@ -53,15 +53,15 @@
                 </tr>
             </thead>
             <tbody>
-                {% for ingeniero in page_obj %}
+                {% for administrador in page_obj %}
                 <tr>
-                    <td>{{ ingeniero.username }}</td>
-                    <td>{{ ingeniero.first_name }}</td>
-                    <td>{{ ingeniero.last_name }}</td>
-                    <td>{{ ingeniero.email }}</td>
+                    <td>{{ administrador.username }}</td>
+                    <td>{{ administrador.first_name }}</td>
+                    <td>{{ administrador.last_name }}</td>
+                    <td>{{ administrador.email }}</td>
                     <td>
-                        <button type="button" class="btn btn-primary btn-sm editarIngenieroBtn" data-ingeniero-id="{{ ingeniero.id }}"><i class="fa fa-pencil"></i></button>
-                        <a class="btn btn-danger btn-sm" href="{% url 'eliminar_ingeniero' ingeniero.id %}"><i class="fa fa-trash-o"></i></a>
+                        <button type="button" class="btn btn-primary btn-sm editarIngenieroBtn" data-ingeniero-id="{{ administrador.id }}"><i class="fa fa-pencil"></i></button>
+                        <a class="btn btn-danger btn-sm" href="{% url 'eliminar_administrador' administrador.id %}"><i class="fa fa-trash-o"></i></a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -73,7 +73,7 @@
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="editarIngenieroModalLabel">Editar Ingeniero</h5>
+                        <h5 class="modal-title" id="editarIngenieroModalLabel">Editar Administrador</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body">
@@ -144,7 +144,7 @@ document.getElementById('buscador').addEventListener('input', function() {
     let baseUrl = document.getElementById('ingenieroUrl').value;
 
     if (query.length >= 1) {
-        fetch(`/buscar_ingenieros/?q=${query}`)
+        fetch(`/buscar_administrador/?q=${query}`)
         .then(response => response.json())
         .then(data => {
             resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores

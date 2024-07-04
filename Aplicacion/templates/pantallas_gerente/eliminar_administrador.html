@@ -1,0 +1,14 @@
+{% extends request.base_template %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <h2>Eliminar Administrador</h2>
+    <p>¿Estás seguro de que deseas eliminar al administrador {{ encargado.first_name }} {{ encargado.last_name }}?</p>
+
+    <form method="POST" action="{% url 'eliminar_administrador' encargado.id %}">
+        {% csrf_token %}
+        <button type="submit" name="confirmar" class="btn btn-danger">Eliminar Administrador</button>
+    </form>
+</div>
+{% endblock %}
