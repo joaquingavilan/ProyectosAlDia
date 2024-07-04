@@ -1,0 +1,233 @@
+{% extends request.base_template %}
+{% load static %}
+
+{% block content %}
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Administrativos</h2>
+        <div class="btn-group pull-right">
+            <form action="{% url 'exportar_excel' %}" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_dato" value="Ingenieros">
+                <button type="submit" class="btn btn-success btn-sm" title="Exportar a Excel"><i class="fa fa-file-excel-o"></i></button>
+            </form>
+            <form action="{% url 'exportar_pdf' %}" method="post" class="ml-2">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_dato" value="Ingenieros">
+                <button type="submit" class="btn btn-danger btn-sm" title="Exportar a PDF"><i class="fa fa-file-pdf-o"></i></button>
+            </form>
+        </div>
+        <ul class="nav navbar-right panel_toolbox">
+            <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+        </ul>
+        <div class="clearfix"></div>
+    </div>
+
+    <div class="x_content">
+        <!-- Barra de búsqueda y filtros -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="buscador" placeholder="Buscar por nombre de usuario, nombre o apellido">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fa fa-search"></i></span>
+                    </div>
+                    <input type="hidden" id="ingenieroUrl" value="{% url 'ver_ingeniero' 999999 %}">
+                </div>
+                <div id="resultadosBusqueda" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; display: none; background-color: #d5dce1; border: 1px solid #ccc;"></div>
+            </div>
+            <div class="col-md-6 text-right">
+                <a href="{% url 'registrar_ingeniero' %}" class="btn btn-success"><i class="fa fa-plus"></i> Añadir Ingeniero</a>
+            </div>
+        </div>
+
+        <!-- Tabla de ingenieros -->
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th style="width: 15%">Nombre de Usuario</th>
+                    <th style="width: 15%">Nombre</th>
+                    <th style="width: 15%">Apellido</th>
+                    <th style="width: 10%">Email</th>
+                    <th style="width: 10%">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ingeniero in page_obj %}
+                <tr>
+                    <td>{{ ingeniero.username }}</td>
+                    <td>{{ ingeniero.first_name }}</td>
+                    <td>{{ ingeniero.last_name }}</td>
+                    <td>{{ ingeniero.email }}</td>
+                    <td>
+                        <button type="button" class="btn btn-primary btn-sm editarIngenieroBtn" data-ingeniero-id="{{ ingeniero.id }}"><i class="fa fa-pencil"></i></button>
+                        <a class="btn btn-danger btn-sm" href="{% url 'eliminar_ingeniero' ingeniero.id %}"><i class="fa fa-trash-o"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Modal para editar ingeniero -->
+        <div class="modal fade" id="editarIngenieroModal" tabindex="-1" aria-labelledby="editarIngenieroModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editarIngenieroModalLabel">Editar Ingeniero</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="errorContainer" class="alert alert-danger" style="display:none;"></div>
+                        <form id="editarIngenieroForm">
+                            {% csrf_token %}
+                            <input type="hidden" id="ingenieroId">
+                            <div class="mb-3">
+                                <label for="first_name" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="last_name" class="form-label">Apellido</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email">
+                            </div>
+                            <!-- Aquí puedes agregar otros campos del formulario que desees editar -->
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" id="guardarIngenieroBtn">Guardar Cambios</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paginador -->
+        <nav>
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                {% else %}
+                    <li class="page-item disabled"><a class="page-link">Primera</a></li>
+                    <li class="page-item disabled"><a class="page-link">Anterior</a></li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active"><a class="page-link">{{ num }}</a></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+                {% else %}
+                    <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+                    <li class="page-item disabled"><a class="page-link">Última</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('buscador').addEventListener('input', function() {
+    let query = this.value;
+    let resultadosDiv = document.getElementById('resultadosBusqueda');
+    let baseUrl = document.getElementById('ingenieroUrl').value;
+
+    if (query.length >= 1) {
+        fetch(`/buscar_ingenieros/?q=${query}`)
+        .then(response => response.json())
+        .then(data => {
+            resultadosDiv.innerHTML = '';  // Limpiar resultados anteriores
+            data.forEach(ingeniero => {
+                let div = document.createElement('div');
+                let ingenieroUrl = baseUrl.replace('999999', ingeniero.id);
+                div.innerHTML = `<a href="${ingenieroUrl}" class="dropdown-item">${ingeniero.nombre} ${ingeniero.apellido}</a>`;
+                resultadosDiv.appendChild(div);
+            });
+            resultadosDiv.style.display = 'block';  // Mostrar resultados
+        });
+    } else {
+        resultadosDiv.innerHTML = '';  // Limpiar resultados si la consulta es demasiado corta
+        resultadosDiv.style.display = 'none';  // Ocultar resultados
+    }
+});
+
+// Ocultar los resultados de la búsqueda cuando se hace clic fuera del buscador
+document.addEventListener('click', function(event) {
+    let resultadosDiv = document.getElementById('resultadosBusqueda');
+    if (!resultadosDiv.contains(event.target) && event.target.id !== 'buscador') {
+        resultadosDiv.style.display = 'none';
+    }
+});
+
+let editarIngenieroBtns = document.querySelectorAll(".editarIngenieroBtn");
+
+editarIngenieroBtns.forEach(btn => {
+    btn.addEventListener("click", function() {
+        let ingenieroId = this.getAttribute("data-ingeniero-id");
+
+        // Hacemos una solicitud AJAX para obtener los datos del ingeniero
+        fetch(`/get_ingeniero_data/${ingenieroId}/`)
+        .then(response => response.json())
+        .then(data => {
+            // Llenamos el formulario dentro del modal con esos datos
+            document.getElementById("ingenieroId").value = ingenieroId;
+            document.getElementById("first_name").value = data.first_name;
+            document.getElementById("last_name").value = data.last_name;
+            document.getElementById("email").value = data.email;
+            // ... otros campos ...
+
+            // Establecemos la URL correcta para el formulario en el modal
+            document.getElementById("editarIngenieroForm").action = `/editar_ingeniero/${ingenieroId}/`;
+
+            // Muestra el modal usando Bootstrap 5
+            let modal = new bootstrap.Modal(document.getElementById('editarIngenieroModal'));
+            modal.show();
+        });
+    });
+});
+
+// Manejo del envío del formulario de edición
+document.getElementById("guardarIngenieroBtn").addEventListener("click", function(event) {
+    event.preventDefault();  // Previene el envío normal del formulario
+
+    let formData = new FormData(document.getElementById("editarIngenieroForm"));
+
+    // Obtener el token CSRF del formulario
+    let csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    fetch(document.getElementById("editarIngenieroForm").action, {
+        method: 'POST',
+        headers: {
+            // Incluye el token CSRF en los headers
+            "X-CSRFToken": csrfToken
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "success") {
+            location.reload(); // Recargamos la página para ver los cambios
+        } else if (data.status === "error") {
+            // Mostramos los errores en el modal
+            let errorContainer = document.getElementById("errorContainer");
+            errorContainer.innerHTML = "";
+            for (let field in data.errors) {
+                errorContainer.innerHTML += `${field}: ${data.errors[field]}<br>`;
+            }
+            errorContainer.style.display = "block";
+        }
+    });
+});
+</script>
+{% endblock %}

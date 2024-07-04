@@ -1,0 +1,14 @@
+{% extends request.base_template %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <h2>Eliminar Encargado</h2>
+    <p>¿Estás seguro de que deseas eliminar al encargado {{ encargado.first_name }} {{ encargado.last_name }}?</p>
+
+    <form method="POST" action="{% url 'eliminar_encargado' encargado.id %}">
+        {% csrf_token %}
+        <button type="submit" name="confirmar" class="btn btn-danger">Eliminar Encargado</button>
+    </form>
+</div>
+{% endblock %}

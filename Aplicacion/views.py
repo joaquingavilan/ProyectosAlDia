@@ -1096,6 +1096,119 @@ def ver_ingeniero(request, id_ingeniero):
     return render(request, 'ABM/ingenieros/ver_ingeniero.html', {'ingeniero': ingeniero})
 
 
+#                   VISTAS PARA ENCARGADOS DE DEPOSITO DESDE LA GERENCIA
+
+def ver_encargados_deposito(request):
+    group_encargado = Group.objects.get(name='ENCARGADO_DEPOSITO')
+    encargados = group_encargado.user_set.all()
+
+    # Configuración de la paginación
+    paginator = Paginator(encargados, 10)  # Muestra 10 encargados por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'pantallas_gerente/ver_encargados_depositos.html', {'page_obj': page_obj})
+
+def editar_encargado_deposito(request, pk):
+    encargado = get_object_or_404(User, pk=pk)
+
+    if request.method == 'POST':
+        form = CustomUserChangeForm(request.POST, instance=encargado)
+
+        if form.is_valid():
+            nombre = request.POST['first_name']
+            apellido = request.POST['last_name']
+            email = form.cleaned_data['email']
+
+            errors = {}
+
+            if not re.match(r'^[A-Za-z]+$', nombre):
+                errors["first_name"] = "Nombre inválido. Solo se permiten letras."
+            if not re.match(r'^[A-Za-z]+$', apellido):
+                errors["last_name"] = "Apellido inválido. Solo se permiten letras."
+            if User.objects.filter(email=email).exclude(pk=pk).exists():
+                return JsonResponse({"status": "error", "errors": {"email": ["El email ya está registrado."]}})
+            if errors.keys():
+                return JsonResponse({"status": "error", "errors": errors})
+            else:
+                form.save()
+                return JsonResponse({"status": "success"})
+        else:
+            return JsonResponse({"status": "error", "errors": form.errors})
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"})
+
+def get_encargado_data(request, encargado_id):
+    encargado = get_object_or_404(User, pk=encargado_id)
+    data = {
+        "first_name": encargado.first_name,
+        "last_name": encargado.last_name,
+        "email": encargado.email,
+    }
+    return JsonResponse(data)
+
+def buscar_encargados(request):
+    query = request.GET.get('q', '')
+    group_encargado = Group.objects.get(name='ENCARGADO_DEPOSITO')
+    encargados = group_encargado.user_set.filter(
+        Q(username__icontains=query) |
+        Q(first_name__icontains=query) |
+        Q(last_name__icontains=query)
+    )
+
+    data = [{'id': encargado.id, 'username': encargado.username, 'nombre': encargado.first_name,
+             'apellido': encargado.last_name} for encargado in encargados]
+    return JsonResponse(data, safe=False)
+
+def registrar_encargado(request):
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data['username']
+            email = form.cleaned_data['email']
+            nombre = form.cleaned_data['first_name']
+            apellido = form.cleaned_data['last_name']
+            telefono = form.cleaned_data['telefono']
+            direccion = form.cleaned_data['direccion']
+            password = 'ramAlea24'  # Obtener la contraseña ingresada
+            # Si no hay errores adicionales, creamos el usuario y establecemos la contraseña
+            if not form.errors:
+                usuario = User.objects.create_user(username=username, first_name=nombre, last_name=apellido,
+                                                   email=email)
+                usuario.set_password(password)  # Establece la contraseña ingresada por el usuario
+                usuario.save()
+                grupo = Group.objects.get(name='ENCARGADO_DEPOSITO')
+                grupo.user_set.add(usuario)
+
+                return redirect('ver_encargados_deposito')
+        else:
+            return redirect('ver_encargados_deposito')
+
+    else:
+        form = CustomUserCreationForm()
+        no_obligatorios = ['Teléfono', 'Dirección']
+        return render(request, 'pantallas_gerente/registrar_encargado.html',
+                      {'form': form, 'no_obligatorios': no_obligatorios})
+
+
+
+def ver_encargado(request, id_encargado):
+    encargado = User.objects.get(pk=id_encargado)
+    return render(request, 'pantallas_gerente/ver_encargado_dep.html', {'encargado': encargado})
+
+def eliminar_encargado(request, pk):
+    encargado = get_object_or_404(User, pk=pk)
+
+    if request.method == 'POST' and 'confirmar' in request.POST:
+        encargado.delete()
+        return redirect('ver_encargados_deposito')
+
+    context = {
+        'encargado': encargado,
+    }
+    return render(request, 'pantallas_gerente/eliminar_encargado.html', context)
+
+
 #                   VISTAS PARA PROVEEDOR
 
 

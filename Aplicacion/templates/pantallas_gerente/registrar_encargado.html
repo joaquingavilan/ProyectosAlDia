@@ -1,0 +1,77 @@
+{% extends request.base_template %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="x_panel">
+    <div class="x_title">
+        <h2>Registrar Encargado de Depósito</h2>
+        <div class="clearfix"></div>
+    </div>
+    <div class="x_content">
+        <form method="post" id="encargadoForm">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% if field.label not in no_obligatorios %} (*) {% endif %}
+                {{ field|add_class:"form-control" }}
+                {% if field.errors %}
+                <!-- No se muestran los errores aquí porque serán manejados por JS -->
+                {% endif %}
+                <span class="text-danger" id="{{ field.name }}Error"></span>
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-success">Registrar</button>
+        </form>
+        <div class="mt-3">
+            <a href="{% url 'ver_encargados_deposito' %}" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Volver a Encargados de Depósito</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById("encargadoForm").addEventListener("submit", function(event) {
+        let isValid = true;
+
+        // Validar el campo de nombre
+        let nombreField = document.getElementById("id_first_name");
+        let nombre = nombreField.value;
+        if (!nombre) {
+            document.getElementById("first_nameError").innerText = "El campo nombre no puede estar vacío.";
+            nombreField.focus();
+            isValid = false;
+        } else {
+            document.getElementById("first_nameError").innerText = "";
+        }
+
+        // Validar el campo de apellido
+        let apellidoField = document.getElementById("id_last_name");
+        let apellido = apellidoField.value;
+        if (!apellido) {
+            document.getElementById("last_nameError").innerText = "El campo apellido no puede estar vacío.";
+            apellidoField.focus();
+            isValid = false;
+        } else {
+            document.getElementById("last_nameError").innerText = "";
+        }
+
+        // Validar el campo de email
+        let emailField = document.getElementById("id_email");
+        let email = emailField.value;
+        if (!email) {
+            document.getElementById("emailError").innerText = "El campo email no puede estar vacío.";
+            emailField.focus();
+            isValid = false;
+        } else {
+            document.getElementById("emailError").innerText = "";
+        }
+
+
+        if (!isValid) {
+            event.preventDefault(); // Evita el envío del formulario si hay errores.
+        }
+    });
+</script>
+{% endblock %}
