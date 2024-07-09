@@ -121,10 +121,12 @@ def plot_presupuestos_pendientes():
             'proyecto_nombre': proyecto_nombre,
             'proyecto_id': proyecto_id
         })
+    sorted_clientes_presupuestos = sorted(clientes_presupuestos.items(), key=lambda x: len(x[1]))
+
     if presupuestos:
         graph_data = {
-            'clientes': list(clientes_presupuestos.keys()),
-            'presupuestos_cliente': clientes_presupuestos
+            'clientes': [cliente for cliente, _ in sorted_clientes_presupuestos],
+            'presupuestos_cliente': dict(sorted_clientes_presupuestos)
         }
     else:
         graph_data = {}

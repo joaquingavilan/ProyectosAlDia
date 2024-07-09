@@ -19,12 +19,13 @@
             <h2>Estado de Ingenieros</h2>
             <div class="clearfix"></div>
         </div>
-        <div class="x_content">
-            <div id="grafico-estado-ingenieros"></div>
+        <div class="x_content" style="overflow-x: auto;">
+            <div id="grafico-estado-ingenieros" style="min-width: 100%;"></div>
         </div>
     </div>
 </div>
 {% endblock %}
+
 
 {% block grafico_2 %}
 <div class="col-md-4 col-sm-4">
@@ -33,12 +34,15 @@
             <h2>Presupuestos Pendientes de Aprobacion</h2>
             <div class="clearfix"></div>
         </div>
-        <div id="contenido-presupuestos-pendientes" class="x_content" style="min-height: 450px; height: 450px; width: 100%;">
-            <div id="plotly-graph-div-presupuestos"></div>
+        <div id="contenido-presupuestos-pendientes" class="x_content" style="height: 450px; overflow-y: auto; width: 100%;">
+            <!-- Establecer una altura específica para el div del gráfico para permitir el scrolling cuando sea necesario -->
+            <div id="plotly-graph-div-presupuestos" style="height: 450px;"> <!-- Ajusta esta altura según el número esperado de clientes -->
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
+
 
 
 {% block grafico_3 %}
@@ -315,64 +319,47 @@ function cargarPresupuestosElaboracion() {
 
 
 var graphDataCertificadosPendientes = JSON.parse('{{ graph_data_certificados_pendientes|escapejs }}');
-
-var dataCertificados = [];
+var dataCertificados = [{
+    values: [],
+    labels: [],
+    customdata: [],  // Aquí almacenamos los IDs de los certificados
+    type: 'pie',
+    textinfo: 'value',
+    textposition: 'auto',
+    hoverinfo: 'label',
+    hole: 0.4,  // Esto crea un gráfico de dona, si prefieres un pie completo, puedes omitir esta línea.
+    marker: {
+        colors: [], // Aquí puedes personalizar los colores de cada "slice" si lo deseas.
+    }
+}];
 
 graphDataCertificadosPendientes.proyectos.forEach(function(proyecto) {
     var certificados = graphDataCertificadosPendientes.certificados_proyecto[proyecto];
-    var yBase = 0;
+    var totalMonto = certificados.reduce((total, certificado) => total + certificado.monto, 0);
 
-    certificados.forEach(function(certificado) {
-        dataCertificados.push({
-            x: [proyecto],
-            y: [certificado.monto],
-            base: yBase,
-            text: [certificado.monto],
-            textposition: 'inside',  // Posición del texto dentro de la barra
-            hovertemplate: 'ID Certificado: %{customdata}<extra></extra>',
-            customdata: [certificado.id],
-            type: 'bar',
-            marker: {
-                color: '#1f77b4', // Color azul específico
-                line: {
-                    width: 1,
-                    color: 'white'
-                }
-            }
-        });
+    var certificadoRepresentanteId = certificados[0].id;
 
-        yBase += certificado.monto;  // Actualizar la base para la siguiente parte de la barra
-    });
+    dataCertificados[0].values.push(totalMonto);
+    dataCertificados[0].labels.push(proyecto);
+    dataCertificados[0].customdata.push(certificadoRepresentanteId);  // Guardamos el ID del certificado representante
 });
 
+// Aquí puedes especificar colores específicos si lo deseas, o dejar que Plotly maneje los colores automáticamente.
+dataCertificados[0].marker.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
+
 var layoutCertificados = {
-    barmode: 'stack',
-    xaxis: { title: 'Proyectos' },
-    yaxis: {
-        title: 'Monto Total',
-        dtick: 1000000,
-        range: [0, Math.max(...Object.values(graphDataCertificadosPendientes.certificados_proyecto).flat().map(cert => cert.monto)) * 1.1]  // Asegura que el eje Y comience en 0 y tenga un poco de espacio por encima del valor máximo
-    },
-    autosize: true,
-    margin: {
-        l: 50,
-        r: 50,
-        t: 50,
-        b: 50,
-        pad: 4
-    },
-    plot_bgcolor: 'white',
-    paper_bgcolor: 'white',
-    responsive: true,
-    hovermode: 'closest',
-    showlegend: false
+    height: 460,
+    width: 550
 };
 
 Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertificados).then(function(gd) {
     gd.on('plotly_click', function(data){
         var point = data.points[0];
-        console.log(point.customdata)
         var certificadoId = point.customdata;
+
+        console.log('Certificado seleccionado:', certificadoId);
+
+        // Redireccionamos a la URL del certificado gerente con el ID del certificado
         window.location.href = '/ver_certificado_gerente/' + certificadoId;
     });
 });
@@ -382,9 +369,13 @@ Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertific
 
 
 
+
     // Datos para el gráfico de Estado de Ingenieros
     var graphDataEstadoIngenieros = JSON.parse('{{ graph_data_estado_ingenieros|escapejs }}');
     var maxSum = Math.max(...graphDataEstadoIngenieros.obras_ejecucion.map((value, index) => value + graphDataEstadoIngenieros.presupuestos_elaboracion[index]));
+    var numIngenieros = graphDataEstadoIngenieros.nombres.length;
+    var minWidthPerIngeniero = 90; // Ajusta esto según el ancho deseado por columna
+    document.getElementById('grafico-estado-ingenieros').style.width = `${numIngenieros * minWidthPerIngeniero}px`;
 
     var trace2 = {
         x: graphDataEstadoIngenieros.nombres,
@@ -429,9 +420,14 @@ Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertific
     };
 
     Plotly.newPlot('grafico-estado-ingenieros', dataIngenieros, layoutIngenieros);
+
 var graphDataPresupuestosPendientes = JSON.parse('{{ graph_data_presupuestos_pendientes|escapejs }}');
+console.log("Clientes ordenados recibidos:", graphDataPresupuestosPendientes.clientes);
 
 var dataPresupuestos = [];
+var clientCount = graphDataPresupuestosPendientes.clientes.length;
+var minHeightPerClient = 50; // altura mínima por cliente en píxeles, ajusta según necesidad
+var totalGraphHeight = clientCount * minHeightPerClient;
 
 graphDataPresupuestosPendientes.clientes.forEach(function(cliente) {
     var presupuestos = graphDataPresupuestosPendientes.presupuestos_cliente[cliente];
@@ -439,16 +435,18 @@ graphDataPresupuestosPendientes.clientes.forEach(function(cliente) {
 
     presupuestos.forEach(function(presupuesto) {
         dataPresupuestos.push({
-            x: [cliente],
-            y: [1], // Cada segmento tiene un valor de 1 para apilarse
+            y: [cliente],
+            x: [1],
             base: yBase,
             text: [presupuesto.proyecto_nombre],
-            textposition: 'inside',
+            textposition: 'auto',
             hovertemplate: 'ID Presupuesto: %{customdata}<extra></extra>',
             customdata: [presupuesto.id],
+            orientation: 'h',
             type: 'bar',
+            width: 0.5, // ancho de la barra, ajusta según necesidad
             marker: {
-                color: '#1f77b4', // Color azul específico
+                color: '#1f77b4',
                 line: {
                     width: 1,
                     color: 'white'
@@ -456,26 +454,28 @@ graphDataPresupuestosPendientes.clientes.forEach(function(cliente) {
             }
         });
 
-        yBase += 1; // Incrementar la base para el siguiente segmento
+        yBase += 1;
     });
 });
 
 var layoutPresupuestos = {
     barmode: 'stack',
-    xaxis: { title: 'Clientes' },
     yaxis: {
+        title: 'Clientes',
+        automargin: true,
+        tickfont: { size: 16 },
+        type: 'category', // Asegura que Plotly trate las etiquetas como categorías discretas
+        categoryorder: 'array', // Forza el orden de categorías como en el arreglo
+        categoryarray: graphDataPresupuestosPendientes.clientes
+    },
+    xaxis: {
         title: 'Número de Presupuestos',
-        dtick: 1,
-        range: [0, Math.max(...graphDataPresupuestosPendientes.clientes.map(cliente => graphDataPresupuestosPendientes.presupuestos_cliente[cliente].length)) * 1.1] // Ajustar el rango Y
+        dtick: 1
     },
     autosize: true,
-    margin: {
-        l: 50,
-        r: 50,
-        t: 50,
-        b: 50,
-        pad: 4
-    },
+    height: totalGraphHeight,
+    width: 550,
+    margin: { l: 100, r: 50, t: 50, b: 50, pad: 4 },
     plot_bgcolor: 'white',
     paper_bgcolor: 'white',
     responsive: true,
@@ -490,6 +490,9 @@ Plotly.newPlot('plotly-graph-div-presupuestos', dataPresupuestos, layoutPresupue
         window.location.href = '/ver_archivo_presupuesto/' + presupuestoId;
     });
 });
+
+
+
 
 
 });
