@@ -5,7 +5,7 @@
     <h2 class="x_title">Solicitar Materiales</h2>
     <div class="row" style="display: flex; flex-direction: column; align-items: center;">
         <div class="col-12">
-            <form id="search-form" class="mb-2"> <!-- Reducido de mb-4 a mb-2 -->
+            <form id="search-form" class="mb-2">
                 <div class="input-group" style="width: 100%; max-width: 400px;">
                     <input type="text" id="search-input" class="form-control" placeholder="Buscar material..." name="search">
                 </div>
@@ -15,14 +15,14 @@
     <div id="search-results" style="display:none; width: 100%; max-width: 400px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); padding: 10px; position: absolute; z-index: 1;">
         <!-- Aquí se mostrarán los resultados de la búsqueda -->
     </div>
-    <form id="formPedidoMateriales" method="POST" action="{% url 'pedido_materiales' %}" class="mt-2"> <!-- Reducido de mt-4 a mt-2 -->
+    <form id="formPedidoMateriales" method="POST" action="{% url 'pedido_materiales' %}" class="mt-2">
         <div class="d-flex justify-content-end">
             <div class="ml-auto">
                 <button id="solicitarMateriales" class="btn btn-primary">Solicitar Materiales</button>
             </div>
         </div>
         {% csrf_token %}
-        <div class="form-group" style="margin-bottom: 0.5rem;"> <!-- Reducido el margen inferior -->
+        <div class="form-group" style="margin-bottom: 0.5rem;">
             <label for="obra">Seleccione la Obra</label>
             <select name="obra" id="obra" class="form-control">
                 {% for obra in obras %}
@@ -34,16 +34,16 @@
         <div class="row">
             {% for material in page_obj %}
             <div class="col-xl-2 col-lg-2 col-md-2 col-sm-6 mb-4">
-                <div id="material-card-{{ material.id }}" class="card h-100 d-flex flex-column"> <!-- Añadir flex-column para manejar el espacio vertical -->
-                    <img src="/{{ material.fotografia }}" class="img-fluid" alt="{{ material.nombre }}" style="width: auto; height: 150px; object-fit: cover;"> <!-- Altura fija y object-fit para las imágenes -->
-                    <div class="card-body d-flex flex-column justify-content-between"> <!-- Flexbox para la alineación vertical -->
+                <div id="material-card-{{ material.id }}" class="card h-100 d-flex flex-column">
+                    <img src="/{{ material.fotografia }}" class="img-fluid" alt="{{ material.nombre }}" style="width: auto; height: 150px; object-fit: cover;">
+                    <div class="card-body d-flex flex-column justify-content-between">
                         <div>
-                            <h5 class="card-title text-center">{{ material.nombre }}</h5> <!-- Alineación de texto -->
-                            <p class="card-text text-center">{{ material.marca }}</p> <!-- Alineación de texto -->
-                            <p class="card-text text-center">{{ material.medida }}</p> <!-- Alineación de texto -->
+                            <h5 class="card-title text-center">{{ material.nombre }}</h5>
+                            <p class="card-text text-center">{{ material.marca }}</p>
+                            <p class="card-text text-center">{{ material.medida }}</p>
                         </div>
                         <input type="hidden" id="minimo_{{ material.id }}" value="{{ material.minimo }}">
-                        <div class="d-flex justify-content-center"> <!-- Mantener esta alineación horizontal -->
+                        <div class="d-flex justify-content-center">
                             <button type="button" class="btn btn-info decrement-btn" data-material-id="{{ material.id }}">-</button>
                             <input type="number" id="cantidad_{{ material.id }}" name="cantidad_{{ material.id }}" value="0" readonly class="form-control mx-2">
                             <button type="button" class="btn btn-success increment-btn" data-material-id="{{ material.id }}">+</button>
@@ -54,8 +54,6 @@
             {% endfor %}
         </div>
 
-
-        <!-- Controles de paginación centrados y estilizados -->
         <nav aria-label="Page navigation" class="mt-4">
           <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
@@ -94,9 +92,22 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let carrito = {};
+    let carrito = JSON.parse(localStorage.getItem('carrito')) || {};
 
-    document.getElementById('solicitarMateriales').addEventListener('click', function() {
+    // Función para actualizar el valor de los inputs desde el carrito
+    function actualizarInputsDesdeCarrito() {
+        for (let materialId in carrito) {
+            const input = document.getElementById('cantidad_' + materialId);
+            if (input) {
+                input.value = carrito[materialId];
+            }
+        }
+    }
+
+    // Actualiza los inputs cuando la página se carga
+    actualizarInputsDesdeCarrito();
+
+    document.getElementById('solicitarMateriales').addEventListener('click', function(event) {
         const form = document.getElementById('formPedidoMateriales');
 
         // Elimina inputs ocultos previos (si los hubiera)
@@ -120,49 +131,66 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             form.submit();  // Envía el formulario
         }
-
     });
+
     // Obtenemos todos los botones de incremento y decremento
     var incrementButtons = document.querySelectorAll(".increment-btn");
     var decrementButtons = document.querySelectorAll(".decrement-btn");
 
     // Iteramos sobre los botones de incremento y agregamos el evento click
     incrementButtons.forEach(function(button) {
-      button.addEventListener("click", function(event) {
-        console.log("Botón incrementar presionado"); // Añade esta línea
-        var materialId = button.getAttribute("data-material-id");
-        var input = document.getElementById("cantidad_" + materialId);
-        var minimo = parseInt(document.getElementById("minimo_" + materialId).value);
-        var cantidad = input.valueAsNumber;
+        button.addEventListener("click", function(event) {
+            var materialId = button.getAttribute("data-material-id");
+            var input = document.getElementById("cantidad_" + materialId);
+            var minimo = parseInt(document.getElementById("minimo_" + materialId).value);
+            var cantidad = input.valueAsNumber;
 
-        cantidad += minimo;
-        input.value = cantidad;
-        // Actualizar el carrito
-        carrito[materialId] = cantidad;
-        event.preventDefault();
-      });
+            cantidad += minimo;
+            input.value = cantidad;
+            // Actualizar el carrito
+            carrito[materialId] = cantidad;
+            // Guardar el carrito en localStorage
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            event.preventDefault();
+        });
     });
+
+    // Iteramos sobre los botones de decremento y agregamos el evento click
+    decrementButtons.forEach(function(button) {
+        button.addEventListener("click", function(event) {
+            var materialId = button.getAttribute("data-material-id");
+            var input = document.getElementById("cantidad_" + materialId);
+            var minimo = parseInt(document.getElementById("minimo_" + materialId).value);
+            var cantidad = input.valueAsNumber;
+
+            cantidad -= minimo;
+            if (cantidad < 0) {
+                cantidad = 0;
+            }
+            input.value = cantidad;
+            // Actualizar el carrito
+            carrito[materialId] = cantidad;
+            // Guardar el carrito en localStorage
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            event.preventDefault();
+        });
+    });
+
+    // Código de búsqueda de materiales
     const searchInput = document.getElementById('search-input');
     const searchResults = document.getElementById('search-results');
 
-     // Manejador para buscar materiales sin recargar la página
-      searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function() {
         const searchQuery = searchInput.value;
-
-        // Verifica si la longitud de la consulta es al menos 3 caracteres
         if (searchQuery.length >= 3) {
             searchResults.style.display = 'block';
 
-            // Ejemplo de solicitud AJAX con fetch (reemplaza con tu lógica):
             fetch('/buscar_materiales/?search=' + searchQuery)
                 .then(response => response.json())
                 .then(data => {
-                    // Limpia los resultados anteriores
                     document.getElementById('search-results').innerHTML = '';
 
-                    // Comprueba si hay resultados
                     if (data.length > 0) {
-                        // Crea un elemento div para cada resultado y muestra el nombre del material
                         data.forEach(material => {
                             const resultDiv = document.createElement('div');
                             resultDiv.classList.add('search-result');
@@ -170,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.getElementById('search-results').appendChild(resultDiv);
                         });
 
-                        // Agrega un manejador de eventos para los enlaces de materiales
                         const materialLinks = document.querySelectorAll('.material-link');
                         materialLinks.forEach(link => {
                             link.addEventListener('click', function(event) {
@@ -178,24 +205,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const materialId = link.getAttribute('data-material-id');
                                 const materialCard = document.getElementById('material-card-' + materialId);
 
-                                // Verifica si el elemento seleccionado está en la página actual
                                 if (materialCard) {
-                                    // Resalta la tarjeta del elemento seleccionado
                                     materialCard.classList.add('highlighted');
-
-                                    // Desplázate hasta la tarjeta resaltada (ajusta la duración y el comportamiento según tus necesidades)
                                     materialCard.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
                                 } else {
-                                    // El elemento no está en la página actual, así que redirige a la página correcta
-                                    const pageNumber = calcularNumeroPagina(materialId); // Implementa esta función
-                                    // Redirige a la página con el elemento resaltado
+                                    const pageNumber = calcularNumeroPagina(materialId);
                                     window.location.href = '?page=' + pageNumber + '#material-card-' + materialId;
                                 }
                             });
                         });
-
                     } else {
-                        // No se encontraron resultados
                         document.getElementById('search-results').innerHTML = '<p>No se encontraron resultados.</p>';
                     }
                 })
@@ -204,16 +223,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         } else {
             searchResults.style.display = 'none';
-            // Limpia los resultados si la consulta es demasiado corta
             document.getElementById('search-results').innerHTML = '';
         }
     });
 
     function calcularNumeroPagina(materialId) {
-        // Obtén todos los elementos de tarjeta de material en la página actual
         const materialCards = document.querySelectorAll('.card[id^="material-card-"]');
-
-        // Encuentra el índice del elemento con el ID coincidente
         let elementoEncontrado = false;
         let indice = -1;
 
@@ -228,42 +243,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Calcula el número de página
         if (elementoEncontrado) {
-            // Asumiendo que tienes 18 elementos por página
             const elementosPorPagina = 12;
             const numeroPagina = Math.floor(indice / elementosPorPagina) + 1;
             return numeroPagina;
         } else {
-            // Si el elemento no se encuentra en la página actual, retorna 1 como página predeterminada
             return 1;
         }
     }
-
-
-    // Iteramos sobre los botones de decremento y agregamos el evento click
-    decrementButtons.forEach(function(button) {
-      button.addEventListener("click", function(event) {
-        console.log("Botón decrementar presionado"); // Añade esta línea
-        var materialId = button.getAttribute("data-material-id");
-        var input = document.getElementById("cantidad_" + materialId);
-        var minimo = parseInt(document.getElementById("minimo_" + materialId).value);
-        var cantidad = input.valueAsNumber;
-
-        cantidad -= minimo;
-
-        if (cantidad < 0) {
-          cantidad = 0;
-        }
-
-        input.value = cantidad;
-        // Actualizar el carrito
-        carrito[materialId] = cantidad;
-        event.preventDefault();
-      });
-    });
 });
-
-
 </script>
 {% endblock %}
