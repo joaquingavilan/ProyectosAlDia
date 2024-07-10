@@ -374,8 +374,10 @@ Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertific
     var graphDataEstadoIngenieros = JSON.parse('{{ graph_data_estado_ingenieros|escapejs }}');
     var maxSum = Math.max(...graphDataEstadoIngenieros.obras_ejecucion.map((value, index) => value + graphDataEstadoIngenieros.presupuestos_elaboracion[index]));
     var numIngenieros = graphDataEstadoIngenieros.nombres.length;
-    var minWidthPerIngeniero = 90; // Ajusta esto según el ancho deseado por columna
-    document.getElementById('grafico-estado-ingenieros').style.width = `${numIngenieros * minWidthPerIngeniero}px`;
+    var minWidthPerIngeniero = 60; // Ajusta esto según el ancho deseado por columna
+    var totalGraphWidth = numIngenieros * minWidthPerIngeniero;
+    totalGraphWidth = Math.max(totalGraphWidth, 550);
+    document.getElementById('grafico-estado-ingenieros').style.width = totalGraphWidth + 'px';
 
     var trace2 = {
         x: graphDataEstadoIngenieros.nombres,
@@ -426,8 +428,9 @@ console.log("Clientes ordenados recibidos:", graphDataPresupuestosPendientes.cli
 
 var dataPresupuestos = [];
 var clientCount = graphDataPresupuestosPendientes.clientes.length;
-var minHeightPerClient = 50; // altura mínima por cliente en píxeles, ajusta según necesidad
+var minHeightPerClient = 100; // altura mínima por cliente en píxeles, ajusta según necesidad
 var totalGraphHeight = clientCount * minHeightPerClient;
+totalGraphHeight = Math.max(totalGraphHeight, 400);
 
 graphDataPresupuestosPendientes.clientes.forEach(function(cliente) {
     var presupuestos = graphDataPresupuestosPendientes.presupuestos_cliente[cliente];

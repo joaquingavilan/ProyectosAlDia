@@ -65,12 +65,30 @@ from django.db import connection
 
 
 def plot_estado_ingenieros_json(ingenieros):
+    # Crear una lista de diccionarios con los datos de cada ingeniero
+    ingenieros_data = [
+        {
+            'nombre': ingeniero.nombre_ingeniero,
+            'obras_ejecucion': ingeniero.cantidad_obras_ejecucion,
+            'presupuestos_elaboracion': ingeniero.cantidad_presupuestos_elaboracion,
+            'total': ingeniero.cantidad_obras_ejecucion + ingeniero.cantidad_presupuestos_elaboracion
+        }
+        for ingeniero in ingenieros
+    ]
+
+    # Ordenar la lista de diccionarios por la suma de obras en ejecución y presupuestos en elaboración en orden descendente
+    ingenieros_data.sort(key=lambda x: x['total'], reverse=True)
+
+    # Extraer los datos ordenados en listas
     data = {
-        'nombres': [ingeniero.nombre_ingeniero for ingeniero in ingenieros],
-        'obras_ejecucion': [ingeniero.cantidad_obras_ejecucion for ingeniero in ingenieros],
-        'presupuestos_elaboracion': [ingeniero.cantidad_presupuestos_elaboracion for ingeniero in ingenieros],
+        'nombres': [ingeniero['nombre'] for ingeniero in ingenieros_data],
+        'obras_ejecucion': [ingeniero['obras_ejecucion'] for ingeniero in ingenieros_data],
+        'presupuestos_elaboracion': [ingeniero['presupuestos_elaboracion'] for ingeniero in ingenieros_data],
     }
+
     return data
+
+
 
 
 def plot_certificados_pendientes():
@@ -1041,7 +1059,6 @@ def eliminar_ingeniero(request, pk):
         otros_ingenieros = group_ingeniero.user_set.exclude(id=ingeniero.id)
     else:
         otros_ingenieros = []
-
     if request.method == 'POST' and 'confirmar' in request.POST:
         reasignaciones_completas = True
         # Reasignamos cada recurso al ingeniero seleccionado en la lista desplegable

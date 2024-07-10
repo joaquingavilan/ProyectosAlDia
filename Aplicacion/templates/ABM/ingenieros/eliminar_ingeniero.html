@@ -44,7 +44,7 @@
                                     Reasignar a:
                                     <select class="custom-select" name="reassign_presupuesto_{{ presupuesto.id }}">
                                         {% for ingeniero in otros_ingenieros %}
-                                            <option value="{{ ingeniero.user.id }}">{{ ingeniero.user.first_name }} {{ ingeniero.user.last_name }}</option>
+                                            <option value="{{ ingeniero.id }}">{{ ingeniero.first_name }} {{ ingeniero.last_name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
