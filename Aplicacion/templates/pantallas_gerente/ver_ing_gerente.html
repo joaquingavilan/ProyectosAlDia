@@ -74,13 +74,16 @@
                 <div id="grafico-precision-cumplimiento" style="display: flex; justify-content: space-around;">
                     <div id="grafico-precision-cronograma"></div>
                     <div id="grafico-cumplimiento-fecha-fin"></div>
-                    <div id="mensaje-sin-obras2" style="display:none;"><p>El ingeniero no tiene obras asignadas</p></div>
+                </div>
+                <div id="mensaje-sin-obras2" style="display:none; text-align: left;">
+                    <p>El ingeniero no tiene obras asignadas</p>
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
 {% endblock %}
+
 
 
 
@@ -459,11 +462,20 @@ function plotearProgreso() {
     plotearTorta();
     plotearProgreso();
 
+// Datos para el gráfico de precisión de cronograma
+var precisionCronogramaData = JSON.parse('{{ precision_cronograma_data|escapejs }}');
+var cumplimientoFechaFinData = JSON.parse('{{ cumplimiento_fecha_fin_data|escapejs }}');
 
-    var precisionCronogramaData = JSON.parse('{{ precision_cronograma_data|escapejs }}');
-    var cumplimientoFechaFinData = JSON.parse('{{ cumplimiento_fecha_fin_data|escapejs }}');
+// Verificar si hay datos para mostrar los gráficos o el mensaje
+var hayDatos = (precisionCronogramaData.antes || precisionCronogramaData.en_fecha || precisionCronogramaData.despues ||
+                cumplimientoFechaFinData.antes || cumplimientoFechaFinData.en_fecha || cumplimientoFechaFinData.despues);
 
-    // Datos para el gráfico de precisión de cronograma
+// Mostrar mensaje si no hay datos
+if (!hayDatos) {
+    document.getElementById('mensaje-sin-obras2').style.display = 'block';
+} else {
+    document.getElementById('mensaje-sin-obras2').style.display = 'none';
+
     var dataPrecisionCronograma = {
         values: [precisionCronogramaData.antes, precisionCronogramaData.en_fecha, precisionCronogramaData.despues],
         labels: ['Antes de la Fecha Programada', 'En Fecha Programada', 'Después de Fecha Programada'],
@@ -482,7 +494,6 @@ function plotearProgreso() {
         insidetextorientation: 'horizontal'
     };
 
-    // Datos para el gráfico de cumplimiento de fechas de fin de obras
     var dataCumplimientoFechaFin = {
         values: [cumplimientoFechaFinData.antes, cumplimientoFechaFinData.en_fecha, cumplimientoFechaFinData.despues],
         labels: ['Antes de la Fecha Programada', 'En Fecha Programada', 'Después de Fecha Programada'],
@@ -539,7 +550,9 @@ function plotearProgreso() {
             }
         ]
     };
+
     Plotly.newPlot('grafico-precision-cumplimiento', data, layout);
+}
 
 
     });
