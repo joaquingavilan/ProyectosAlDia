@@ -1049,7 +1049,6 @@ def get_ingeniero_data(request, ingeniero_id):
 
 def eliminar_ingeniero(request, pk):
     ingeniero = get_object_or_404(User, pk=pk)
-
     # Verificamos si el ingeniero tiene obras o presupuestos asociados que no estén en los estados mencionados.
     obras_asociadas = Obra.objects.filter(encargado=ingeniero).exclude(estado='F')
     presupuestos_asociados = Presupuesto.objects.filter(encargado=ingeniero).exclude(estado='A')

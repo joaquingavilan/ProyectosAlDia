@@ -34,7 +34,7 @@
             <h2>Presupuestos Pendientes de Aprobacion</h2>
             <div class="clearfix"></div>
         </div>
-        <div id="contenido-presupuestos-pendientes" class="x_content" style="height: 450px; overflow-y: auto; width: 550%;">
+        <div id="contenido-presupuestos-pendientes" class="x_content" style="height: 450px; overflow-y: auto; width: 550px;">
             <!-- Establecer una altura específica para el div del gráfico para permitir el scrolling cuando sea necesario -->
             <div id="plotly-graph-div-presupuestos" style="height: 450px;"> <!-- Ajusta esta altura según el número esperado de clientes -->
             </div>
@@ -52,7 +52,7 @@
             <h2>Certificados Pendientes</h2>
             <div class="clearfix"></div>
         </div>
-        <div id="contenido-certificados-pendientes" class="x_content" style="min-height: 450px; height: 450px; width: 100%;">
+        <div id="contenido-certificados-pendientes" class="x_content" style="min-height: 450px; height: 450px; width: 550px;">
             <div id="plotly-graph-div-certificados"></div>
         </div>
     </div>
@@ -336,9 +336,8 @@ graphDataCertificadosPendientes.proyectos.forEach(function(proyecto) {
 dataCertificados[0].marker.colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
 
 var layoutCertificados = {
-    height: 460,
-    width: 550
-};
+    height: 460
+    };
 
 Plotly.newPlot('plotly-graph-div-certificados', dataCertificados, layoutCertificados).then(function(gd) {
     gd.on('plotly_click', function(data){
@@ -465,7 +464,6 @@ var layoutPresupuestos = {
     },
     autosize: true,
     height: totalGraphHeight,
-    width: 540,
     margin: { l: 100, r: 10, t: 50, b: 50, pad: 4 },
     plot_bgcolor: 'white',
     paper_bgcolor: 'white',
