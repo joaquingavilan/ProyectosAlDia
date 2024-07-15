@@ -42,14 +42,15 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_REDIRECT_URL = 'inicio'
 
 INSTALLED_APPS = [
+    'whitenoise.runserver_nostatic',
+    'django.contrib.staticfiles',
+    'Aplicacion',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
     'widget_tweaks',
-    'Aplicacion'
 ]
 
 MIDDLEWARE = [
@@ -135,14 +136,17 @@ LOCALE_PATHS = [
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'Aplicacion/media')
 
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'Aplicacion/static'),
 )
 #STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
@@ -150,7 +154,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-#try:
-    #from .local_settings import *
-#except ImportError:
-    #pass
+try:
+    from .local_settings import *
+except ImportError:
+    pass
