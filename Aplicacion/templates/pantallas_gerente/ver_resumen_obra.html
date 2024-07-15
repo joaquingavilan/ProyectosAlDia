@@ -19,7 +19,7 @@
 <div class="col-md-6 col-sm-6">
     <div class="x_panel">
         <div class="x_title">
-            <h2>Cronograma de la Obra</h2>
+            <h2>Actividades culminadas</h2>
             <div class="clearfix"></div>
         </div>
         <div class="x_content">
@@ -182,48 +182,82 @@ document.addEventListener('DOMContentLoaded', function () {
     var graphJSON = "{{ graph_json|escapejs }}";
     var certificadosJSON = "{{ certificados_json|escapejs }}";
 
-        var cronogramaData = JSON.parse('{{ graph_json_cronograma|escapejs }}');
-        console.log(cronogramaData);
-        if (cronogramaData.length === 0) {
-            document.getElementById('grafico-gantt').innerHTML = '<p>No hay cronograma definido</p>';
+var cronogramaData = JSON.parse('{{ graph_json_cronograma|escapejs }}');
+console.log(cronogramaData);
+if (cronogramaData.length === 0) {
+    document.getElementById('grafico-gantt').innerHTML = '<p>No hay cronograma definido</p>';
+} else {
+    var finishDates = cronogramaData.map(d => d.fecha_culminacion ? new Date(d.fecha_culminacion).toISOString().split('T')[0] : null);
+
+    // Colores y leyendas
+    var colorMap = {
+        before: 'green',
+        onTime: 'blue',
+        after: 'red'
+    };
+
+    var markers = {
+        x: [],
+        y: [],
+        marker: { color: [] },
+        text: [], // Para tooltips
+        mode: 'markers'
+    };
+
+    cronogramaData.forEach((d, i) => {
+        markers.x.push(finishDates[i]);
+        markers.y.push(0); // Todos en la misma línea horizontal
+        markers.text.push(d.rubro);
+
+        var scheduledDate = new Date(d.fecha_programada);
+        var finishDate = new Date(d.fecha_culminacion);
+        if (finishDate < scheduledDate) {
+            markers.marker.color.push(colorMap.before);
+        } else if (finishDate.getTime() === scheduledDate.getTime()) {
+            markers.marker.color.push(colorMap.onTime);
         } else {
-        var startDates = cronogramaData.map(d => new Date(d.fecha_programada).toISOString().split('T')[0]);
-        var finishDates = cronogramaData.map(d => d.fecha_culminacion ? new Date(d.fecha_culminacion).toISOString().split('T')[0] : null);
-        var tasks = cronogramaData.map(d => d.rubro);
+            markers.marker.color.push(colorMap.after);
+        }
+    });
 
-        var trace11 = {
-            type: 'scatter',
-            mode: 'markers',
-            x: startDates,
-            y: tasks,
-            marker: { color: 'rgba(0, 102, 255, 1)', size: 10 },
-            name: 'Fecha Programada'
-        };
+    var trace = {
+        x: markers.x,
+        y: markers.y,
+        text: markers.text,
+        mode: 'markers',
+        type: 'scatter',
+        marker: { color: markers.marker.color, size: 20 },
+        hoverinfo: 'text+x',
+        showlegend: false
+    };
 
-        var trace21 = {
-            type: 'scatter',
-            mode: 'markers',
-            x: finishDates,
-            y: tasks,
-            marker: { color: 'rgba(255, 153, 0, 1)', size: 10 },
-            name: 'Fecha de Culminación'
-        };
-
-        var layout = {
-            xaxis: { title: 'Fecha', type: 'date',tickformat: '%d %b %Y' },
-            yaxis: { title: 'Rubro', type: 'category' },
-            height: 400,
-            autosize: true,
-            margin: {
-                l: 100,
-                r: 20,
-                t: 0,
-                b: 100
+    var layout = {
+        xaxis: { title: 'Fecha de Culminación', type: 'date', tickformat: '%d %b', tickangle: 45 },
+        yaxis: {visible: false},
+        showlegend: true,
+        legend: {
+            font: {
+                size: 15 // Ajusta el tamaño de la fuente aquí
             }
-        };
+        },
+        height: 400,
+        autosize: true,
+        margin: { l: 50, r: 50, t: 20, b: 100 }
+    };
+    var config = {
+        displayModeBar: false // Esto deshabilita la barra de herramientas
+    };
 
-        Plotly.newPlot('grafico-gantt', [trace11, trace21], layout);
+    // Crear trazas para la leyenda
+    var legendTraces = [
+        {x: [null], y: [null], mode: 'markers', marker: {color: colorMap.before}, name: 'Terminado Antes'},
+        {x: [null], y: [null], mode: 'markers', marker: {color: colorMap.onTime}, name: 'Terminado en Fecha'},
+        {x: [null], y: [null], mode: 'markers', marker: {color: colorMap.after}, name: 'Terminado Después'},
+    ];
+
+    Plotly.newPlot('grafico-gantt', [trace, ...legendTraces], layout,config);
 }
+
 
     var data = JSON.parse(graphJSON);
     var certificadosData = JSON.parse(certificadosJSON);
