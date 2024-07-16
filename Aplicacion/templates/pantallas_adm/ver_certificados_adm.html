@@ -50,7 +50,7 @@
                 {% for certificado in certificados %}
                 <tr>
                     <td>{{ certificado.presupuesto.proyecto.nombre }}</td>
-                    <td>{{ certificado.fecha_creacion }}</td>
+                    <td>{{ certificado.fecha_creacion.date }}</td>
                     <td>{{ certificado.get_estado_display }}</td>
                     <td>{% if certificado.fecha_envio %}{{ certificado.fecha_envio }}{% else %}-{% endif %}</td>
                     <td>{% if certificado.fecha_pago %}{{ certificado.fecha_pago }}{% else %}-{% endif %}</td>

@@ -4639,7 +4639,7 @@ def guardar_certificado(request):
 
         try:
             obra = Obra.objects.get(id=obra_id)
-            certificado = Certificado.objects.create(ingeniero=ingeniero, presupuesto=obra.proyecto.presupuesto, monto_total=0,subtotal=0, iva=0)  # Asocia directamente con el presupuesto de la obra
+            certificado = Certificado.objects.create(ingeniero=ingeniero, presupuesto=obra.proyecto.presupuesto, monto_total=0,subtotal=0, iva=0, fecha_creacion=timezone.now().date())  # Asocia directamente con el presupuesto de la obra
             archivo_certificado = ArchivoCertificado.objects.create(certificado=certificado)  # Crea un archivo de certificado para asociar detalles
             subtotal = Decimal('0.00')
             tasa_iva = Decimal('0.10')  # 10% de IVA como Decimal
