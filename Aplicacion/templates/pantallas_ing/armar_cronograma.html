@@ -10,7 +10,7 @@
 
 
 {% endblock %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="x_panel"> <!-- Asegúrate de que esta clase coincide con el contenedor principal en Gentelella -->
     <div class="page-title">
@@ -71,8 +71,8 @@
                                                 <td>&emsp;&emsp;&emsp;&emsp;{{ detalle.rubro }}</td>
                                                 <td>{{ detalle.unidad }}</td>
                                                 <td>{{ detalle.cantidad }}</td>
-                                                <td>{{ detalle.precio_unitario }}</td>
-                                                <td>{{ detalle.precio_total }}</td>
+                                                <td>{{ detalle.precio_unitario|intcomma }}</td>
+                                                <td>{{ detalle.precio_total|intcomma }}</td>
                                                 <td>
                                                     <div class="fecha-container">
                                                         <input type="hidden" id="fechaInicioObra" value="{{ fecha_inicio }}">

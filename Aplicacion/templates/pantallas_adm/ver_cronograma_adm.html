@@ -1,5 +1,5 @@
 {% extends request.base_template %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="x_panel">
     <div class="page-title">
@@ -50,8 +50,8 @@
                                             <td>&emsp;&emsp;&emsp;&emsp;{{ detalle.rubro }}</td>
                                             <td>{{ detalle.unidad_medida.nombre }}</td>
                                             <td>{{ detalle.cantidad }}</td>
-                                            <td>{{ detalle.precio_unitario }}</td>
-                                            <td>{{ detalle.precio_total }}</td>
+                                            <td>{{ detalle.precio_unitario|intcomma }}</td>
+                                            <td>{{ detalle.precio_total|intcomma }}</td>
                                             <td>{{ fecha_programada }}</td>
                                             <td>{{ fecha_culminacion }}</td>
                                             <td>{%if realizado %}

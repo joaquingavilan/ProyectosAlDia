@@ -84,8 +84,8 @@
                                     <td>{{ subitem.rubro }}</td>
                                     <td>{{ subitem.unidad_medida }}</td>
                                     <td>{{ subitem.cantidad }}</td>
-                                    <td>{{ subitem.precio_unitario }}</td>
-                                    <td>{{ subitem.precio_total }}</td>
+                                    <td>{{ subitem.precio_unitario|intcomma }}</td>
+                                    <td>{{ subitem.precio_total|intcomma }}</td>
                                     <td>
                                         <button onclick="editar(this);" class="btn btn-secondary btn-sm">Editar</button>
                                         <button onclick="eliminar(this);" class="btn btn-danger btn-sm">Eliminar</button>
