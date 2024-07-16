@@ -83,8 +83,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>${detalle.detalle__rubro}</td>
                             <td>${detalle.fecha_culminacion}</td>
                             <td>${detalle.detalle__cantidad}</td>
-                            <td>${detalle.detalle__precio_unitario}</td>
-                            <td>${detalle.detalle__precio_total}</td>
+                            <td>${detalle.detalle__precio_unitario|intcomma}</td>
+                            <td>${detalle.detalle__precio_total|intcomma}</td>
                             <td><input type="checkbox" class="seleccionar-fila" data-id="${detalle.id}"></td>
                             `;
                         tbody.appendChild(tr);
